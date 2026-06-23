@@ -32,7 +32,7 @@ export interface MetricComparison {
 export interface PerformanceComparisons {
   pageLoad: MetricComparison;
   apiLatency: MetricComparison;
-  healthScore: MetricComparison;
+  systemPerformanceScore: MetricComparison;
   context: MetricComparison;
   session: SessionAverages | null;
 }
@@ -53,7 +53,7 @@ export interface SystemMetrics {
 const EMPTY_COMPARISONS: PerformanceComparisons = {
   pageLoad: { rating: "ok", target: PERFORMANCE_BENCHMARKS.pageLoad.targetLabel, vsPrevious: null, vsSessionAvg: null },
   apiLatency: { rating: "ok", target: PERFORMANCE_BENCHMARKS.apiLatency.targetLabel, vsPrevious: null, vsSessionAvg: null },
-  healthScore: { rating: "ok", target: PERFORMANCE_BENCHMARKS.healthScore.targetLabel, vsPrevious: null, vsSessionAvg: null },
+  systemPerformanceScore: { rating: "ok", target: PERFORMANCE_BENCHMARKS.systemPerformanceScore.targetLabel, vsPrevious: null, vsSessionAvg: null },
   context: { rating: "ok", target: PERFORMANCE_BENCHMARKS.contextBytes.targetLabel, vsPrevious: null, vsSessionAvg: null },
   session: null,
 };
@@ -128,7 +128,7 @@ function buildComparisons(
   return {
     pageLoad: build(pageLoadMs, "pageLoad", previous?.pageLoadMs, session?.pageLoadMs),
     apiLatency: build(apiLatencyMs, "apiLatency", previous?.apiLatencyMs, session?.apiLatencyMs),
-    healthScore: build(performanceScore, "healthScore", previous?.performanceScore, session?.performanceScore, true),
+    systemPerformanceScore: build(performanceScore, "systemPerformanceScore", previous?.performanceScore, session?.performanceScore, true),
     context: build(contextBytes, "contextBytes", previous?.contextBytes, session?.contextBytes),
     session,
   };

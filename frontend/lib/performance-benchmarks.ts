@@ -6,6 +6,7 @@ export interface MetricBenchmark {
   okMax: number;
   unit: string;
   targetLabel: string;
+  referenceUrl?: string;
 }
 
 export const PERFORMANCE_BENCHMARKS = {
@@ -15,6 +16,7 @@ export const PERFORMANCE_BENCHMARKS = {
     okMax: 1500,
     unit: "ms",
     targetLabel: "< 800 ms",
+    referenceUrl: "https://web.dev/articles/vitals",
   },
   domReady: {
     label: "DOM ready",
@@ -22,6 +24,7 @@ export const PERFORMANCE_BENCHMARKS = {
     okMax: 1200,
     unit: "ms",
     targetLabel: "< 600 ms",
+    referenceUrl: "https://developer.mozilla.org/en-US/docs/Web/API/Document/DOMContentLoaded_event",
   },
   apiLatency: {
     label: "API latency",
@@ -29,6 +32,7 @@ export const PERFORMANCE_BENCHMARKS = {
     okMax: 800,
     unit: "ms",
     targetLabel: "< 200 ms",
+    referenceUrl: "https://www.w3.org/TR/resource-timing/",
   },
   contextBytes: {
     label: "Context size",
@@ -36,6 +40,7 @@ export const PERFORMANCE_BENCHMARKS = {
     okMax: 20 * 1024 * 1024,
     unit: "bytes",
     targetLabel: "< 5 MB",
+    referenceUrl: "https://developer.mozilla.org/en-US/docs/Web/API/Storage",
   },
   jsHeap: {
     label: "JS heap",
@@ -43,9 +48,10 @@ export const PERFORMANCE_BENCHMARKS = {
     okMax: 100 * 1024 * 1024,
     unit: "bytes",
     targetLabel: "< 50 MB",
+    referenceUrl: "https://developer.chrome.com/docs/devtools/memory-problems/",
   },
-  healthScore: {
-    label: "Health score",
+  systemPerformanceScore: {
+    label: "System Performance Score",
     goodMax: 85,
     okMax: 65,
     unit: "%",

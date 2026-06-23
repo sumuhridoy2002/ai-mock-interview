@@ -3,40 +3,46 @@
 import { useState, type ComponentType } from "react";
 import {
   Activity,
+  BookOpen,
   ChevronDown,
   ChevronUp,
   Clock,
   Cpu,
   Database,
+  ExternalLink,
   Globe,
+  GitCompare,
   Monitor,
   RefreshCw,
   Server,
   TrendingDown,
   TrendingUp,
+  Workflow,
   X,
 } from "lucide-react";
 import { useSystemMetrics, type MetricComparison } from "@/hooks/useSystemMetrics";
+import { FeatureComparisonTable } from "@/components/system/feature-comparison-table";
+import { SystemMethodologyDiagram } from "@/components/system/system-methodology-diagram";
 import {
   ratingBadgeClass,
   ratingClass,
   ratingLabel,
   type MetricDelta,
 } from "@/lib/performance-benchmarks";
-import { SYSTEM_COMPONENTS, type ComponentKind } from "@/lib/system-architecture";
+import { PERFORMANCE_METRIC_DOCS } from "@/lib/performance-metric-docs";
+import { SYSTEM_COMPONENTS } from "@/lib/system-architecture";
 import { cn, formatBytes } from "@/lib/utils";
 
-function KindBadge({ kind }: { kind: ComponentKind }) {
-  const styles: Record<ComponentKind, string> = {
-    client: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-    server: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-    hybrid: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  };
+type MonitorTab = "metrics" | "components" | "compare" | "methodology";
 
+function TechnologyBadge({ technology, category }: { technology: string; category: string }) {
   return (
-    <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide", styles[kind])}>
-      {kind}
-    </span>
+    <div className="text-right shrink-0">
+      <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-300">
+        {technology}
+      </span>
+      <p className="text-[9px] text-slate-600 mt-0.5">{category}</p>
+    </div>
   );
 }
 
@@ -140,8 +146,41 @@ function MetricCard({
   );
 }
 
+function ComponentRow({ component }: { component: (typeof SYSTEM_COMPONENTS)[number] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-lg border border-slate-700/40 bg-slate-900/50 px-3 py-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-start justify-between gap-2 text-left"
+      >
+        <p className="text-xs font-semibold text-slate-200">{component.name}</p>
+        <TechnologyBadge technology={component.technology} category={component.category} />
+      </button>
+      {open && (
+        <div className="mt-2 pt-2 border-t border-slate-800 space-y-1 text-[10px] text-slate-500">
+          <p><span className="text-slate-400">Role:</span> {component.role}</p>
+          <p><span className="text-slate-400">Stack:</span> {component.stack}</p>
+          <p className="font-mono truncate"><span className="text-slate-400">Endpoint:</span> {component.endpoint}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TABS: { id: MonitorTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
+  { id: "metrics", label: "Metrics", icon: Activity },
+  { id: "components", label: "Stack", icon: Server },
+  { id: "compare", label: "Compare", icon: GitCompare },
+  { id: "methodology", label: "How it works", icon: Workflow },
+];
+
 export function SystemStatusFooter() {
   const [expanded, setExpanded] = useState(false);
+  const [tab, setTab] = useState<MonitorTab>("metrics");
+  const [showMetricDocs, setShowMetricDocs] = useState(false);
   const { metrics, refresh, isRefreshing, refreshIntervalSeconds } = useSystemMetrics();
 
   const { contextData, comparisons } = metrics;
@@ -177,156 +216,229 @@ export function SystemStatusFooter() {
       <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2 pointer-events-none">
         {expanded && (
           <div
-            className="pointer-events-auto w-[min(calc(100vw-2rem),28rem)] max-h-[min(75vh,620px)] overflow-y-auto rounded-xl border border-slate-700/60 bg-slate-950/98 backdrop-blur-md shadow-2xl"
+            className="pointer-events-auto w-[min(calc(100vw-2rem),32rem)] max-h-[min(80vh,680px)] overflow-y-auto rounded-xl border border-slate-700/60 bg-slate-950/98 backdrop-blur-md shadow-2xl"
             role="dialog"
             aria-label="System monitor details"
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/95 px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-indigo-400" />
-                <span className="text-sm font-semibold text-slate-200">System Monitor</span>
+            <div className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/95">
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-indigo-400" />
+                  <span className="text-sm font-semibold text-slate-200">System Monitor</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(false)}
+                  className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setExpanded(false)}
-                className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-300"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex gap-1 px-3 pb-2 overflow-x-auto">
+                {TABS.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setTab(id)}
+                    className={cn(
+                      "flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-medium whitespace-nowrap transition-colors",
+                      tab === id
+                        ? "bg-indigo-600/25 text-indigo-300"
+                        : "text-slate-500 hover:bg-slate-800 hover:text-slate-300",
+                    )}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="px-4 py-4 space-y-4">
-              {/* Benchmark comparisons */}
-              <section>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  Performance vs targets
-                </h3>
-                <div className="space-y-2">
-                  <ComparisonRow
-                    label="Health score"
-                    value={`${metrics.performanceScore}%`}
-                    comparison={comparisons.healthScore}
-                    unit="%"
-                  />
-                  <ComparisonRow
-                    label="Page load"
-                    value={`${metrics.pageLoadMs} ms`}
-                    comparison={comparisons.pageLoad}
-                    unit=" ms"
-                  />
-                  <ComparisonRow
-                    label="API latency"
-                    value={metrics.apiLatencyMs !== null ? `${metrics.apiLatencyMs} ms` : "—"}
-                    comparison={comparisons.apiLatency}
-                    unit=" ms"
-                  />
-                  <ComparisonRow
-                    label="Context size"
-                    value={contextLabel}
-                    comparison={comparisons.context}
-                    unit=""
-                  />
-                </div>
-                {comparisons.session && (
-                  <p className="mt-2 text-[10px] text-slate-600">
-                    Session average over {comparisons.session.sampleCount} checks · score{" "}
-                    {comparisons.session.performanceScore}% · API{" "}
-                    {comparisons.session.apiLatencyMs !== null ? `${comparisons.session.apiLatencyMs} ms` : "—"}
-                  </p>
-                )}
-              </section>
-
-              <section>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  Execution time
-                </h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <MetricCard label="Page load" value={`${metrics.pageLoadMs} ms`} icon={Globe} />
-                  <MetricCard label="DOM ready" value={`${metrics.domReadyMs} ms`} icon={Monitor} />
-                  <MetricCard
-                    label="API round-trip"
-                    value={metrics.apiLatencyMs !== null ? `${metrics.apiLatencyMs} ms` : "—"}
-                    sub={metrics.apiStatus}
-                    icon={Server}
-                  />
-                  <MetricCard label="Panel render" value={`${metrics.renderMs} ms`} icon={Cpu} />
-                </div>
-                <p className="mt-2 text-[10px] text-slate-600 font-mono truncate">Route: {metrics.route}</p>
-              </section>
-
-              <section>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5">
-                  <Activity className="h-3.5 w-3.5" />
-                  Overall performance
-                </h3>
-                <div className="rounded-lg border border-slate-700/50 bg-slate-900/40 p-3">
-                  <ScoreBar score={metrics.performanceScore} />
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px]">
-                    <div className="rounded bg-slate-800/50 py-1.5">
-                      <p className="text-slate-500">Frontend</p>
-                      <p className="text-emerald-400 font-medium mt-0.5">Active</p>
+              {tab === "metrics" && (
+                <>
+                  <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      Performance vs targets
+                    </h3>
+                    <div className="space-y-2">
+                      <ComparisonRow
+                        label="System Performance Score"
+                        value={`${metrics.performanceScore}%`}
+                        comparison={comparisons.systemPerformanceScore}
+                        unit="%"
+                      />
+                      <ComparisonRow
+                        label="Page load"
+                        value={`${metrics.pageLoadMs} ms`}
+                        comparison={comparisons.pageLoad}
+                        unit=" ms"
+                      />
+                      <ComparisonRow
+                        label="API latency"
+                        value={metrics.apiLatencyMs !== null ? `${metrics.apiLatencyMs} ms` : "—"}
+                        comparison={comparisons.apiLatency}
+                        unit=" ms"
+                      />
+                      <ComparisonRow
+                        label="Context size"
+                        value={contextLabel}
+                        comparison={comparisons.context}
+                        unit=""
+                      />
                     </div>
-                    <div className="rounded bg-slate-800/50 py-1.5">
-                      <p className="text-slate-500">Laravel API</p>
-                      <p className={cn("font-medium mt-0.5", metrics.apiStatus === "online" ? "text-emerald-400" : "text-rose-400")}>
-                        {metrics.apiStatus === "online" ? "Online" : "Unreachable"}
+                    {comparisons.session && (
+                      <p className="mt-2 text-[10px] text-slate-600">
+                        Session avg over {comparisons.session.sampleCount} checks · score{" "}
+                        {comparisons.session.performanceScore}% · API{" "}
+                        {comparisons.session.apiLatencyMs !== null ? `${comparisons.session.apiLatencyMs} ms` : "—"}
                       </p>
-                    </div>
-                    <div className="rounded bg-slate-800/50 py-1.5">
-                      <p className="text-slate-500">AI / STT</p>
-                      <p className="text-slate-400 font-medium mt-0.5">Server-side</p>
-                    </div>
-                  </div>
-                </div>
-              </section>
+                    )}
+                  </section>
 
-              <section>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5">
-                  <Database className="h-3.5 w-3.5" />
-                  Context data
-                </h3>
-                <div className="grid grid-cols-2 gap-2 text-[10px]">
-                  <div className="rounded bg-slate-800/50 px-2 py-1.5">
-                    <p className="text-slate-500">localStorage</p>
-                    <p className="font-mono text-slate-200 mt-0.5">{formatBytes(contextData.localStorageBytes)}</p>
-                  </div>
-                  <div className="rounded bg-slate-800/50 px-2 py-1.5">
-                    <p className="text-slate-500">API payload</p>
-                    <p className="font-mono text-slate-200 mt-0.5">
-                      {contextData.apiResponseBytes !== null ? formatBytes(contextData.apiResponseBytes) : "—"}
-                    </p>
-                  </div>
-                  <div className="rounded bg-slate-800/50 px-2 py-1.5">
-                    <p className="text-slate-500">JS heap</p>
-                    <p className="font-mono text-slate-200 mt-0.5">
-                      {contextData.jsHeapUsedBytes !== null ? formatBytes(contextData.jsHeapUsedBytes) : "N/A"}
-                    </p>
-                  </div>
-                  <div className="rounded bg-slate-800/50 px-2 py-1.5">
-                    <p className="text-slate-500">Storage keys</p>
-                    <p className="font-mono text-slate-200 mt-0.5">{contextData.storageItemCount}</p>
-                  </div>
-                </div>
-              </section>
+                  <section>
+                    <button
+                      type="button"
+                      onClick={() => setShowMetricDocs((v) => !v)}
+                      className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-300 mb-2"
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                      How this is calculated
+                      {showMetricDocs ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+                    {showMetricDocs && (
+                      <div className="space-y-2">
+                        {PERFORMANCE_METRIC_DOCS.map((doc) => (
+                          <div key={doc.id} className="rounded-lg border border-slate-700/40 bg-slate-900/40 px-3 py-2.5 text-[10px]">
+                            <p className="font-semibold text-slate-200">{doc.title}</p>
+                            <p className="font-mono text-indigo-300/90 mt-1">{doc.formula}</p>
+                            <p className="text-slate-500 mt-1 leading-relaxed">{doc.description}</p>
+                            <p className="text-slate-600 mt-1">{doc.ratingBands}</p>
+                            {doc.referenceUrl && (
+                              <a
+                                href={doc.referenceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-indigo-400 hover:underline mt-1.5"
+                              >
+                                {doc.referenceLabel ?? "Reference"}
+                                <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
 
-              <section>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5">
-                  <Server className="h-3.5 w-3.5" />
-                  Components
-                </h3>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {SYSTEM_COMPONENTS.map((component) => (
-                    <div key={component.id} className="rounded-lg border border-slate-700/40 bg-slate-900/50 px-3 py-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs font-semibold text-slate-200">{component.name}</p>
-                        <KindBadge kind={component.kind} />
+                  <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" />
+                      Execution time
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <MetricCard label="Page load" value={`${metrics.pageLoadMs} ms`} icon={Globe} />
+                      <MetricCard label="DOM ready" value={`${metrics.domReadyMs} ms`} icon={Monitor} />
+                      <MetricCard
+                        label="API round-trip"
+                        value={metrics.apiLatencyMs !== null ? `${metrics.apiLatencyMs} ms` : "—"}
+                        sub={metrics.apiStatus}
+                        icon={Server}
+                      />
+                      <MetricCard label="Panel render" value={`${metrics.renderMs} ms`} icon={Cpu} />
+                    </div>
+                    <p className="mt-2 text-[10px] text-slate-600 font-mono truncate">Route: {metrics.route}</p>
+                  </section>
+
+                  <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5">
+                      <Activity className="h-3.5 w-3.5" />
+                      Overall performance
+                    </h3>
+                    <div className="rounded-lg border border-slate-700/50 bg-slate-900/40 p-3">
+                      <p className="text-[10px] text-slate-500 mb-1">System Performance Score</p>
+                      <ScoreBar score={metrics.performanceScore} />
+                      <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px]">
+                        <div className="rounded bg-slate-800/50 py-1.5">
+                          <p className="text-slate-500">Next.js 16</p>
+                          <p className="text-emerald-400 font-medium mt-0.5">Active</p>
+                        </div>
+                        <div className="rounded bg-slate-800/50 py-1.5">
+                          <p className="text-slate-500">Laravel 13</p>
+                          <p className={cn("font-medium mt-0.5", metrics.apiStatus === "online" ? "text-emerald-400" : "text-rose-400")}>
+                            {metrics.apiStatus === "online" ? "Online" : "Unreachable"}
+                          </p>
+                        </div>
+                        <div className="rounded bg-slate-800/50 py-1.5">
+                          <p className="text-slate-500">Whisper / Ollama</p>
+                          <p className="text-slate-400 font-medium mt-0.5">Server-side</p>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </section>
+                  </section>
+
+                  <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5">
+                      <Database className="h-3.5 w-3.5" />
+                      Context data
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      <div className="rounded bg-slate-800/50 px-2 py-1.5">
+                        <p className="text-slate-500">localStorage</p>
+                        <p className="font-mono text-slate-200 mt-0.5">{formatBytes(contextData.localStorageBytes)}</p>
+                      </div>
+                      <div className="rounded bg-slate-800/50 px-2 py-1.5">
+                        <p className="text-slate-500">API payload</p>
+                        <p className="font-mono text-slate-200 mt-0.5">
+                          {contextData.apiResponseBytes !== null ? formatBytes(contextData.apiResponseBytes) : "—"}
+                        </p>
+                      </div>
+                      <div className="rounded bg-slate-800/50 px-2 py-1.5">
+                        <p className="text-slate-500">JS heap</p>
+                        <p className="font-mono text-slate-200 mt-0.5">
+                          {contextData.jsHeapUsedBytes !== null ? formatBytes(contextData.jsHeapUsedBytes) : "N/A"}
+                        </p>
+                      </div>
+                      <div className="rounded bg-slate-800/50 px-2 py-1.5">
+                        <p className="text-slate-500">Storage keys</p>
+                        <p className="font-mono text-slate-200 mt-0.5">{contextData.storageItemCount}</p>
+                      </div>
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {tab === "components" && (
+                <section>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                    Technology stack (tap to expand)
+                  </h3>
+                  <div className="space-y-2 max-h-[420px] overflow-y-auto">
+                    {SYSTEM_COMPONENTS.map((component) => (
+                      <ComponentRow key={component.id} component={component} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {tab === "compare" && (
+                <section>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                    Feature comparison vs other platforms
+                  </h3>
+                  <p className="text-[10px] text-slate-600 mb-3">
+                    How Mock Interview Pro compares to popular mock-interview and hiring tools.
+                  </p>
+                  <FeatureComparisonTable />
+                </section>
+              )}
+
+              {tab === "methodology" && (
+                <section>
+                  <SystemMethodologyDiagram />
+                </section>
+              )}
 
               <p className="text-[10px] text-slate-600 text-center">
                 Updated {metrics.lastUpdated} · auto {refreshIntervalSeconds}s
@@ -335,26 +447,21 @@ export function SystemStatusFooter() {
           </div>
         )}
 
-        {/* Compact floating chip */}
         <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-950/95 backdrop-blur-md shadow-lg pl-2.5 pr-1 py-1">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
             className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-slate-800/80 transition-colors"
-            title="Open system monitor"
+            title="System Performance Score — open monitor"
           >
             <Activity className="h-3.5 w-3.5 text-indigo-400" />
             <span className={cn("text-xs font-bold font-mono", scoreColor)}>
               {metrics.performanceScore}%
             </span>
+            <span className="hidden sm:inline text-[10px] text-slate-500">SPS</span>
             <span className={cn("hidden sm:inline text-[10px] font-mono", ratingClass(apiRating))}>
               API {apiLabel}
             </span>
-            {comparisons.apiLatency.vsPrevious && comparisons.apiLatency.vsPrevious.direction !== "same" && (
-              <span className="hidden md:inline text-[10px] text-slate-500">
-                {comparisons.apiLatency.vsPrevious.formatted}ms
-              </span>
-            )}
             {expanded ? (
               <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
             ) : (

@@ -21,6 +21,7 @@ class Interview extends Model
         'scheduled_at',
         'alarm_message',
         'alarm_triggered_at',
+        'reminder_sent_at',
     ];
 
     protected function casts(): array
@@ -29,6 +30,7 @@ class Interview extends Model
             'job_analysis'       => 'array',
             'scheduled_at'       => 'datetime',
             'alarm_triggered_at' => 'datetime',
+            'reminder_sent_at'   => 'datetime',
         ];
     }
 

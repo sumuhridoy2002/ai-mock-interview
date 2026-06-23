@@ -10,7 +10,7 @@ Production-ready AI mock interview platform.
 
 ## Start Dev Session
 
-Run these 5 commands every time — one per terminal tab:
+Run these 6 commands every time — one per terminal tab:
 
 ```bash
 # Terminal 1 — Laravel API
@@ -19,19 +19,25 @@ php artisan serve
 ```
 
 ```bash
-# Terminal 2 — Queue worker (AI jobs, evaluations)
+# Terminal 2 — Queue worker (AI jobs, evaluations, emails)
 cd backend
 php artisan queue:work
 ```
 
 ```bash
-# Terminal 3 — WebSocket server (real-time questions)
+# Terminal 3 — Scheduler (interview email reminders, every minute)
+cd backend
+php artisan schedule:work
+```
+
+```bash
+# Terminal 4 — WebSocket server (real-time questions)
 cd backend
 php artisan reverb:start
 ```
 
 ```bash
-# Terminal 4 — AI service (Whisper + Ollama agents)
+# Terminal 5 — AI service (Whisper + Ollama agents)
 cd ai-service
 python -m venv venv
 .\venv\Scripts\Activate.ps1
@@ -40,12 +46,12 @@ uvicorn app.main:app --reload --port 8001
 ```
 
 ```bash
-# Terminal 5 — Frontend
+# Terminal 6 — Frontend
 cd frontend
 npm run dev
 ```
 
-> Open **[http://localhost:3000](http://localhost:3000)** — all 5 must be running for full functionality.
+> Open **[http://localhost:3000](http://localhost:3000)** — all 6 must be running for full functionality (scheduler required for email reminders).
 
 ---
 
@@ -62,7 +68,14 @@ touch database/database.sqlite  # if using sqlite
 php artisan migrate
 php artisan serve
 php artisan queue:work
+php artisan schedule:work   # dev — interview email reminders (10 min before)
 php artisan reverb:start
+```
+
+**Production:** add a cron entry so reminders run every minute:
+
+```bash
+* * * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 ### 2. AI Service
@@ -108,6 +121,9 @@ Open [http://localhost:3000](http://localhost:3000)
 | `FFMPEG_PATH`                 | ai-service env      | Absolute path to ffmpeg binary. Falls back to system PATH then bundled `imageio-ffmpeg`.                                      |
 | `NEXT_PUBLIC_API_URL`         | frontend/.env.local | Laravel API URL                                                                                                               |
 | `NEXT_PUBLIC_REVERB_*`        | frontend/.env.local | WebSocket config                                                                                                              |
+| `FRONTEND_URL`                | backend/.env        | Next.js app URL for links in welcome and reminder emails (default `http://localhost:3000`)                                    |
+| `MAIL_MAILER`                 | backend/.env        | `log` for dev (emails in `storage/logs/laravel.log`); use `smtp` in production                                                |
+| `MAIL_HOST` / `MAIL_PORT`     | backend/.env        | SMTP server when `MAIL_MAILER=smtp`                                                                                           |
 
 
 ### Whisper model guide

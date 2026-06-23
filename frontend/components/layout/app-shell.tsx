@@ -1,34 +1,21 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
-import {
-  LayoutDashboard,
-  FileText,
-  Mic,
-  User,
-  LogOut,
-  Sparkles,
-} from "lucide-react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
+import { Menu, Sparkles } from "lucide-react";
 import { getToken, logout } from "@/lib/auth";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { useScheduledInterviewAlarm } from "@/hooks/useScheduledInterviewAlarm";
 import { AlarmBanner } from "@/components/layout/alarm-banner";
-
-const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/resume/upload", label: "Resume", icon: FileText },
-  { href: "/interview/setup", label: "Interview", icon: Mic },
-  { href: "/profile", label: "Profile", icon: User },
-];
+import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
   const router = useRouter();
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const { firedAlarms, stopRinging } = useScheduledInterviewAlarm();
+
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
 
   useEffect(() => {
     if (!getToken()) {
@@ -38,10 +25,28 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [router]);
 
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const handleSignOut = async () => {
+    await logout();
+    router.push("/login");
+  };
+
   if (!ready) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-slate-300">
-        Loading...
+      <div className="min-h-screen flex">
+        <div className="hidden lg:block w-[272px] shrink-0 border-r border-slate-800/80 bg-slate-950/98" />
+        <div className="flex flex-1 flex-col">
+          <div className="h-14 border-b border-slate-800/80 bg-slate-950/90 lg:hidden" />
+          <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-indigo-400" />
+              Loading workspace…
+            </span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -49,42 +54,44 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <AlarmBanner alarms={firedAlarms} onStop={stopRinging} />
-      <div className="min-h-full flex">
-      <aside className="w-64 border-r border-slate-700/50 bg-slate-900/80 backdrop-blur p-4 flex flex-col shrink-0">
-        <div className="flex items-center gap-2 px-2 mb-8">
-          <Sparkles className="h-6 w-6 text-indigo-400" />
-          <span className="font-bold text-white">Mock Interview Pro</span>
+
+      {/* Mobile top bar */}
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-3 border-b border-slate-800/80 bg-slate-950/95 px-4 backdrop-blur-xl lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600">
+            <Sparkles className="h-4 w-4 text-white" />
+          </div>
+          <span className="truncate text-sm font-semibold text-white">Mock Interview Pro</span>
         </div>
-        <nav className="space-y-1">
-          {nav.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                pathname.startsWith(href)
-                  ? "bg-indigo-600/20 text-indigo-300"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </Link>
-          ))}
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 h-auto text-sm text-slate-300 hover:bg-rose-500/10 hover:border-rose-500/60 hover:text-rose-200 transition-colors"
-            onClick={async () => {
-              await logout();
-              router.push("/login");
-            }}
-          >
-            <LogOut className="h-4 w-4 text-rose-300" />
-            Sign out
-          </Button>
-        </nav>
-      </aside>
-      <main className="flex-1 p-8 overflow-auto">{children}</main>
+      </header>
+
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm lg:hidden"
+          onClick={closeMobile}
+          aria-label="Close menu"
+        />
+      )}
+
+      <div className="flex min-h-screen">
+        <DashboardSidebar
+          mobileOpen={mobileOpen}
+          onMobileClose={closeMobile}
+          onSignOut={handleSignOut}
+        />
+        <main className="flex-1 overflow-auto pt-14 lg:pt-0">
+          <div className="mx-auto max-w-7xl p-5 sm:p-6 lg:p-8">{children}</div>
+        </main>
       </div>
     </>
   );

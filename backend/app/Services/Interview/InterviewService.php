@@ -70,6 +70,7 @@ class InterviewService
             'scheduled_at'       => $scheduledAt,
             'alarm_message'      => $alarmMessage,
             'alarm_triggered_at' => null,
+            'reminder_sent_at'   => null,
         ]);
 
         return $interview->fresh();
@@ -81,6 +82,7 @@ class InterviewService
             'scheduled_at'       => null,
             'alarm_message'      => null,
             'alarm_triggered_at' => null,
+            'reminder_sent_at'   => null,
         ]);
 
         return $interview->fresh();
