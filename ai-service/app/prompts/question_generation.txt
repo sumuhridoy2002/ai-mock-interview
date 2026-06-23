@@ -1,0 +1,13 @@
+Given candidate profile: {cv_json}
+Job requirements: {job_json}
+Interview memory: {memory_json}
+Questions already asked (DO NOT repeat or rephrase these): {questions_already_asked}
+Last answer transcript: {last_answer}
+Experience level: {experience_level}
+Interview type: {interview_type}
+
+Generate ONE new interview question that is clearly different from every question already asked.
+Categories: technical, behavioral, problem_solving, scenario, communication.
+Pick a category not yet covered when possible.
+
+Return JSON: {{"question":"...","category":"...","difficulty":"junior|mid|senior","topic":"..."}}

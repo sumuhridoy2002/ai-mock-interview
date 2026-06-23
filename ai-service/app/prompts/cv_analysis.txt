@@ -1,0 +1,15 @@
+Extract a structured candidate profile from this CV/resume text.
+
+Rules:
+- skills: list every technical and soft skill mentioned (deduplicated, proper casing)
+- experience_years: total years of professional work experience (integer). Infer from job date ranges if not stated explicitly.
+- education: list each degree, certification, or institution line (e.g. "BSc Computer Science, University of X, 2020")
+- projects: list named projects, products, or portfolio items mentioned
+
+If information is missing, use empty arrays or 0 — but try hard to find education and dates first.
+
+CV text:
+{cv_text}
+
+Return JSON only:
+{{"skills":[],"experience_years":0,"projects":[],"education":[]}}

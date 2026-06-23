@@ -1,0 +1,549 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { Mic, TrendingUp, Award, ArrowRight, Bell, BellOff, Calendar, Pencil, Trash2, X, Check, TrendingDown, Minus, Star, Target, BarChart2, ChevronRight } from "lucide-react";
+import { AppShell } from "@/components/layout/app-shell";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
+import { formatScore } from "@/lib/utils";
+
+interface InterviewRow {
+  id: number;
+  job_title: string;
+  status: string;
+  experience_level: string;
+  interview_type: string;
+  created_at: string;
+  scheduled_at?: string | null;
+  alarm_message?: string | null;
+  alarm_triggered_at?: string | null;
+  report?: { overall_score: number; hiring_recommendation: string };
+}
+
+interface ScheduledRow {
+  id: number;
+  job_title: string;
+  status: string;
+  scheduled_at: string;
+  alarm_message: string | null;
+  alarm_triggered_at: string | null;
+}
+
+function scheduleStatus(row: ScheduledRow): "due" | "upcoming" {
+  return new Date(row.scheduled_at) <= new Date() ? "due" : "upcoming";
+}
+
+function formatScheduledAt(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+interface EditScheduleFormProps {
+  row: ScheduledRow;
+  onSave: (scheduledAt: string, alarmMessage: string) => Promise<void>;
+  onClear: () => Promise<void>;
+  onCancel: () => void;
+}
+
+/** Format a Date as YYYY-MM-DDTHH:mm in the browser's LOCAL timezone
+ *  (required for datetime-local inputs, which always operate in local time). */
+function toLocalDatetimeInput(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+function EditScheduleForm({ row, onSave, onClear, onCancel }: EditScheduleFormProps) {
+  const minDatetime = toLocalDatetimeInput(new Date(Date.now() + 60_000));
+  const currentValue = toLocalDatetimeInput(new Date(row.scheduled_at));
+
+  const [scheduledAt, setScheduledAt] = useState(
+    new Date(row.scheduled_at) > new Date() ? currentValue : minDatetime
+  );
+  const [alarmMessage, setAlarmMessage] = useState(row.alarm_message ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const [timeError, setTimeError] = useState("");
+
+  async function handleSave() {
+    const picked = new Date(scheduledAt);
+    if (isNaN(picked.getTime()) || picked.getTime() <= Date.now() + 30_000) {
+      setTimeError("Scheduled time must be at least 1 minute from now.");
+      return;
+    }
+    setTimeError("");
+    setSaving(true);
+    try {
+      await onSave(picked.toISOString(), alarmMessage);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 p-3 rounded-lg border border-indigo-500/30 bg-indigo-500/5 space-y-3">
+      <div>
+        <label className="text-xs text-slate-400 block mb-1">Date &amp; Time</label>
+        <input
+          type="datetime-local"
+          value={scheduledAt}
+          min={minDatetime}
+          onChange={(e) => setScheduledAt(e.target.value)}
+          className="w-full h-9 rounded border border-slate-600 bg-slate-900/60 px-2 text-white text-sm [color-scheme:dark]"
+        />
+      </div>
+      <div>
+        <label className="text-xs text-slate-400 block mb-1">Alarm Message</label>
+        <Input
+          value={alarmMessage}
+          onChange={(e) => setAlarmMessage(e.target.value)}
+          placeholder={`Time for your ${row.job_title} interview.`}
+          className="h-9 text-sm"
+          maxLength={500}
+        />
+      </div>
+      {timeError && (
+        <p className="text-xs text-red-400">{timeError}</p>
+      )}
+      <div className="flex items-center gap-2">
+        <Button size="sm" onClick={handleSave} disabled={saving || !scheduledAt} className="gap-1">
+          <Check className="h-3.5 w-3.5" /> Save
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel} className="gap-1">
+          <X className="h-3.5 w-3.5" /> Cancel
+        </Button>
+        <button
+          onClick={onClear}
+          className="ml-auto text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+          title="Remove schedule"
+        >
+          <Trash2 className="h-3.5 w-3.5" /> Remove schedule
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  const [interviews, setInterviews] = useState<InterviewRow[]>([]);
+  const [scheduled, setScheduled] = useState<ScheduledRow[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const loadScheduled = useCallback(() => {
+    api<ScheduledRow[]>("/interviews/scheduled")
+      .then((rows) => setScheduled(Array.isArray(rows) ? rows : []))
+      .catch(() => setScheduled([]));
+  }, []);
+
+  useEffect(() => {
+    api<{ data: InterviewRow[] }>("/interviews")
+      .then((res) => setInterviews(res.data || []))
+      .catch(() => setInterviews([]));
+
+    loadScheduled();
+  }, [loadScheduled]);
+
+  const completed = interviews.filter((i) => i.status === "completed");
+  const avgScore =
+    completed.length > 0
+      ? Math.round(
+          completed.reduce((sum, i) => sum + (i.report?.overall_score || 0), 0) / completed.length
+        )
+      : 0;
+
+  // ── Progress metrics ──────────────────────────────────────────────────────
+  const withScore = completed.filter((i) => i.report?.overall_score != null);
+  const sortedByDate = [...withScore].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+  const recent8 = sortedByDate.slice(-8);
+
+  // Trend: compare first half avg vs second half avg
+  const trendDelta = (() => {
+    if (recent8.length < 2) return 0;
+    const mid = Math.floor(recent8.length / 2);
+    const firstHalf = recent8.slice(0, mid);
+    const secondHalf = recent8.slice(mid);
+    const avg = (arr: InterviewRow[]) =>
+      arr.reduce((s, i) => s + (i.report?.overall_score ?? 0), 0) / arr.length;
+    return Math.round(avg(secondHalf) - avg(firstHalf));
+  })();
+
+  const bestScore = withScore.length
+    ? Math.max(...withScore.map((i) => i.report!.overall_score))
+    : 0;
+
+  // Score by interview type
+  const byType = ["technical", "behavioral", "mixed"].map((type) => {
+    const rows = withScore.filter((i) => i.interview_type === type);
+    const avg = rows.length
+      ? Math.round(rows.reduce((s, i) => s + i.report!.overall_score, 0) / rows.length)
+      : null;
+    return { type, count: rows.length, avg };
+  });
+
+  // Grade
+  const grade = avgScore >= 85 ? "A" : avgScore >= 70 ? "B" : avgScore >= 55 ? "C" : avgScore > 0 ? "D" : "—";
+  const gradeColor =
+    grade === "A" ? "text-emerald-400" :
+    grade === "B" ? "text-indigo-400" :
+    grade === "C" ? "text-amber-400" :
+    grade === "D" ? "text-red-400" : "text-slate-500";
+
+  async function handleSaveSchedule(row: ScheduledRow, scheduledAt: string, alarmMessage: string) {
+    await api(`/interviews/${row.id}/schedule`, {
+      method: "PATCH",
+      body: JSON.stringify({ scheduled_at: scheduledAt, alarm_message: alarmMessage }),
+    });
+    setEditingId(null);
+    loadScheduled();
+  }
+
+  async function handleClearSchedule(row: ScheduledRow) {
+    await api(`/interviews/${row.id}/clear-schedule`, { method: "POST" });
+    setEditingId(null);
+    loadScheduled();
+  }
+
+  async function handleStartScheduled(row: ScheduledRow) {
+    const session = await api<{ session_uuid: string }>(`/interviews/${row.id}/start`, {
+      method: "POST",
+    });
+    window.location.href = `/interview/live/${session.session_uuid}?interviewId=${row.id}`;
+  }
+
+  return (
+    <AppShell>
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+          <p className="text-slate-400 mt-1">Track your interview progress and scores</p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="pt-6 flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-indigo-500/20">
+                <Mic className="h-6 w-6 text-indigo-400" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Total Interviews</p>
+                <p className="text-2xl font-bold text-white">{interviews.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-emerald-500/20">
+                <TrendingUp className="h-6 w-6 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Average Score</p>
+                <p className="text-2xl font-bold text-white">{formatScore(avgScore)}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-amber-500/20">
+                <Award className="h-6 w-6 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Completed</p>
+                <p className="text-2xl font-bold text-white">{completed.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Progress Overview */}
+        {completed.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+            {/* Overall grade + trend */}
+            <Card className="lg:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Star className="h-4 w-4 text-amber-400" />
+                  Overall Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Grade ring */}
+                <div className="flex items-center gap-4">
+                  <div className="relative w-20 h-20 shrink-0">
+                    <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                      <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor"
+                        className="text-slate-700" strokeWidth="3" />
+                      <circle cx="18" cy="18" r="15.9" fill="none"
+                        stroke="currentColor"
+                        className={avgScore >= 85 ? "text-emerald-400" : avgScore >= 70 ? "text-indigo-400" : avgScore >= 55 ? "text-amber-400" : "text-red-400"}
+                        strokeWidth="3"
+                        strokeDasharray={`${avgScore} 100`}
+                        strokeLinecap="round" />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className={`text-2xl font-bold ${gradeColor}`}>{grade}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold text-white">{avgScore}<span className="text-sm text-slate-400 font-normal">/100</span></p>
+                    <p className="text-xs text-slate-400">Avg score</p>
+                    <div className="flex items-center gap-1 text-xs">
+                      {trendDelta > 0 ? (
+                        <><TrendingUp className="h-3.5 w-3.5 text-emerald-400" /><span className="text-emerald-400">+{trendDelta} improving</span></>
+                      ) : trendDelta < 0 ? (
+                        <><TrendingDown className="h-3.5 w-3.5 text-red-400" /><span className="text-red-400">{trendDelta} declining</span></>
+                      ) : (
+                        <><Minus className="h-3.5 w-3.5 text-slate-500" /><span className="text-slate-500">Stable</span></>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Best score */}
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-800/50">
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <Target className="h-3.5 w-3.5" /> Best score
+                  </div>
+                  <span className="text-sm font-semibold text-emerald-400">{bestScore}/100</span>
+                </div>
+
+                {/* Completion rate */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>Completion rate</span>
+                    <span>{interviews.length > 0 ? Math.round((completed.length / interviews.length) * 100) : 0}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-indigo-500 transition-all duration-500"
+                      style={{ width: `${interviews.length > 0 ? (completed.length / interviews.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Score history bars */}
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <BarChart2 className="h-4 w-4 text-indigo-400" />
+                  Score History
+                  <span className="ml-auto text-xs font-normal text-slate-500">Last {recent8.length} sessions</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recent8.length === 0 ? (
+                  <p className="text-slate-500 text-sm">Complete interviews to see your score history.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {recent8.map((interview, idx) => {
+                      const score = interview.report!.overall_score;
+                      const barColor =
+                        score >= 85 ? "bg-emerald-500" :
+                        score >= 70 ? "bg-indigo-500" :
+                        score >= 55 ? "bg-amber-500" : "bg-red-500";
+                      return (
+                        <Link
+                          key={interview.id}
+                          href={`/interview/result/${interview.id}`}
+                          className="flex items-center gap-3 group"
+                        >
+                          <span className="text-xs text-slate-500 w-4 shrink-0">#{idx + 1}</span>
+                          <span className="text-xs text-slate-300 truncate w-36 shrink-0 group-hover:text-white transition-colors">
+                            {interview.job_title}
+                          </span>
+                          <div className="flex-1 h-5 rounded bg-slate-800 overflow-hidden relative">
+                            <div
+                              className={`h-full rounded ${barColor} transition-all duration-700`}
+                              style={{ width: `${score}%` }}
+                            />
+                            <span className="absolute inset-0 flex items-center pl-2 text-[10px] font-medium text-white/80">
+                              {score}
+                            </span>
+                          </div>
+                          <ChevronRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-slate-400 shrink-0" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Score by type */}
+                {byType.some((t) => t.avg !== null) && (
+                  <div className="mt-5 pt-4 border-t border-slate-700/50">
+                    <p className="text-xs text-slate-500 mb-3 uppercase tracking-wide">Score by type</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {byType.map(({ type, count, avg }) => (
+                        <div key={type} className="rounded-lg bg-slate-800/60 p-3 text-center">
+                          <p className="text-xs text-slate-400 capitalize mb-1">{type}</p>
+                          <p className={`text-lg font-bold ${avg !== null ? (avg >= 85 ? "text-emerald-400" : avg >= 70 ? "text-indigo-400" : avg >= 55 ? "text-amber-400" : "text-red-400") : "text-slate-600"}`}>
+                            {avg !== null ? avg : "—"}
+                          </p>
+                          <p className="text-[10px] text-slate-500">{count} session{count !== 1 ? "s" : ""}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Scheduled Interviews */}
+        {scheduled.length > 0 && (
+          <Card className="border-indigo-500/30">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-indigo-400" />
+                Scheduled Interviews
+              </CardTitle>
+              <span className="text-xs text-slate-500">{scheduled.length} upcoming</span>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {scheduled.map((row) => {
+                const st = scheduleStatus(row);
+                const editing = editingId === row.id;
+
+                return (
+                  <div
+                    key={row.id}
+                    className={`rounded-lg border p-4 transition-colors ${
+                      st === "due"
+                        ? "border-amber-500/40 bg-amber-500/5"
+                        : "border-slate-700/50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-white truncate">{row.job_title}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span
+                            className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
+                              st === "due"
+                                ? "bg-amber-500/20 text-amber-300"
+                                : "bg-indigo-500/20 text-indigo-300"
+                            }`}
+                          >
+                            <Calendar className="h-3 w-3" />
+                            {st === "due" ? "Due now" : "Scheduled"}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {formatScheduledAt(row.scheduled_at)}
+                          </span>
+                          {row.alarm_triggered_at && (
+                            <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                              <BellOff className="h-3 w-3" /> Alarm fired
+                            </span>
+                          )}
+                        </div>
+                        {row.alarm_message && (
+                          <p className="text-xs text-slate-500 mt-1 truncate max-w-sm">
+                            &ldquo;{row.alarm_message}&rdquo;
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {st === "due" && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleStartScheduled(row)}
+                            className="bg-amber-500 hover:bg-amber-600 text-black text-xs h-8 px-3"
+                          >
+                            Start
+                          </Button>
+                        )}
+                        <button
+                          onClick={() => setEditingId(editing ? null : row.id)}
+                          className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                          title="Edit schedule"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {editing && (
+                      <EditScheduleForm
+                        row={row}
+                        onSave={(at, msg) => handleSaveSchedule(row, at, msg)}
+                        onClear={() => handleClearSchedule(row)}
+                        onCancel={() => setEditingId(null)}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Interviews */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Recent Interviews</CardTitle>
+            <Link href="/interview/setup">
+              <Button size="sm" className="gap-2">
+                New Interview <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {interviews.length === 0 ? (
+              <p className="text-slate-400 text-sm">
+                No interviews yet. Upload a resume and start practicing!
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {interviews.map((interview) => (
+                  <Link
+                    key={interview.id}
+                    href={
+                      interview.status === "completed"
+                        ? `/interview/result/${interview.id}`
+                        : `/interview/setup`
+                    }
+                    className="flex items-center justify-between p-4 rounded-lg border border-slate-700/50 hover:bg-slate-800/50 transition-colors"
+                  >
+                    <div>
+                      <p className="font-medium text-white">{interview.job_title}</p>
+                      <p className="text-sm text-slate-400 capitalize flex items-center gap-2">
+                        {interview.experience_level} · {interview.status}
+                        {interview.scheduled_at && interview.status !== "completed" && (
+                          <span className="inline-flex items-center gap-1 text-indigo-400 text-xs">
+                            <Bell className="h-3 w-3" />
+                            {formatScheduledAt(interview.scheduled_at)}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {interview.report && (
+                      <span className="text-emerald-400 font-semibold">
+                        {formatScore(interview.report.overall_score)}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </AppShell>
+  );
+}

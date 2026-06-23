@@ -1,0 +1,64 @@
+REFERENCE
+CONTACT
+SKILLS
+LANGUAGES
++88 01611-506676
+sumuhridoy2002@gmail.com
+Savar, Dhaka - 1340, Bangladesh
+sumuhridoy2002
+Ali Azgor Hridoy
+Md. Sohel Rana
+Phone: +88 01714-044180
+Email : sunshine.com.bd@gmail.com
+Sunshine IT | CEO
+Backend: Laravel (PHP),
+Codeigniter (PHP), Node.js
+(Express.js), MySQL,
+MongoDB, REST APIs
+Frontend: Vue.js, React.js,
+Next.js, Inertia.js, Tailwind
+CSS
+Tools: Git, GitHub & GitLab,
+Firebase
+English – Fluent
+Bangla – Native (Fluent)
+ALI AZGOR HRIDOY
+JAVASCRIPT & PHP PROGRAMMER | LARAVEL DEVELOPER
+WORK EXPERIENCE
+EDUCATION
+PROFILE
+Laravel Developer with 5+ years of remote and freelance experience in
+web application development. Specialized in building scalable web
+applications and REST APIs using Laravel, PHP, and MySQL. Experienced
+in delivering production-ready solutions for local and international clients,
+with a strong focus on clean architecture and performance optimization.
+Open to remote opportunities and willing to relocate based on company
+needs.
+Codecell Limited DEC 2023 – FEB 2024
+Laravel Developer
+Sunshine IT Apr 2022 – Present
+Freelance Laravel Developer
+Upwork & Fiverr Jun 2020 – Mar 2026
+Freelance Laravel Developer
+Developed and maintained client and internal web applications using
+Laravel, Vue.js, React.js, Inertia.js, and MySQL.
+Contributed to 5 major projects.
+Developed 45+ production web applications using Laravel, Vue.js,
+CodeIgniter, and MySQL.
+Delivered 15+ web applications including eCommerce, ERP systems,
+and dashboards using Laravel, Vue.js, Next.js (React), and MySQL.
+Projects for local and international clients.
+B.Sc. in Computer Science & Engineering (CSE) 2022 – 2026
+Gono Bishwabidyalay, Savar, Dhaka
+Higher Secondary Certificate (HSC) – Science 2019 – 2020
+Savar Laboratory College, Savar, Dhaka
+Md. Saifur Rahaman Sharif
+Tech Empire BD | Team Leader
+Phone: +88 01827-041767
+Email : saifsharif@live.com
+Findbook BD Jan 2021 – Oct 2023
+Laravel Developer
+Developed multiple dashboards, production platforms, and REST
+APIs using Laravel, Vue.js, and MySQL.
+Website : techempire.com.bd
+Website : sunshine.com.bd

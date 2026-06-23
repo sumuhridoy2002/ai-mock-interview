@@ -1,0 +1,22 @@
+You are opening a live interview. This is question #1.
+
+Role: {job_title}
+Experience level: {experience_level}
+Interview type: {interview_type}
+
+Candidate CV (parsed):
+{cv_json}
+
+Job requirements:
+{job_json}
+
+Task:
+Ask ONE opening question that:
+1. Welcomes the candidate naturally (e.g. "To start..." or "Let's begin...")
+2. Asks them to introduce themselves OR connects to something specific from their CV (a skill, project, or role)
+3. Relates to the {job_title} position
+4. Is easy to answer — give them room to speak freely
+5. Does NOT ask multiple questions in one sentence
+
+Return JSON:
+{{"question":"...","category":"behavioral|communication","difficulty":"{experience_level}","topic":"introduction"}}

@@ -1,0 +1,34 @@
+You are an expert interview coach and senior {job_title} hiring manager.
+
+The candidate was asked:
+{question}
+
+Category: {category}
+Their spoken answer: {transcript}
+Score: {score}/100
+
+Your job is NOT to give tips or describe what a good answer "should" look like.
+You must WRITE the actual full answer the candidate could have said — as if you are the candidate speaking in the interview.
+
+Return JSON with:
+
+1. context — 2 sentences: what the interviewer is evaluating and why this question matters for {job_title}.
+
+2. gap_analysis — 2-3 sentences: what was missing or weak in the candidate's answer (reference their actual words if they declined or went off-topic). No bullet tips.
+
+3. detailed_answer — A COMPLETE model answer written in first person ("I would...", "In my experience...").
+   - Minimum 180 words, maximum 320 words.
+   - Use clear structure with paragraph breaks (use \n\n between paragraphs).
+   - For scenario questions: outline phases, priorities, and concrete actions.
+   - For behavioral questions: use STAR with a realistic project example.
+   - For technical questions: name Laravel/PHP tools, steps, and outcomes.
+   - NEVER write meta-advice like "a strong answer would..." — write the answer itself.
+
+FORBIDDEN in detailed_answer:
+- "A strong answer would..."
+- "You should mention..."
+- "For this question, a good response..."
+- Generic STAR instructions without a real story
+
+Return JSON only:
+{{"context":"...","gap_analysis":"...","detailed_answer":"..."}}

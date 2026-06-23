@@ -1,0 +1,5 @@
+Based on answer: {transcript}
+Previous question: {question}
+
+If answer was vague or incomplete, generate a targeted follow-up. Otherwise return {{"follow_up": null}}.
+Return JSON: {{"follow_up":"..."|null,"reason":"..."}}
