@@ -8,6 +8,10 @@ export interface MetricDoc {
   referenceLabel?: string;
 }
 
+export function getMetricDoc(id: string): MetricDoc | undefined {
+  return PERFORMANCE_METRIC_DOCS.find((doc) => doc.id === id);
+}
+
 export const PERFORMANCE_METRIC_DOCS: MetricDoc[] = [
   {
     id: "systemPerformanceScore",
