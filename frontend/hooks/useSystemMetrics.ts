@@ -22,6 +22,19 @@ import {
 /** Recommended auto-refresh interval for the sticky system monitor. */
 export const SYSTEM_MONITOR_REFRESH_SECONDS = 15;
 
+const ETAG_STORAGE_KEY = "mip_user_etag";
+
+export interface ApiTimingBreakdown {
+  /** Round-trip to /ping (no auth, no DB) — pure network + PHP bootstrap overhead. */
+  pingMs: number | null;
+  /** Time-to-first-byte on the /user probe from Resource Timing API. */
+  ttfbMs: number | null;
+  /** Body transfer duration from Resource Timing API. */
+  transferMs: number | null;
+  /** Whether the /user response was a 304 Not Modified (ETag hit). */
+  wasNotModified: boolean;
+}
+
 export interface MetricComparison {
   rating: PerformanceRating;
   target: string;
@@ -43,12 +56,20 @@ export interface SystemMetrics {
   renderMs: number;
   apiLatencyMs: number | null;
   apiStatus: "online" | "offline" | "checking";
+  apiTiming: ApiTimingBreakdown;
   performanceScore: number;
   lastUpdated: string;
   route: string;
   contextData: ContextDataMetrics;
   comparisons: PerformanceComparisons;
 }
+
+const EMPTY_API_TIMING: ApiTimingBreakdown = {
+  pingMs: null,
+  ttfbMs: null,
+  transferMs: null,
+  wasNotModified: false,
+};
 
 const EMPTY_COMPARISONS: PerformanceComparisons = {
   pageLoad: { rating: "ok", target: PERFORMANCE_BENCHMARKS.pageLoad.targetLabel, vsPrevious: null, vsSessionAvg: null },
@@ -90,6 +111,24 @@ function computePerformanceScore(pageLoadMs: number, apiLatencyMs: number | null
   if (!apiOnline) score -= 30;
 
   return Math.max(0, Math.min(100, score));
+}
+
+/** Read the most recent Resource Timing entry for the given URL. */
+function readResourceTiming(url: string): { ttfbMs: number | null; transferMs: number | null } {
+  if (typeof window === "undefined" || !window.performance?.getEntriesByName) {
+    return { ttfbMs: null, transferMs: null };
+  }
+  const entries = performance.getEntriesByName(url, "resource") as PerformanceResourceTiming[];
+  const entry = entries.at(-1);
+  if (!entry) return { ttfbMs: null, transferMs: null };
+
+  const ttfb = entry.responseStart - entry.startTime;
+  const transfer = entry.responseEnd - entry.responseStart;
+
+  return {
+    ttfbMs: ttfb > 0 ? Math.round(ttfb) : null,
+    transferMs: transfer > 0 ? Math.round(transfer) : null,
+  };
 }
 
 function buildComparisons(
@@ -144,6 +183,7 @@ export function useSystemMetrics() {
     renderMs: 0,
     apiLatencyMs: null,
     apiStatus: "checking",
+    apiTiming: EMPTY_API_TIMING,
     performanceScore: 0,
     lastUpdated: "",
     route: pathname,
@@ -162,27 +202,64 @@ export function useSystemMetrics() {
     let apiLatencyMs: number | null = null;
     let apiStatus: SystemMetrics["apiStatus"] = "offline";
     let apiResponseBytes: number | null = null;
+    let pingMs: number | null = null;
+    let ttfbMs: number | null = null;
+    let transferMs: number | null = null;
+    let wasNotModified = false;
 
     const token = getToken();
+
+    // ── 1. Ping probe: pure network + PHP bootstrap, no auth, no DB ────────────
+    try {
+      const pingStart = performance.now();
+      await fetch(`${API_URL}/ping`, { cache: "no-store" });
+      pingMs = Math.round(performance.now() - pingStart);
+    } catch {
+      pingMs = null;
+    }
+
+    // ── 2. Authenticated /user probe with ETag conditional request ──────────────
     if (token) {
+      const userUrl = `${API_URL}/user`;
       const start = performance.now();
       try {
-        const response = await fetch(`${API_URL}/user`, {
+        const lastEtag =
+          typeof sessionStorage !== "undefined"
+            ? (sessionStorage.getItem(ETAG_STORAGE_KEY) ?? undefined)
+            : undefined;
+
+        const response = await fetch(userUrl, {
           headers: {
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
+            ...(lastEtag ? { "If-None-Match": lastEtag } : {}),
           },
           cache: "no-store",
         });
-        apiLatencyMs = Math.round(performance.now() - start);
-        apiStatus = response.ok ? "online" : "offline";
 
-        const raw = await response.clone().text();
-        apiResponseBytes = new Blob([raw]).size;
+        apiLatencyMs = Math.round(performance.now() - start);
+        wasNotModified = response.status === 304;
+        apiStatus = response.ok || wasNotModified ? "online" : "offline";
+
+        // Persist new ETag for next conditional request
+        const newEtag = response.headers.get("ETag");
+        if (newEtag && typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem(ETAG_STORAGE_KEY, newEtag);
+        }
+
+        if (!wasNotModified) {
+          const raw = await response.clone().text();
+          apiResponseBytes = new Blob([raw]).size;
+        }
       } catch {
         apiLatencyMs = Math.round(performance.now() - start);
         apiStatus = "offline";
       }
+
+      // ── 3. Resource Timing breakdown (TTFB + transfer) ────────────────────────
+      const timing = readResourceTiming(`${API_URL}/user`);
+      ttfbMs = timing.ttfbMs;
+      transferMs = timing.transferMs;
     } else {
       apiStatus = "offline";
     }
@@ -199,7 +276,7 @@ export function useSystemMetrics() {
             domReadyMs,
             apiLatencyMs,
             performanceScore,
-            contextData.totalClientContextBytes,
+            contextData.appDataBytes,
           )
         : EMPTY_COMPARISONS;
 
@@ -209,6 +286,7 @@ export function useSystemMetrics() {
       renderMs,
       apiLatencyMs,
       apiStatus,
+      apiTiming: { pingMs, ttfbMs, transferMs, wasNotModified },
       performanceScore,
       lastUpdated: new Date().toLocaleTimeString(),
       route: pathname,

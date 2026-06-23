@@ -35,11 +35,11 @@ export const PERFORMANCE_BENCHMARKS = {
     referenceUrl: "https://www.w3.org/TR/resource-timing/",
   },
   contextBytes: {
-    label: "Context size",
-    goodMax: 5 * 1024 * 1024,
-    okMax: 20 * 1024 * 1024,
+    label: "App data size",
+    goodMax: 100 * 1024,
+    okMax: 500 * 1024,
     unit: "bytes",
-    targetLabel: "< 5 MB",
+    targetLabel: "< 100 KB",
     referenceUrl: "https://developer.mozilla.org/en-US/docs/Web/API/Storage",
   },
   jsHeap: {

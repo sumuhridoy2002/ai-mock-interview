@@ -65,8 +65,22 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logged out.']);
     }
 
-    public function user(Request $request): JsonResponse
+    public function user(Request $request): JsonResponse|\Illuminate\Http\Response
     {
-        return response()->json(['user' => $request->user()]);
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        $etag = '"'.md5((string) $user->updated_at).'"';
+
+        if ($request->header('If-None-Match') === $etag) {
+            return response()->noContent(304)->withHeaders([
+                'ETag'          => $etag,
+                'Cache-Control' => 'private, no-cache',
+            ]);
+        }
+
+        return response()->json(['user' => $user->only('id', 'name', 'email')])->withHeaders([
+            'ETag'          => $etag,
+            'Cache-Control' => 'private, no-cache',
+        ]);
     }
 }

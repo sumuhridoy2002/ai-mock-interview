@@ -6,6 +6,13 @@ use App\Http\Controllers\Api\ResumeController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+    // Lightweight health/latency baseline — no auth, no DB
+    Route::get('/ping', static fn () => response()->json([
+        'ok'  => true,
+        'env' => app()->environment(),
+        'ts'  => now()->toISOString(),
+    ]))->middleware('throttle:120,1');
+
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 

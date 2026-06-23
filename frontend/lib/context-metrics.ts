@@ -1,14 +1,24 @@
 export interface ContextDataMetrics {
+  /** App-stored data only: localStorage + sessionStorage + last API payload.
+   *  JS heap is deliberately excluded — it is runtime memory, not application data. */
+  appDataBytes: number;
+
   localStorageBytes: number;
   sessionStorageBytes: number;
   apiResponseBytes: number | null;
+
+  /** JS heap (Chrome only) — shown as a separate card, not included in appDataBytes. */
   jsHeapUsedBytes: number | null;
   jsHeapLimitBytes: number | null;
+
   storageItemCount: number;
+
+  /** @deprecated Use appDataBytes. Kept for backwards-compat with performance-history samples. */
   totalClientContextBytes: number;
 }
 
 export const EMPTY_CONTEXT_DATA: ContextDataMetrics = {
+  appDataBytes: 0,
   localStorageBytes: 0,
   sessionStorageBytes: 0,
   apiResponseBytes: null,
@@ -26,7 +36,6 @@ function storageBytes(storage: Storage): { bytes: number; items: number } {
     const value = storage.getItem(key) ?? "";
     bytes += new Blob([key, value]).size;
   }
-
   return { bytes, items: storage.length };
 }
 
@@ -58,19 +67,18 @@ export function measureClientContext(apiResponseBytes: number | null = null): Co
   const session = storageBytes(window.sessionStorage);
   const heap = measureJsHeap();
 
-  const totalClientContextBytes =
-    local.bytes +
-    session.bytes +
-    (apiResponseBytes ?? 0) +
-    (heap.jsHeapUsedBytes ?? 0);
+  // App data: only meaningful stored data — excludes JS runtime heap
+  const appDataBytes = local.bytes + session.bytes + (apiResponseBytes ?? 0);
 
   return {
+    appDataBytes,
     localStorageBytes: local.bytes,
     sessionStorageBytes: session.bytes,
     apiResponseBytes,
     jsHeapUsedBytes: heap.jsHeapUsedBytes,
     jsHeapLimitBytes: heap.jsHeapLimitBytes,
     storageItemCount: local.items + session.items,
-    totalClientContextBytes,
+    // keep for legacy performance-history samples
+    totalClientContextBytes: appDataBytes,
   };
 }

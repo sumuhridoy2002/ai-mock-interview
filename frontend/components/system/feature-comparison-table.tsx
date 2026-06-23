@@ -19,7 +19,7 @@ export function FeatureComparisonTable() {
             {(Object.keys(COMPETITOR_LABELS) as (keyof typeof COMPETITOR_LABELS)[]).map((key) => (
               <th
                 key={key}
-                className={`px-2 py-2 font-semibold whitespace-nowrap ${
+                className={`px-2 py-2 font-semibold whitespace-nowrap text-center ${
                   key === "mockInterviewPro" ? "text-indigo-300" : "text-slate-500"
                 }`}
               >

@@ -10,6 +10,8 @@ Production-ready AI mock interview platform.
 
 ## Start Dev Session
 
+**Prerequisite (Laragon):** start **Redis** once from the Laragon tray — **Menu → Redis → Start**. Do not run `redis-server` in a terminal if Laragon already started it (port 6379 will be in use). Verify with `redis-cli ping` → `PONG`.
+
 Run these 6 commands every time — one per terminal tab:
 
 ```bash
@@ -51,7 +53,7 @@ cd frontend
 npm run dev
 ```
 
-> Open **[http://localhost:3000](http://localhost:3000)** — all 6 must be running for full functionality (scheduler required for email reminders).
+> Open **[http://localhost:3000](http://localhost:3000)** — Laragon Redis + all 6 terminals must be running for full functionality.
 
 ---
 
@@ -66,6 +68,7 @@ php artisan key:generate
 # Configure MySQL in .env or use sqlite (default)
 touch database/database.sqlite  # if using sqlite
 php artisan migrate
+# Laragon: Menu → Redis → Start (required for CACHE_STORE=redis / SESSION_DRIVER=redis)
 php artisan serve
 php artisan queue:work
 php artisan schedule:work   # dev — interview email reminders (10 min before)
