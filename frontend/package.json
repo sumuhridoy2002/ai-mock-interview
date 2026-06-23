@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:journey": "playwright test --project=journey --headed",
+    "test:e2e:journey:headless": "playwright test --project=journey"
   },
   "dependencies": {
     "clsx": "^2.1.1",

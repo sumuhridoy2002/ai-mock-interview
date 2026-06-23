@@ -141,3 +141,29 @@ Open [http://localhost:3000](http://localhost:3000)
 
 
 See [docs/architecture.md](docs/architecture.md) and [docs/api.md](docs/api.md).
+
+### Reset database and uploads
+
+```powershell
+.\scripts\fresh-db.ps1
+```
+
+### Full browser journey (Playwright)
+
+Requires Laragon Redis, and all dev services running (API, queue, scheduler, Reverb, AI service, frontend).
+
+**Headed** (browser visible):
+
+```bash
+cd frontend
+npm run test:e2e:journey
+```
+
+**Headless**:
+
+```bash
+cd frontend
+npm run test:e2e:journey:headless
+```
+
+This registers, logs in, uploads a resume, completes an instant interview, schedules one ~2 minutes ahead, waits for the alarm banner, completes that interview, and logs out (~5–8 minutes).

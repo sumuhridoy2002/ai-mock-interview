@@ -16,7 +16,22 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testIgnore: /full-journey\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "journey",
+      testMatch: /full-journey\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        permissions: ["camera", "microphone"],
+        launchOptions: {
+          args: [
+            "--use-fake-ui-for-media-stream",
+            "--use-fake-device-for-media-stream",
+          ],
+        },
+      },
     },
   ],
 });
