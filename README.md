@@ -10,7 +10,7 @@ Production-ready AI mock interview platform.
 
 ## Start Dev Session
 
-**Prerequisite (Laragon):** start **Redis** once from the Laragon tray — **Menu → Redis → Start**. Do not run `redis-server` in a terminal if Laragon already started it (port 6379 will be in use). Verify with `redis-cli ping` → `PONG`.
+**Prerequisite (Laragon):** start **Redis** once from the Laragon tray — **Menu → Redis → Start**. Do not run `redis-server` in a terminal if Laragon already started it (port 6379 will be in use). Verify with `redis-cli ping` → `PONG`. The backend uses `REDIS_CLIENT=predis` (pure PHP) so you do not need the `phpredis` PHP extension.
 
 Run these 6 commands every time — one per terminal tab:
 
