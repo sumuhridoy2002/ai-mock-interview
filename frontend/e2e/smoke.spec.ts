@@ -73,16 +73,23 @@ test.describe("Mock Interview Pro — smoke automation", () => {
 
   test("system status footer is visible", async ({ page }) => {
     await page.goto("/dashboard");
-    await expect(page.getByTitle("System Performance Score — open monitor")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTitle("System Performance Score — view metrics")).toBeVisible({ timeout: 20000 });
   });
 
-  test("system monitor shows performance score and comparison table", async ({ page }) => {
+  test("system pages are reachable from sidebar", async ({ page }) => {
     await page.goto("/dashboard");
-    await page.getByTitle("System Performance Score — open monitor").click();
-    await expect(page.getByText("System Performance Score", { exact: true }).first()).toBeVisible();
-    await page.getByRole("button", { name: "Compare" }).click();
+    await page.getByRole("link", { name: "Metrics" }).click();
+    await expect(page).toHaveURL(/\/system\/metrics/);
+    await expect(page.getByRole("heading", { name: "System Metrics" })).toBeVisible();
+
+    await page.getByRole("link", { name: "Compare" }).click();
+    await expect(page).toHaveURL(/\/system\/compare/);
     await expect(page.getByText("CV-based personalized questions")).toBeVisible();
     await expect(page.getByText("Pramp")).toBeVisible();
+
+    await page.getByRole("link", { name: "How it works" }).click();
+    await expect(page).toHaveURL(/\/system\/how-it-works/);
+    await expect(page.getByRole("heading", { name: "How It Works" })).toBeVisible();
   });
 
   test("login page works for created user", async ({ page, context }) => {

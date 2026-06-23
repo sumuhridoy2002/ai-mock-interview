@@ -13,6 +13,10 @@ import {
   Plus,
   X,
   ChevronRight,
+  Activity,
+  Server,
+  GitCompare,
+  Workflow,
 } from "lucide-react";
 import { fetchUser, getStoredUser, type User as AuthUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -59,6 +63,35 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    title: "System",
+    items: [
+      {
+        href: "/system/metrics",
+        label: "Metrics",
+        description: "Performance scores",
+        icon: Activity,
+      },
+      {
+        href: "/system/stack",
+        label: "Stack",
+        description: "Technology layers",
+        icon: Server,
+      },
+      {
+        href: "/system/compare",
+        label: "Compare",
+        description: "vs other platforms",
+        icon: GitCompare,
+      },
+      {
+        href: "/system/how-it-works",
+        label: "How it works",
+        description: "Architecture & flow",
+        icon: Workflow,
+      },
+    ],
+  },
+  {
     title: "Account",
     items: [
       {
@@ -74,6 +107,7 @@ const NAV_GROUPS: NavGroup[] = [
 function isNavActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") return pathname === "/dashboard";
   if (href === "/interview/setup") return pathname.startsWith("/interview");
+  if (href.startsWith("/system/")) return pathname === href || pathname.startsWith(`${href}/`);
   return pathname.startsWith(href);
 }
 
