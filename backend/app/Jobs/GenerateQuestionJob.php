@@ -77,6 +77,8 @@ class GenerateQuestionJob implements ShouldQueue
                 $masteredFromPast,
             )));
 
+            $masteredTopics = $userMemory['mastered_topics'] ?? [];
+
             try {
                 $result = $aiGateway->generateQuestion($payload);
             } catch (\Throwable $e) {
@@ -84,13 +86,12 @@ class GenerateQuestionJob implements ShouldQueue
                     'interview_id' => $this->interview->id,
                     'error' => $e->getMessage(),
                 ]);
-                $result = $this->fallbackQuestion($sequence, $askedQuestions, $interviewService, $evaluationService);
+                $result = $this->fallbackQuestion($sequence, $askedQuestions, $masteredTopics, $interviewService, $evaluationService);
             }
 
-            $masteredTopics = $userMemory['mastered_topics'] ?? [];
-
             if (
-                $this->isDuplicateQuestion($result['question'] ?? '', $askedQuestions)
+                empty($result['question'] ?? '')
+                || $this->isDuplicateQuestion($result['question'] ?? '', $askedQuestions)
                 || $this->isRepetitiveTemplate($result['question'] ?? '', $askedQuestions)
                 || $this->shouldRejectGeneratedQuestion($result['question'] ?? '', $interviewService, $evaluationService)
                 || $this->isMasteredTopic($result['topic'] ?? null, $masteredTopics)
