@@ -7,6 +7,7 @@ use App\Http\Requests\StoreAnswerRequest;
 use App\Http\Requests\StoreInterviewRequest;
 use App\Http\Requests\StoreRecordingRequest;
 use App\Jobs\EvaluateAnswerJob;
+use App\Jobs\GenerateQuestionJob;
 use App\Jobs\GenerateReportJob;
 use App\Models\Interview;
 use App\Models\InterviewQuestion;
@@ -113,6 +114,16 @@ class InterviewController extends Controller
 
         if ($interview->status === 'active') {
             $session = $interview->session;
+
+            // If no unanswered question exists and the limit hasn't been reached,
+            // the generation job was lost (e.g. queue worker was down). Kick it off again.
+            $hasPending = $interview->questions()
+                ->whereDoesntHave('answer')
+                ->exists();
+
+            if (! $hasPending && ! $this->interviewService->hasReachedQuestionLimit($interview)) {
+                GenerateQuestionJob::dispatch($interview, $session);
+            }
         } else {
             $session = $this->interviewService->start($interview);
         }
