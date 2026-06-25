@@ -53,6 +53,11 @@ cd frontend
 npm run dev
 ```
 
+```bash
+# Terminal 7 — Ollama AI Provider
+ollama serve
+```
+
 > Open **[http://localhost:3000](http://localhost:3000)** — Laragon Redis + all 6 terminals must be running for full functionality.
 
 ---
@@ -166,4 +171,4 @@ cd frontend
 npm run test:e2e:journey:headless
 ```
 
-This registers, logs in, uploads a resume, completes an instant interview, schedules one ~2 minutes ahead, waits for the alarm banner, completes that interview, and logs out (~5–8 minutes).
+This registers, logs in, uploads a resume, completes an instant interview, schedules one ~~2 minutes ahead, waits for the alarm banner, completes that interview, and logs out (~~5–8 minutes).

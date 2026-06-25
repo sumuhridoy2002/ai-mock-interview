@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Download, ArrowLeft, Award } from "lucide-react";
+import { Download, ArrowLeft, Award, Video } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,7 @@ interface ReportData {
   overall_score: number;
   hiring_recommendation: string;
   pdf_url: string | null;
+  recording_url: string | null;
   behavior_summary?: AggregateBehavior | null;
 }
 
@@ -62,6 +63,8 @@ export default function InterviewResultPage() {
   const interviewId = params.id;
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recordingBlobUrl, setRecordingBlobUrl] = useState<string | null>(null);
+  const recordingFetchedRef = useRef(false);
 
   useEffect(() => {
     if (!interviewId) return;
@@ -106,6 +109,23 @@ export default function InterviewResultPage() {
     a.download = `interview-report-${interviewId}.pdf`;
     a.click();
   }
+
+  useEffect(() => {
+    if (!report?.recording_url || recordingFetchedRef.current) return;
+    recordingFetchedRef.current = true;
+    fetch(report.recording_url, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+      .then((r) => r.blob())
+      .then((blob) => setRecordingBlobUrl(URL.createObjectURL(blob)))
+      .catch(() => {});
+  }, [report?.recording_url]);
+
+  useEffect(() => {
+    return () => {
+      if (recordingBlobUrl) URL.revokeObjectURL(recordingBlobUrl);
+    };
+  }, [recordingBlobUrl]);
 
   const questionReviews = report?.report?.question_reviews ?? [];
 
@@ -159,6 +179,35 @@ export default function InterviewResultPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            {report.recording_url && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Video className="h-5 w-5 text-indigo-400" />
+                    Full Interview Recording
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {recordingBlobUrl ? (
+                    <video
+                      src={recordingBlobUrl}
+                      controls
+                      playsInline
+                      className="w-full rounded-lg bg-black aspect-video"
+                      style={{ maxHeight: "480px" }}
+                    />
+                  ) : (
+                    <div className="aspect-video rounded-lg bg-slate-900 flex items-center justify-center">
+                      <span className="text-sm text-slate-500 flex items-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-indigo-400" />
+                        Loading recording…
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {report.behavior_summary && (
               <AggregateBehaviorCard summary={report.behavior_summary} />

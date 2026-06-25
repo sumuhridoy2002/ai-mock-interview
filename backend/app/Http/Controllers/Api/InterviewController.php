@@ -296,11 +296,16 @@ class InterviewController extends Controller
             ? url('/api/v1/interviews/'.$interview->id.'/report/pdf')
             : null;
 
+        $recordingUrl = $interview->full_video_path
+            ? url('/api/v1/interviews/'.$interview->id.'/recording')
+            : null;
+
         return response()->json([
             'report' => $report->report_json,
             'overall_score' => $report->overall_score,
             'hiring_recommendation' => $report->hiring_recommendation,
             'pdf_url' => $pdfUrl,
+            'recording_url' => $recordingUrl,
         ]);
     }
 
@@ -432,6 +437,61 @@ class InterviewController extends Controller
         $interview->update(['full_video_path' => $path]);
 
         return response()->json(['status' => 'stored', 'path' => $path]);
+    }
+
+    public function streamRecording(Request $request, Interview $interview): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\JsonResponse
+    {
+        $this->authorize('view', $interview);
+
+        $path = $interview->full_video_path;
+
+        if (! $path || ! Storage::disk('local')->exists($path)) {
+            return response()->json(['message' => 'Recording not found.'], 404);
+        }
+
+        $size = Storage::disk('local')->size($path);
+        $mime = str_ends_with($path, '.mp4') ? 'video/mp4' : 'video/webm';
+
+        $rangeHeader = $request->header('Range');
+
+        if ($rangeHeader) {
+            preg_match('/bytes=(\d+)-(\d*)/', $rangeHeader, $matches);
+            $start = (int) ($matches[1] ?? 0);
+            $end   = isset($matches[2]) && $matches[2] !== '' ? (int) $matches[2] : $size - 1;
+            $end   = min($end, $size - 1);
+            $length = $end - $start + 1;
+
+            return response()->stream(function () use ($path, $start, $length) {
+                $stream = Storage::disk('local')->readStream($path);
+                if ($stream === null) return;
+                if ($start > 0) fseek($stream, $start);
+                $remaining = $length;
+                while (! feof($stream) && $remaining > 0) {
+                    $chunk = fread($stream, min(65536, $remaining));
+                    if ($chunk === false) break;
+                    echo $chunk;
+                    $remaining -= strlen($chunk);
+                }
+                fclose($stream);
+            }, 206, [
+                'Content-Type'  => $mime,
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => "bytes {$start}-{$end}/{$size}",
+                'Content-Length' => $length,
+            ]);
+        }
+
+        return response()->stream(function () use ($path) {
+            $stream = Storage::disk('local')->readStream($path);
+            if ($stream === null) return;
+            fpassthru($stream);
+            fclose($stream);
+        }, 200, [
+            'Content-Type'   => $mime,
+            'Accept-Ranges'  => 'bytes',
+            'Content-Length' => $size,
+            'Content-Disposition' => 'inline; filename="interview-recording.webm"',
+        ]);
     }
 
     public function downloadPdf(Request $request, Interview $interview)
