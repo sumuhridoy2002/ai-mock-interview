@@ -26,4 +26,9 @@ class InterviewAnswer extends Model
     {
         return $this->hasOne(InterviewScore::class);
     }
+
+    public function behavior(): HasOne
+    {
+        return $this->hasOne(AnswerBehavior::class);
+    }
 }

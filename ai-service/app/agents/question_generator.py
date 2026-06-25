@@ -33,14 +33,26 @@ async def generate_question(
     question_number: int = 1,
     job_title: str = "this role",
     qa_history: Optional[list[dict[str, Any]]] = None,
+    user_memory: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     qa_history = qa_history or []
-    asked = memory.get("questions_asked") or []
-    asked_normalized = {_normalize_question(q) for q in asked}
+    user_memory = user_memory or {}
+
+    # Session-scoped asked questions
+    session_asked = memory.get("questions_asked") or []
+    # Cross-interview mastered questions (from user_memory_profiles)
+    mastered_questions = user_memory.get("mastered_questions") or []
+    mastered_topics_raw = user_memory.get("mastered_topics") or []
+    mastered_topics: set[str] = {str(t).lower().strip() for t in mastered_topics_raw}
+
+    # Merge both into one dedup set
+    all_asked = list(dict.fromkeys(session_asked + mastered_questions))
+    asked_normalized = {_normalize_question(q) for q in all_asked}
 
     if question_number <= 1:
         result = await _generate_opening(
-            cv_profile, job_analysis, experience_level, interview_type, job_title, asked_normalized
+            cv_profile, job_analysis, experience_level, interview_type, job_title, asked_normalized,
+            user_memory=user_memory,
         )
     else:
         result = await _generate_follow_up(
@@ -52,22 +64,27 @@ async def generate_question(
             job_title,
             question_number,
             qa_history,
-            asked,
+            all_asked,
             asked_normalized,
             last_answer,
+            user_memory=user_memory,
         )
 
     question = (result.get("question") or "").strip()
-    last_answer = ""
+    last_answer_text = ""
     if qa_history:
-        last_answer = (qa_history[-1].get("answer") or "").strip()
+        last_answer_text = (qa_history[-1].get("answer") or "").strip()
+
+    topic_of_result = (result.get("topic") or "").lower().strip()
+    topic_is_mastered = bool(topic_of_result and topic_of_result in mastered_topics)
 
     if (
         not question
         or _normalize_question(question) in asked_normalized
         or _is_repetitive_template(question, asked_normalized)
-        or (last_answer and quotes_last_answer(question, last_answer))
-        or (last_answer and is_skip_or_non_answer(last_answer) and "you mentioned" in question.lower())
+        or topic_is_mastered
+        or (last_answer_text and quotes_last_answer(question, last_answer_text))
+        or (last_answer_text and is_skip_or_non_answer(last_answer_text) and "you mentioned" in question.lower())
     ):
         result = _phase_fallback(
             question_number,
@@ -77,6 +94,7 @@ async def generate_question(
             qa_history,
             asked_normalized,
             experience_level,
+            mastered_topics=mastered_topics,
         )
 
     defaults = {
@@ -117,7 +135,12 @@ async def _generate_opening(
     interview_type: str,
     job_title: str,
     asked_normalized: set[str],
+    user_memory: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
+    user_memory = user_memory or {}
+    mastered_topics = user_memory.get("mastered_topics") or []
+    prior_strengths = user_memory.get("prior_strengths") or []
+
     template = load_prompt("question_opening")
     prompt = template.format(
         cv_json=json.dumps(cv_profile)[:2500],
@@ -125,6 +148,8 @@ async def _generate_opening(
         experience_level=experience_level,
         interview_type=interview_type,
         job_title=job_title,
+        mastered_topics_json=json.dumps(mastered_topics),
+        prior_strengths_json=json.dumps(prior_strengths[:10]),
     )
 
     raw = await call_ollama(
@@ -155,20 +180,33 @@ async def _generate_follow_up(
     asked: list[str],
     asked_normalized: set[str],
     last_answer: Optional[str],
+    user_memory: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
+    user_memory = user_memory or {}
+    mastered_topics = user_memory.get("mastered_topics") or []
+    prior_strengths = user_memory.get("prior_strengths") or []
+    prior_weaknesses = user_memory.get("prior_weaknesses") or []
+    mastered_questions_extra = user_memory.get("mastered_questions") or []
+
     if not qa_history and last_answer:
         qa_history = [{"question": asked[-1] if asked else "", "answer": last_answer, "score": None}]
+
+    # Combine session asked + cross-interview mastered for the prompt
+    all_asked_for_prompt = list(dict.fromkeys(asked + mastered_questions_extra))
 
     template = load_prompt("question_follow_up")
     prompt = template.format(
         cv_json=json.dumps(cv_profile)[:2000],
         job_json=json.dumps(job_analysis)[:2000],
         qa_history_json=json.dumps(qa_history, ensure_ascii=False)[:4000],
-        questions_already_asked=json.dumps(asked, ensure_ascii=False),
+        questions_already_asked=json.dumps(all_asked_for_prompt, ensure_ascii=False),
         experience_level=experience_level,
         interview_type=interview_type,
         job_title=job_title,
         question_number=question_number,
+        mastered_topics_json=json.dumps(mastered_topics),
+        prior_strengths_json=json.dumps(prior_strengths[:10]),
+        prior_weaknesses_json=json.dumps(prior_weaknesses[:10]),
     )
 
     raw = await call_ollama(
@@ -177,8 +215,11 @@ async def _generate_follow_up(
         system=INTERVIEWER_SYSTEM,
     )
 
+    mastered_topics_set: set[str] = {str(t).lower().strip() for t in mastered_topics}
+
     fallback = _follow_up_fallback_dict(
-        cv_profile, job_analysis, job_title, qa_history, asked_normalized, question_number
+        cv_profile, job_analysis, job_title, qa_history, asked_normalized, question_number,
+        mastered_topics=mastered_topics_set,
     )
     defaults = {
         "question": fallback["question"],
@@ -190,8 +231,10 @@ async def _generate_follow_up(
     parsed = parse_with_fallback(raw, defaults)
     question = (parsed.get("question") or "").strip()
     last_answer = (qa_history[-1].get("answer") or "").strip() if qa_history else ""
+    parsed_topic = (parsed.get("topic") or "").lower().strip()
     if (
         _is_repetitive_template(question, asked_normalized)
+        or (parsed_topic and parsed_topic in mastered_topics_set)
         or (last_answer and quotes_last_answer(question, last_answer))
         or (last_answer and is_skip_or_non_answer(last_answer) and "you mentioned" in question.lower())
     ):
@@ -388,7 +431,10 @@ def _follow_up_fallback_dict(
     qa_history: list[dict],
     asked_normalized: set[str],
     question_number: int,
+    mastered_topics: Optional[set[str]] = None,
 ) -> dict[str, str]:
+    mastered_topics = mastered_topics or set()
+
     if qa_history:
         last = qa_history[-1]
         last_answer = (last.get("answer") or "").strip()
@@ -398,11 +444,13 @@ def _follow_up_fallback_dict(
 
         if should_clarify_previous(last_answer, last_score, last_question) and snippet:
             candidate = (
-                f"I'd like to understand that better — could you give me a concrete example "
-                f"with the steps you took and the result?"
+                "I'd like to understand that better — could you give me a concrete example "
+                "with the steps you took and the result?"
             )
+            clarification_mastered = "clarification" in mastered_topics
             if (
-                _normalize_question(candidate) not in asked_normalized
+                not clarification_mastered
+                and _normalize_question(candidate) not in asked_normalized
                 and not _is_repetitive_template(candidate, asked_normalized)
             ):
                 return {
@@ -418,9 +466,11 @@ def _follow_up_fallback_dict(
     for offset in range(len(pool)):
         item = pool[(start_idx + offset) % len(pool)]
         question = item["question"]
+        topic = (item.get("topic") or "").lower().strip()
         if (
             _normalize_question(question) not in asked_normalized
             and not _is_repetitive_template(question, asked_normalized)
+            and topic not in mastered_topics
         ):
             if last_was_skip:
                 item = {
@@ -455,7 +505,10 @@ def _phase_fallback(
     qa_history: list[dict],
     asked_normalized: set[str],
     experience_level: str = "mid",
+    mastered_topics: Optional[set[str]] = None,
 ) -> dict[str, Any]:
+    mastered_topics = mastered_topics or set()
+
     if question_number <= 1:
         return {
             "question": _opening_fallback(cv, job, job_title),
@@ -464,7 +517,10 @@ def _phase_fallback(
             "topic": "introduction",
         }
 
-    fallback = _follow_up_fallback_dict(cv, job, job_title, qa_history, asked_normalized, question_number)
+    fallback = _follow_up_fallback_dict(
+        cv, job, job_title, qa_history, asked_normalized, question_number,
+        mastered_topics=mastered_topics,
+    )
 
     return {
         "question": fallback["question"],

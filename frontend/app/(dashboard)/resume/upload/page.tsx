@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Upload, FileText, CheckCircle, Loader2 } from "lucide-react";
+import { Upload, FileText, CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,14 @@ export default function ResumeUploadPage() {
   useEffect(() => {
     loadResumes();
   }, [loadResumes]);
+
+  useEffect(() => {
+    const hasPending = resumes.some((r) => r.status === "pending");
+    if (!hasPending) return;
+
+    const id = window.setInterval(loadResumes, 3000);
+    return () => window.clearInterval(id);
+  }, [resumes, loadResumes]);
 
   async function uploadFile(file: File) {
     setUploading(true);
@@ -114,6 +122,8 @@ export default function ResumeUploadPage() {
                     <CheckCircle className="h-5 w-5 text-emerald-400" />
                   ) : r.status === "pending" ? (
                     <Loader2 className="h-5 w-5 text-amber-400 animate-spin" />
+                  ) : r.status === "failed" ? (
+                    <AlertCircle className="h-5 w-5 text-red-400" title="Parsing failed — re-upload to retry" />
                   ) : null}
                 </div>
               ))

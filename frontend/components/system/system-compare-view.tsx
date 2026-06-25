@@ -2,6 +2,7 @@
 
 import { GitCompare } from "lucide-react";
 import { FeatureComparisonTable } from "@/components/system/feature-comparison-table";
+import { RecentWorkBanner } from "@/components/system/recent-work-banner";
 
 export function SystemCompareView() {
   return (
@@ -12,10 +13,13 @@ export function SystemCompareView() {
           Compare Platforms
         </h1>
         <p className="text-sm text-slate-400 mt-1 max-w-2xl mx-auto">
-          How Mock Interview Pro compares to popular mock-interview and hiring tools — CV-based prep,
-          voice capture, AI scoring, scheduling, and self-hosted stack.
+          How Mock Interview Pro compares to popular mock-interview and hiring tools — including
+          cross-interview memory, GPU vision behavior analysis, full-session recording, CV-based prep,
+          voice capture, AI scoring, scheduling, and a self-hosted stack.
         </p>
       </div>
+
+      <RecentWorkBanner />
 
       <FeatureComparisonTable />
     </div>

@@ -52,7 +52,7 @@ export const PERFORMANCE_METRIC_DOCS: MetricDoc[] = [
     id: "contextBytes",
     title: "App data size",
     formula: "localStorage + sessionStorage + last /user API payload",
-    description: "Meaningful application-stored data only. JS heap is excluded — it is Next.js runtime memory (~15–20 MB) and not related to what the app explicitly stores. localStorage holds auth token, cached user profile, and up to 30 performance history samples (~5–10 KB total).",
+    description: "Meaningful application-stored data only. JS heap is excluded — it is Next.js runtime memory (~15–20 MB) and not related to what the app explicitly stores. localStorage holds the auth token, cached user profile, up to 30 performance history samples, the user ETag (mip_user_etag), and the camera/mic consent flag (mi_media_consent) — together only a few KB.",
     ratingBands: "Good < 100 KB · OK < 500 KB · Slow ≥ 500 KB",
     referenceUrl: "https://developer.mozilla.org/en-US/docs/Web/API/Storage",
     referenceLabel: "MDN — Storage API",

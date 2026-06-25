@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuestionReviewCard } from "@/components/interview/question-review-card";
+import { AggregateBehaviorCard, type AggregateBehavior } from "@/components/interview/behavior-card";
 import { api, API_URL } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { formatScore } from "@/lib/utils";
@@ -29,6 +30,15 @@ interface QuestionReview {
   model_answer?: string | null;
   needs_improvement?: boolean;
   transcript_quality_poor?: boolean;
+  behavior?: {
+    confidence: number;
+    nervousness: number;
+    eye_contact_ratio: number;
+    head_stability: number;
+    blink_rate: number;
+    emotion_distribution?: Record<string, number>;
+    coaching_narrative?: string | null;
+  } | null;
 }
 
 interface ReportData {
@@ -44,6 +54,7 @@ interface ReportData {
   overall_score: number;
   hiring_recommendation: string;
   pdf_url: string | null;
+  behavior_summary?: AggregateBehavior | null;
 }
 
 export default function InterviewResultPage() {
@@ -148,6 +159,10 @@ export default function InterviewResultPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            {report.behavior_summary && (
+              <AggregateBehaviorCard summary={report.behavior_summary} />
+            )}
 
             {questionReviews.length > 0 && (
               <Card>

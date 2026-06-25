@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -27,6 +28,16 @@ class User extends Authenticatable
     public function interviews(): HasMany
     {
         return $this->hasMany(Interview::class);
+    }
+
+    public function questionMastery(): HasMany
+    {
+        return $this->hasMany(UserQuestionMastery::class);
+    }
+
+    public function memoryProfile(): HasOne
+    {
+        return $this->hasOne(UserMemoryProfile::class);
     }
 
     /**

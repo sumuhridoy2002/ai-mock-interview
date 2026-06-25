@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAnswerRequest;
 use App\Http\Requests\StoreInterviewRequest;
+use App\Http\Requests\StoreRecordingRequest;
 use App\Jobs\EvaluateAnswerJob;
 use App\Jobs\GenerateReportJob;
 use App\Models\Interview;
@@ -227,7 +228,7 @@ class InterviewController extends Controller
         $this->authorize('view', $interview);
 
         $answer = $interview->questions()
-            ->with('answer.score')
+            ->with('answer.score', 'answer.behavior')
             ->get()
             ->pluck('answer')
             ->filter()
@@ -237,16 +238,27 @@ class InterviewController extends Controller
             return response()->json(['message' => 'Score not ready.'], 404);
         }
 
+        $behavior = $answer->behavior;
+
         return response()->json([
-            'score' => $answer->score->overall_score,
-            'relevance' => $answer->score->relevance,
+            'score'              => $answer->score->overall_score,
+            'relevance'          => $answer->score->relevance,
             'technical_accuracy' => $answer->score->technical_accuracy,
-            'communication' => $answer->score->communication,
-            'confidence' => $answer->score->confidence,
-            'completeness' => $answer->score->completeness,
-            'strengths' => $answer->score->strengths,
-            'weaknesses' => $answer->score->weaknesses,
-            'recommendations' => $answer->score->recommendations,
+            'communication'      => $answer->score->communication,
+            'confidence'         => $answer->score->confidence,
+            'completeness'       => $answer->score->completeness,
+            'strengths'          => $answer->score->strengths,
+            'weaknesses'         => $answer->score->weaknesses,
+            'recommendations'    => $answer->score->recommendations,
+            'behavior'           => $behavior ? [
+                'confidence'          => $behavior->confidence,
+                'nervousness'         => $behavior->nervousness,
+                'eye_contact_ratio'   => $behavior->eye_contact_ratio,
+                'head_stability'      => $behavior->head_stability,
+                'blink_rate'          => $behavior->blink_rate,
+                'emotion_distribution' => $behavior->emotion_distribution,
+                'coaching_narrative'  => $behavior->coaching_narrative,
+            ] : null,
         ]);
     }
 
@@ -395,6 +407,20 @@ class InterviewController extends Controller
         GenerateReportJob::dispatchSync($interview->fresh());
 
         return $this->report($request, $interview->fresh());
+    }
+
+    public function storeRecording(StoreRecordingRequest $request, Interview $interview): JsonResponse
+    {
+        $this->authorize('update', $interview);
+
+        $path = $request->file('recording')->store(
+            'interviews/'.$interview->id.'/full',
+            'local'
+        );
+
+        $interview->update(['full_video_path' => $path]);
+
+        return response()->json(['status' => 'stored', 'path' => $path]);
     }
 
     public function downloadPdf(Request $request, Interview $interview)

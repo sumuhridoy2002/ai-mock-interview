@@ -43,17 +43,18 @@ class ReportService
             ? $this->interviewService->buildMemoryPayload($interview->session)
             : [];
 
-        foreach ($interview->questions()->with('answer.score')->orderBy('sequence')->get() as $question) {
+        foreach ($interview->questions()->with('answer.score', 'answer.behavior')->orderBy('sequence')->get() as $question) {
             if (! $question->answer?->score) {
                 continue;
             }
 
-            $score = $question->answer->score;
-            $raw = $score->raw_ai_response ?? [];
-            $overall = $score->overall_score;
-            $modelAnswer = $raw['model_answer'] ?? null;
-            $weaknesses = $score->weaknesses ?? [];
-            $poorQuality = in_array('Transcription quality may be poor', $weaknesses, true)
+            $score    = $question->answer->score;
+            $behavior = $question->answer->behavior;
+            $raw      = $score->raw_ai_response ?? [];
+            $overall  = $score->overall_score;
+            $modelAnswer  = $raw['model_answer'] ?? null;
+            $weaknesses   = $score->weaknesses ?? [];
+            $poorQuality  = in_array('Transcription quality may be poor', $weaknesses, true)
                 || ($raw['transcript_quality_poor'] ?? false);
             $needsImprovement = $overall < 80 || $weaknesses !== [] || $poorQuality;
 
@@ -64,45 +65,62 @@ class ReportService
                 );
             }
 
+            $behaviorSummary = $behavior ? [
+                'confidence'         => $behavior->confidence,
+                'nervousness'        => $behavior->nervousness,
+                'eye_contact_ratio'  => $behavior->eye_contact_ratio,
+                'head_stability'     => $behavior->head_stability,
+                'blink_rate'         => $behavior->blink_rate,
+                'emotion_distribution' => $behavior->emotion_distribution,
+                'prosody'            => $behavior->prosody,
+                'coaching_narrative' => $behavior->coaching_narrative,
+            ] : null;
+
             $scores[] = [
-                'question' => $question->question_text,
-                'category' => $question->category,
-                'score' => $overall,
-                'strengths' => $score->strengths,
+                'question'   => $question->question_text,
+                'category'   => $question->category,
+                'score'      => $overall,
+                'strengths'  => $score->strengths,
                 'weaknesses' => $score->weaknesses,
             ];
 
             $questionReviews[] = [
-                'sequence' => $question->sequence,
-                'question' => $question->question_text,
-                'category' => $question->category,
-                'your_answer' => $question->answer->transcript ?? '',
-                'score' => $overall,
-                'relevance' => $score->relevance,
-                'technical_accuracy' => $score->technical_accuracy,
-                'communication' => $score->communication,
-                'confidence' => $score->confidence,
-                'completeness' => $score->completeness,
-                'strengths' => $score->strengths ?? [],
-                'weaknesses' => $score->weaknesses ?? [],
-                'recommendations' => $score->recommendations ?? [],
-                'model_answer' => $modelAnswer,
-                'needs_improvement' => $needsImprovement,
+                'sequence'               => $question->sequence,
+                'question'               => $question->question_text,
+                'category'               => $question->category,
+                'your_answer'            => $question->answer->transcript ?? '',
+                'score'                  => $overall,
+                'relevance'              => $score->relevance,
+                'technical_accuracy'     => $score->technical_accuracy,
+                'communication'          => $score->communication,
+                'confidence'             => $score->confidence,
+                'completeness'           => $score->completeness,
+                'strengths'              => $score->strengths ?? [],
+                'weaknesses'             => $score->weaknesses ?? [],
+                'recommendations'        => $score->recommendations ?? [],
+                'model_answer'           => $modelAnswer,
+                'needs_improvement'      => $needsImprovement,
                 'transcript_quality_poor' => $poorQuality,
+                'behavior'               => $behaviorSummary,
             ];
         }
 
+        // Aggregate behavior across all questions
+        $behaviorItems = array_filter(array_column($questionReviews, 'behavior'));
+        $aggregateBehavior = $this->aggregateBehavior($behaviorItems);
+
         return [
             'interview' => [
-                'job_title' => $interview->job_title,
+                'job_title'       => $interview->job_title,
                 'experience_level' => $interview->experience_level,
-                'interview_type' => $interview->interview_type,
+                'interview_type'  => $interview->interview_type,
             ],
-            'cv_profile' => $interview->resume?->parsed_profile ?? [],
-            'job_analysis' => $interview->job_analysis ?? [],
-            'scores' => $scores,
+            'cv_profile'       => $interview->resume?->parsed_profile ?? [],
+            'job_analysis'     => $interview->job_analysis ?? [],
+            'scores'           => $scores,
             'question_reviews' => $questionReviews,
-            'memory' => $memory,
+            'memory'           => $memory,
+            'behavior_summary' => $aggregateBehavior,
         ];
     }
 
@@ -203,6 +221,40 @@ class ReportService
         }
 
         return 'strong_no';
+    }
+
+    private function aggregateBehavior(array $items): ?array
+    {
+        if (empty($items)) {
+            return null;
+        }
+
+        $count = count($items);
+        $avg = fn (string $key) => (int) round(array_sum(array_column($items, $key)) / $count);
+        $avgFloat = fn (string $key) => round(array_sum(array_column($items, $key)) / $count, 3);
+
+        // Merge emotion distributions (average per label)
+        $emotionKeys = [];
+        foreach ($items as $item) {
+            $emotionKeys = array_merge($emotionKeys, array_keys($item['emotion_distribution'] ?? []));
+        }
+        $emotionKeys = array_unique($emotionKeys);
+        $emotionAvg = [];
+        foreach ($emotionKeys as $label) {
+            $vals = array_map(fn ($b) => $b['emotion_distribution'][$label] ?? 0, $items);
+            $emotionAvg[$label] = round(array_sum($vals) / $count, 4);
+        }
+        arsort($emotionAvg);
+
+        return [
+            'avg_confidence'       => $avg('confidence'),
+            'avg_nervousness'      => $avg('nervousness'),
+            'avg_eye_contact'      => $avgFloat('eye_contact_ratio'),
+            'avg_head_stability'   => $avgFloat('head_stability'),
+            'avg_blink_rate'       => round(array_sum(array_column($items, 'blink_rate')) / $count, 1),
+            'emotion_distribution' => $emotionAvg,
+            'questions_analyzed'   => $count,
+        ];
     }
 
     private function storePdf(Interview $interview, array $reportData): string

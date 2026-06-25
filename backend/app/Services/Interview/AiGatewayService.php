@@ -60,8 +60,18 @@ class AiGatewayService
         }
 
         $payload['job_analysis'] = $this->normalizeJobAnalysis($payload['job_analysis'] ?? null);
-        $payload['cv_profile'] = $this->normalizeProfile($payload['cv_profile'] ?? null);
-        $payload['memory'] = $this->normalizeProfile($payload['memory'] ?? null);
+        $payload['cv_profile']   = $this->normalizeProfile($payload['cv_profile'] ?? null);
+        $payload['memory']       = $this->normalizeProfile($payload['memory'] ?? null);
+
+        // user_memory is already a well-structured dict; normalise only the nested arrays
+        $userMemory = $payload['user_memory'] ?? [];
+        $payload['user_memory'] = [
+            'mastered_questions'   => (array) ($userMemory['mastered_questions'] ?? []),
+            'mastered_topics'      => (array) ($userMemory['mastered_topics'] ?? []),
+            'prior_strengths'      => (array) ($userMemory['prior_strengths'] ?? []),
+            'prior_weaknesses'     => (array) ($userMemory['prior_weaknesses'] ?? []),
+            'interviews_completed' => (int) ($userMemory['interviews_completed'] ?? 0),
+        ];
 
         return $this->post('/agents/questions/generate', $payload);
     }
@@ -192,6 +202,43 @@ class AiGatewayService
         $timeout = (int) config('ai.report_timeout', config('ai.timeout'));
 
         return $this->post('/agents/reports/generate', $payload, $timeout);
+    }
+
+    /**
+     * Send a video file to the AI service vision pipeline for behavioural analysis.
+     *
+     * @param  string  $storagePath  Path on the `local` disk
+     * @param  string  $question     The interview question asked (for narrative context)
+     */
+    public function analyzeBehavior(string $storagePath, string $question = ''): array
+    {
+        $absolutePath = Storage::disk('local')->path($storagePath);
+        if (! is_readable($absolutePath)) {
+            throw new \RuntimeException("Video file not readable: {$storagePath}");
+        }
+
+        $timeout = (int) config('ai.timeout', 120);
+
+        try {
+            $response = Http::timeout($timeout)
+                ->withHeaders($this->headers())
+                ->attach('video', file_get_contents($absolutePath), basename($storagePath))
+                ->post(config('ai.service_url').'/pipeline/vision/analyze', [
+                    'question'           => $question,
+                    'generate_narrative' => 'true',
+                ]);
+
+            $response->throw();
+
+            return $response->json();
+        } catch (RequestException|ConnectionException $e) {
+            Log::error('AI vision analysis failed', [
+                'path'    => $storagePath,
+                'message' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
     }
 
     public function processVoice(array $payload, $audioFile): array

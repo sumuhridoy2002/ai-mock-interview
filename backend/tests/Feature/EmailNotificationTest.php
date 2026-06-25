@@ -98,6 +98,20 @@ class EmailNotificationTest extends TestCase
         });
     }
 
+    public function test_send_reminders_command_catches_late_within_ten_minutes(): void
+    {
+        Queue::fake();
+
+        $inFiveMinutes = $this->createScheduledInterview(now()->addMinutes(5));
+
+        $this->artisan('interviews:send-reminders')->assertSuccessful();
+
+        Queue::assertPushed(SendInterviewReminderJob::class, 1);
+        Queue::assertPushed(SendInterviewReminderJob::class, function (SendInterviewReminderJob $job) use ($inFiveMinutes) {
+            return $job->interviewId === $inFiveMinutes->id;
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

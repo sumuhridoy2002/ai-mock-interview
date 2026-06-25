@@ -10,6 +10,7 @@ use App\Models\InterviewSession;
 use App\Services\Interview\AiGatewayService;
 use App\Services\Interview\EvaluationService;
 use App\Services\Interview\InterviewService;
+use App\Services\Interview\MasteryService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -35,6 +36,7 @@ class GenerateQuestionJob implements ShouldQueue
         AiGatewayService $aiGateway,
         InterviewService $interviewService,
         EvaluationService $evaluationService,
+        MasteryService $masteryService,
     ): void {
         if ($interviewService->hasReachedQuestionLimit($this->interview)) {
             return;
@@ -44,19 +46,36 @@ class GenerateQuestionJob implements ShouldQueue
             $this->interview->refresh();
             $sequence = $interviewService->questionCount($this->interview) + 1;
 
-            $payload = [
-                'cv_profile' => $this->interview->resume?->parsed_profile ?? [],
-                'job_analysis' => $this->interview->job_analysis ?? [],
-                'memory' => $interviewService->buildMemoryPayload($this->session),
-                'experience_level' => $this->interview->experience_level,
-                'interview_type' => $this->interview->interview_type,
-                'last_answer' => $this->lastAnswer,
-                'question_number' => $sequence,
-                'job_title' => $this->interview->job_title,
-                'qa_history' => $interviewService->buildInterviewHistory($this->interview),
+            // Load cross-interview user memory (mastered questions/topics from all past interviews)
+            $user = $this->interview->user;
+            $userMemory = $user ? $interviewService->buildUserMemoryPayload($user) : [
+                'mastered_questions'   => [],
+                'mastered_topics'      => [],
+                'prior_strengths'      => [],
+                'prior_weaknesses'     => [],
+                'interviews_completed' => 0,
             ];
 
-            $askedQuestions = $this->interview->questions()->pluck('question_text')->all();
+            $payload = [
+                'cv_profile'         => $this->interview->resume?->parsed_profile ?? [],
+                'job_analysis'       => $this->interview->job_analysis ?? [],
+                'memory'             => $interviewService->buildMemoryPayload($this->session),
+                'user_memory'        => $userMemory,
+                'experience_level'   => $this->interview->experience_level,
+                'interview_type'     => $this->interview->interview_type,
+                'last_answer'        => $this->lastAnswer,
+                'question_number'    => $sequence,
+                'job_title'          => $this->interview->job_title,
+                'qa_history'         => $interviewService->buildInterviewHistory($this->interview),
+            ];
+
+            // Combine this-interview asked questions with all mastered questions from past interviews
+            $askedThisInterview = $this->interview->questions()->pluck('question_text')->all();
+            $masteredFromPast   = $userMemory['mastered_questions'] ?? [];
+            $askedQuestions     = array_values(array_unique(array_merge(
+                $askedThisInterview,
+                $masteredFromPast,
+            )));
 
             try {
                 $result = $aiGateway->generateQuestion($payload);
@@ -68,12 +87,15 @@ class GenerateQuestionJob implements ShouldQueue
                 $result = $this->fallbackQuestion($sequence, $askedQuestions, $interviewService, $evaluationService);
             }
 
+            $masteredTopics = $userMemory['mastered_topics'] ?? [];
+
             if (
                 $this->isDuplicateQuestion($result['question'] ?? '', $askedQuestions)
                 || $this->isRepetitiveTemplate($result['question'] ?? '', $askedQuestions)
                 || $this->shouldRejectGeneratedQuestion($result['question'] ?? '', $interviewService, $evaluationService)
+                || $this->isMasteredTopic($result['topic'] ?? null, $masteredTopics)
             ) {
-                $result = $this->fallbackQuestion($sequence, $askedQuestions, $interviewService, $evaluationService);
+                $result = $this->fallbackQuestion($sequence, $askedQuestions, $masteredTopics, $interviewService, $evaluationService);
             }
 
             $question = InterviewQuestion::create([
@@ -138,9 +160,19 @@ class GenerateQuestionJob implements ShouldQueue
             && str_contains(mb_strtolower($question), 'you mentioned');
     }
 
+    private function isMasteredTopic(?string $topic, array $masteredTopics): bool
+    {
+        if (! $topic || $masteredTopics === []) {
+            return false;
+        }
+
+        return in_array(mb_strtolower(trim($topic)), array_map('mb_strtolower', $masteredTopics), true);
+    }
+
     private function fallbackQuestion(
         int $sequence,
         array $askedQuestions,
+        array $masteredTopics,
         InterviewService $interviewService,
         EvaluationService $evaluationService,
     ): array {
@@ -175,6 +207,7 @@ class GenerateQuestionJob implements ShouldQueue
                 if (
                     ! $this->isDuplicateQuestion($clarifier, $askedQuestions)
                     && ! $this->isRepetitiveTemplate($clarifier, $askedQuestions)
+                    && ! $this->isMasteredTopic('clarification', $masteredTopics)
                 ) {
                     return [
                         'question' => $clarifier,
@@ -195,6 +228,7 @@ class GenerateQuestionJob implements ShouldQueue
             if (
                 ! $this->isDuplicateQuestion($item['question'], $askedQuestions)
                 && ! $this->isRepetitiveTemplate($item['question'], $askedQuestions)
+                && ! $this->isMasteredTopic($item['topic'] ?? null, $masteredTopics)
             ) {
                 $questionText = $item['question'];
                 if ($lastWasSkip) {

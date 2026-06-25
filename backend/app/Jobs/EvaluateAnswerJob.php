@@ -7,9 +7,11 @@ use App\Models\Interview;
 use App\Models\InterviewAnswer;
 use App\Models\InterviewScore;
 use App\Models\InterviewSession;
+use App\Jobs\AnalyzeBehaviorJob;
 use App\Services\Interview\AiGatewayService;
 use App\Services\Interview\EvaluationService;
 use App\Services\Interview\InterviewService;
+use App\Services\Interview\MasteryService;
 use App\Services\Interview\TranscriptCleaner;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -30,6 +32,7 @@ class EvaluateAnswerJob implements ShouldQueue
         InterviewService $interviewService,
         EvaluationService $evaluationService,
         TranscriptCleaner $transcriptCleaner,
+        MasteryService $masteryService,
     ): void {
         if ($this->answer->score) {
             return;
@@ -134,6 +137,22 @@ class EvaluateAnswerJob implements ShouldQueue
                     'candidate_strengths' => $strengths,
                     'candidate_weaknesses' => $weaknesses,
                 ]);
+            }
+
+            // Persist per-user mastery so future interviews skip mastered questions/topics
+            $user = $this->interview->user;
+            if ($user) {
+                $masteryService->recordAnswer($user, $this->interview, $this->answer, $score);
+            }
+
+            // Dispatch behaviour analysis job if a video was recorded for this answer
+            $videoPath = $this->answer->video_path;
+            if ($videoPath) {
+                AnalyzeBehaviorJob::dispatch(
+                    $this->answer,
+                    $videoPath,
+                    $question?->question_text ?? '',
+                );
             }
 
             event(new AnswerEvaluated($this->interview, $this->session, $this->answer, $score));

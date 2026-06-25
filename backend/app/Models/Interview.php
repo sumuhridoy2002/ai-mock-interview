@@ -18,6 +18,7 @@ class Interview extends Model
         'experience_level',
         'interview_type',
         'status',
+        'full_video_path',
         'scheduled_at',
         'alarm_message',
         'alarm_triggered_at',

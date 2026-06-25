@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useSystemMetrics, type MetricComparison } from "@/hooks/useSystemMetrics";
 import { MetricCalculationInline } from "@/components/system/metric-calculation-inline";
+import { RecentWorkBanner } from "@/components/system/recent-work-banner";
 import {
   ratingBadgeClass,
   ratingClass,
@@ -146,6 +147,24 @@ function SubStat({ label, value, dim = false }: { label: string; value: string; 
   );
 }
 
+const PLATFORM_CAPABILITIES: { label: string; description: string; endpoint: string }[] = [
+  {
+    label: "Vision behavior pipeline",
+    description: "GPU facial emotion, eye contact, head pose, blink rate, and audio prosody per answer.",
+    endpoint: "POST /pipeline/vision/analyze",
+  },
+  {
+    label: "Full interview recording",
+    description: "Continuous full-session video uploaded and stored against each interview.",
+    endpoint: "POST /interviews/{id}/recording",
+  },
+  {
+    label: "Cross-interview memory",
+    description: "Mastered questions and topics persist per user so they are never asked again.",
+    endpoint: "user_question_mastery · user_memory_profiles",
+  },
+];
+
 export function SystemMetricsView() {
   const { metrics, refresh, isRefreshing, refreshIntervalSeconds } = useSystemMetrics();
   const { contextData, comparisons, apiTiming } = metrics;
@@ -170,6 +189,26 @@ export function SystemMetricsView() {
           Refresh
         </button>
       </div>
+
+      {/* Latest work */}
+      <RecentWorkBanner />
+
+      {/* Platform capabilities */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-1.5">
+          <Server className="h-3.5 w-3.5" />
+          Platform capabilities
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {PLATFORM_CAPABILITIES.map((cap) => (
+            <div key={cap.label} className="rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-200">{cap.label}</p>
+              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{cap.description}</p>
+              <p className="mt-2 font-mono text-[10px] text-indigo-300/90 break-all">{cap.endpoint}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Performance vs targets */}
       <section>
@@ -297,6 +336,18 @@ export function SystemMetricsView() {
             <div className="rounded-lg bg-slate-800/50 py-2">
               <p className="text-slate-500">Whisper / Ollama</p>
               <p className="text-slate-400 font-medium mt-0.5">Server-side</p>
+            </div>
+            <div className="rounded-lg bg-slate-800/50 py-2">
+              <p className="text-slate-500">Vision / MediaPipe</p>
+              <p className="text-slate-400 font-medium mt-0.5">Server-side</p>
+            </div>
+            <div className="rounded-lg bg-slate-800/50 py-2">
+              <p className="text-slate-500">Reverb WS</p>
+              <p className="text-slate-400 font-medium mt-0.5">Realtime</p>
+            </div>
+            <div className="rounded-lg bg-slate-800/50 py-2">
+              <p className="text-slate-500">Queue Worker</p>
+              <p className="text-slate-400 font-medium mt-0.5">Background</p>
             </div>
           </div>
         </div>

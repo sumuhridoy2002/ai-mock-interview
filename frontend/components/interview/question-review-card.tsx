@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { formatScore } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { BehaviorPanel, type BehaviorData } from "@/components/interview/behavior-card";
 
 interface QuestionReview {
   sequence: number;
@@ -20,6 +21,7 @@ interface QuestionReview {
   model_answer?: string | null;
   needs_improvement?: boolean;
   transcript_quality_poor?: boolean;
+  behavior?: BehaviorData | null;
 }
 
 const DIMENSION_LABELS: { key: keyof QuestionReview; label: string }[] = [
@@ -113,6 +115,10 @@ export function QuestionReviewCard({
           <p className="text-xs text-indigo-300 mb-1 font-medium">Suggested strong answer</p>
           <p className="text-sm text-slate-200">{review.model_answer}</p>
         </div>
+      )}
+
+      {review.behavior && (
+        <BehaviorPanel behavior={review.behavior} />
       )}
 
       <div className="pt-1">

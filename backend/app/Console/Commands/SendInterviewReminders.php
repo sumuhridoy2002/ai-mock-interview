@@ -14,14 +14,12 @@ class SendInterviewReminders extends Command
 
     public function handle(): int
     {
-        $windowStart = now()->addMinutes(9);
-        $windowEnd = now()->addMinutes(11);
-
         $interviews = Interview::query()
             ->whereNotNull('scheduled_at')
             ->whereNull('reminder_sent_at')
             ->whereNotIn('status', ['completed'])
-            ->whereBetween('scheduled_at', [$windowStart, $windowEnd])
+            ->where('scheduled_at', '>', now())
+            ->where('scheduled_at', '<=', now()->addMinutes(10))
             ->pluck('id');
 
         foreach ($interviews as $id) {

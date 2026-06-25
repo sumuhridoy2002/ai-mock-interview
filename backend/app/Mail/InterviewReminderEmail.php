@@ -31,7 +31,7 @@ class InterviewReminderEmail extends Mailable
             with: [
                 'jobTitle' => $this->interview->job_title,
                 'scheduledAt' => $this->interview->scheduled_at?->timezone(config('app.timezone'))->format('D, M j, Y g:i A T'),
-                'message' => $this->interview->alarm_message,
+                'alarmMessage' => $this->interview->alarm_message,
                 'dashboardUrl' => $appUrl.'/dashboard',
                 'setupUrl' => $appUrl.'/interview/setup',
             ],

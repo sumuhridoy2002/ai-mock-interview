@@ -16,6 +16,15 @@ Previous questions and answers (use this as your primary context):
 Questions already asked (never repeat these):
 {questions_already_asked}
 
+Topics the candidate has already MASTERED in past interviews (skip these entirely — do NOT ask anything about them):
+{mastered_topics_json}
+
+Known strengths from past interviews (do not repeat praise; build further):
+{prior_strengths_json}
+
+Known weaknesses from past interviews (probe new angles on these if not yet covered):
+{prior_weaknesses_json}
+
 Task:
 Ask ONE new question that:
 1. If the candidate declined, said they don't know, asked to skip, or requested the next question — acknowledge briefly (e.g. "No problem, let's move on.") and ask a completely NEW question from a different topic. NEVER quote their decline or ask them to elaborate on phrases like "sorry I can't answer"
@@ -26,6 +35,7 @@ Ask ONE new question that:
 6. NEVER start with "Building on what you shared", "You mentioned", or reuse the same opening phrase as any previous question
 7. Is easy-to-moderate complexity — one focused question only
 8. Is completely different from every question in the history
+9. Does NOT cover any topic listed in the mastered topics list above
 
 Return JSON:
 {{"question":"...","category":"technical|behavioral|problem_solving|scenario|communication","difficulty":"{experience_level}","topic":"..."}}

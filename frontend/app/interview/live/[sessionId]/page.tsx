@@ -8,7 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuestionCard } from "@/components/interview/question-card";
 import { useInterviewSession } from "@/hooks/useInterviewSession";
-import { useMediaStream, useMediaRecorder, useSpeechSynthesis } from "@/hooks/useMediaRecorder";
+import {
+  useMediaStream,
+  useMediaRecorder,
+  useFullSessionRecorder,
+  useSpeechSynthesis,
+} from "@/hooks/useMediaRecorder";
 import { api, API_URL } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { uuid } from "@/lib/utils";
@@ -26,12 +31,18 @@ export default function LiveInterviewPage() {
   const [maxQuestions, setMaxQuestions] = useState(10);
   const lastQuestionIdRef = useRef<number | null>(null);
 
-  const handleInterviewComplete = useCallback(() => {
-    router.push(`/interview/result/${interviewId}`);
-  }, [router, interviewId]);
+  // ── Media stream (with auto-start when consent was already granted) ──────
+  const { stream, error: mediaError, start: startMedia, autoStarted } = useMediaStream();
 
-  const { stream, error: mediaError, start: startMedia } = useMediaStream();
+  // When auto-start fires, mark media ready immediately
+  useEffect(() => {
+    if (autoStarted && stream) {
+      setMediaReady(true);
+    }
+  }, [autoStarted, stream]);
+
   const { speak } = useSpeechSynthesis();
+
   const {
     question,
     loading,
@@ -57,6 +68,42 @@ export default function LiveInterviewPage() {
       videoRef.current.srcObject = stream;
     }
   }, [stream]);
+
+  // ── Full-session recorder ─────────────────────────────────────────────────
+  const { startSession: startFullRecording, stopSession: stopFullRecording } =
+    useFullSessionRecorder(stream);
+
+  // Start full-session recording as soon as media is ready
+  useEffect(() => {
+    if (mediaReady && stream) {
+      startFullRecording();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaReady]);
+
+  // Upload the full-session video blob to the backend
+  const uploadFullRecording = useCallback(
+    async (blob: Blob) => {
+      if (!blob.size || !interviewId) return;
+      try {
+        const form = new FormData();
+        form.append("recording", blob, `session.webm`);
+        await fetch(`${API_URL}/interviews/${interviewId}/recording`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${getToken()}`, Accept: "application/json" },
+          body: form,
+        });
+      } catch {
+        // Non-critical — silently fail
+      }
+    },
+    [interviewId]
+  );
+
+  // ── Interview complete handler ────────────────────────────────────────────
+  function handleInterviewComplete() {
+    router.push(`/interview/result/${interviewId}`);
+  }
 
   const submitAnswer = useCallback(
     async ({
@@ -108,8 +155,15 @@ export default function LiveInterviewPage() {
     [question, interviewId, markAwaitingNextQuestion]
   );
 
-  const { recording, durationSeconds, liveTranscript, startRecording, stopRecording, cancelRecording, error: recorderError } =
-    useMediaRecorder(stream, submitAnswer);
+  const {
+    recording,
+    durationSeconds,
+    liveTranscript,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+    error: recorderError,
+  } = useMediaRecorder(stream, submitAnswer);
 
   async function handleEnableMedia() {
     const media = await startMedia();
@@ -119,6 +173,11 @@ export default function LiveInterviewPage() {
   async function handleComplete() {
     if (recording) {
       await stopRecording();
+    }
+    // Stop full-session recording and upload
+    const fullBlob = await stopFullRecording();
+    if (fullBlob) {
+      void uploadFullRecording(fullBlob);
     }
     await api(`/interviews/${interviewId}/complete`, { method: "POST" });
     router.push(`/interview/result/${interviewId}`);
@@ -156,7 +215,7 @@ export default function LiveInterviewPage() {
                 autoPlay
                 muted
                 playsInline
-                className="w-full aspect-video rounded-lg bg-black object-cover scale-x-100"
+                className="w-full aspect-video rounded-lg bg-black object-cover"
                 style={{ transform: "scaleX(-1)" }}
               />
             )}

@@ -13,6 +13,7 @@ from app.agents.job_analyzer import analyze_job
 from app.agents.question_generator import generate_question
 from app.agents.report_generator import generate_report
 from app.pipelines.transcribe import transcribe_audio
+from app.pipelines.vision import analyze_video
 from app.pipelines.voice import process_voice
 
 app = FastAPI(title="Mock Interview AI Service", version="1.0.0")
@@ -67,10 +68,19 @@ async def job_analyze(body: JobAnalyzeRequest):
     return await analyze_job(body.job_title, body.job_description)
 
 
+class UserMemory(BaseModel):
+    mastered_questions: list[str] = []
+    mastered_topics: list[str] = []
+    prior_strengths: list[str] = []
+    prior_weaknesses: list[str] = []
+    interviews_completed: int = 0
+
+
 class QuestionGenerateRequest(BaseModel):
     cv_profile: dict[str, Any] = {}
     job_analysis: dict[str, Any] = {}
     memory: dict[str, Any] = {}
+    user_memory: UserMemory = UserMemory()
     experience_level: str = "mid"
     interview_type: str = "mixed"
     last_answer: Optional[str] = None
@@ -91,6 +101,7 @@ async def questions_generate(body: QuestionGenerateRequest):
         body.question_number,
         body.job_title,
         body.qa_history,
+        body.user_memory.model_dump(),
     )
 
 
@@ -163,6 +174,27 @@ async def pipeline_transcribe(
         question=question or None,
     )
     return {"transcript": result["transcript"], "quality_poor": result["quality_poor"]}
+
+
+@app.post("/pipeline/vision/analyze", dependencies=[Depends(verify_secret)] if AI_SECRET else [])
+async def vision_analyze(
+    video: UploadFile = File(...),
+    question: str = Form(""),
+    generate_narrative: str = Form("true"),
+):
+    """
+    Analyse a video recording for behavioural signals:
+    confidence, nervousness, eye contact, head stability, blink rate,
+    emotion distribution, and audio prosody.
+    """
+    video_bytes = await video.read()
+    want_narrative = generate_narrative.lower() not in ("false", "0", "no")
+    return await analyze_video(
+        video_bytes,
+        filename=video.filename or "answer.webm",
+        question=question,
+        generate_narrative=want_narrative,
+    )
 
 
 @app.post("/pipeline/voice/process", dependencies=[Depends(verify_secret)] if AI_SECRET else [])

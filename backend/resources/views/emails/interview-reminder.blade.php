@@ -8,8 +8,8 @@
     <h1 style="color: #d97706;">Interview in 10 minutes</h1>
     <p>Your mock interview for <strong>{{ $jobTitle }}</strong> is scheduled for:</p>
     <p style="font-size: 18px; font-weight: bold;">{{ $scheduledAt }}</p>
-    @if($message)
-        <p style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px;">{{ $message }}</p>
+    @if($alarmMessage ?? null)
+        <p style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px;">{{ $alarmMessage }}</p>
     @endif
     <p>Open the app before the scheduled time so your browser alarm can fire at the exact moment.</p>
     <p>

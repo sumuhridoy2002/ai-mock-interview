@@ -10,10 +10,16 @@ Candidate CV (parsed):
 Job requirements:
 {job_json}
 
+Topics the candidate has already MASTERED in past interviews (do NOT ask about these):
+{mastered_topics_json}
+
+Known strengths from past interviews (acknowledged — do not repeat):
+{prior_strengths_json}
+
 Task:
 Ask ONE opening question that:
 1. Welcomes the candidate naturally (e.g. "To start..." or "Let's begin...")
-2. Asks them to introduce themselves OR connects to something specific from their CV (a skill, project, or role)
+2. Asks them to introduce themselves OR connects to something specific from their CV (a skill, project, or role) that is NOT in the mastered topics list
 3. Relates to the {job_title} position
 4. Is easy to answer — give them room to speak freely
 5. Does NOT ask multiple questions in one sentence

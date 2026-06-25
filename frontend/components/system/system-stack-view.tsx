@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Server } from "lucide-react";
 import { SYSTEM_COMPONENTS } from "@/lib/system-architecture";
+import { RecentWorkBanner } from "@/components/system/recent-work-banner";
 
 function TechnologyBadge({ technology, category }: { technology: string; category: string }) {
   return (
@@ -25,7 +26,14 @@ function ComponentRow({ component }: { component: (typeof SYSTEM_COMPONENTS)[num
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-start justify-between gap-3 text-left"
       >
-        <p className="text-sm font-semibold text-slate-200">{component.name}</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="text-sm font-semibold text-slate-200">{component.name}</p>
+          {component.isNew && (
+            <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">
+              New
+            </span>
+          )}
+        </div>
         <TechnologyBadge technology={component.technology} category={component.category} />
       </button>
       {open && (
@@ -53,6 +61,8 @@ export function SystemStackView() {
           Every layer in Mock Interview Pro — tap a row to see role, stack, and endpoint.
         </p>
       </div>
+
+      <RecentWorkBanner />
 
       <div className="grid gap-3 lg:grid-cols-2">
         {SYSTEM_COMPONENTS.map((component) => (

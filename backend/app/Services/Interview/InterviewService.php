@@ -12,6 +12,8 @@ use App\Models\InterviewAnswer;
 use App\Models\InterviewQuestion;
 use App\Models\InterviewSession;
 use App\Models\User;
+use App\Models\UserMemoryProfile;
+use App\Models\UserQuestionMastery;
 use Illuminate\Support\Str;
 
 class InterviewService
@@ -177,6 +179,15 @@ class InterviewService
 
         GenerateReportJob::dispatchSync($interview->fresh());
 
+        // Bump the user's completed-interview counter in their memory profile
+        $user = $interview->user;
+        if ($user) {
+            UserMemoryProfile::firstOrCreate(
+                ['user_id' => $user->id],
+                ['mastered_topics' => [], 'strengths' => [], 'weaknesses' => [], 'interviews_completed' => 0]
+            )->increment('interviews_completed');
+        }
+
         if ($session = $interview->session) {
             event(new InterviewCompleted($interview, $session));
         }
@@ -204,6 +215,29 @@ class InterviewService
         }
 
         return $history;
+    }
+
+    /**
+     * Build the cross-interview user memory payload for the AI question generator.
+     * Returns mastered questions (normalized text), mastered topics, and rolling
+     * strengths/weaknesses from all past interviews.
+     */
+    public function buildUserMemoryPayload(User $user): array
+    {
+        $profile = $user->memoryProfile;
+
+        $masteredQuestions = UserQuestionMastery::where('user_id', $user->id)
+            ->where('mastered', true)
+            ->pluck('normalized_question')
+            ->all();
+
+        return [
+            'mastered_questions' => $masteredQuestions,
+            'mastered_topics'    => $profile?->mastered_topics ?? [],
+            'prior_strengths'    => $profile?->strengths ?? [],
+            'prior_weaknesses'   => $profile?->weaknesses ?? [],
+            'interviews_completed' => $profile?->interviews_completed ?? 0,
+        ];
     }
 
     public function buildMemoryPayload(InterviewSession $session): array

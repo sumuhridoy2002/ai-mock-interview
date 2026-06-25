@@ -2,9 +2,27 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
+const CONSENT_KEY = "mi_media_consent";
+
+/** Check both camera and microphone permission state via the Permissions API */
+async function checkMediaPermissionsGranted(): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.permissions) return false;
+  try {
+    const [cam, mic] = await Promise.all([
+      navigator.permissions.query({ name: "camera" as PermissionName }),
+      navigator.permissions.query({ name: "microphone" as PermissionName }),
+    ]);
+    return cam.state === "granted" && mic.state === "granted";
+  } catch {
+    // Some browsers don't support querying camera/microphone permissions
+    return false;
+  }
+}
+
 export function useMediaStream() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [autoStarted, setAutoStarted] = useState(false);
 
   const start = useCallback(async () => {
     try {
@@ -22,6 +40,8 @@ export function useMediaStream() {
       });
       setStream(media);
       setError(null);
+      // Persist consent so future visits skip the permission gate
+      try { localStorage.setItem(CONSENT_KEY, "1"); } catch { /* ignore */ }
       return media;
     } catch {
       setError("Camera and microphone access is required for the interview.");
@@ -34,9 +54,36 @@ export function useMediaStream() {
     setStream(null);
   }, [stream]);
 
+  // On mount: if permissions were previously granted (Permissions API or localStorage
+  // flag), silently acquire the stream so the user doesn't see the gate again.
+  useEffect(() => {
+    let cancelled = false;
+    async function tryAutoStart() {
+      const storedConsent = (() => {
+        try { return localStorage.getItem(CONSENT_KEY) === "1"; } catch { return false; }
+      })();
+
+      const alreadyGranted = storedConsent || (await checkMediaPermissionsGranted());
+      if (!alreadyGranted || cancelled) return;
+
+      const media = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      }).catch(() => null);
+
+      if (!cancelled && media) {
+        setStream(media);
+        setAutoStarted(true);
+      }
+    }
+    void tryAutoStart();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => () => stream?.getTracks().forEach((t) => t.stop()), [stream]);
 
-  return { stream, error, start, stop };
+  return { stream, error, start, stop, autoStarted };
 }
 
 function getSupportedVideoMimeType(): string | undefined {
@@ -151,11 +198,25 @@ export interface RecordedAnswer {
   transcript: string;
 }
 
+interface SpeechRecognitionResultItem {
+  readonly transcript?: string;
+}
+
+interface SpeechRecognitionResult {
+  readonly isFinal: boolean;
+  readonly 0: SpeechRecognitionResultItem | undefined;
+}
+
+interface BrowserSpeechRecognitionEvent {
+  readonly results: ArrayLike<SpeechRecognitionResult>;
+  readonly resultIndex: number;
+}
+
 type BrowserSpeechRecognition = {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
   onerror: ((event: { error?: string }) => void) | null;
   start: () => void;
   stop: () => void;
@@ -192,10 +253,7 @@ function useBrowserTranscription() {
     recognition.lang = "en-US";
 
     recognition.onresult = (event) => {
-      const results = event.results as ArrayLike<{
-        isFinal: boolean;
-        0?: { transcript?: string };
-      }>;
+      const results = event.results;
 
       const finals: string[] = [...transcriptPartsRef.current];
       let interim = "";
@@ -337,7 +395,6 @@ export function useMediaRecorder(
     setError(null);
     browserTranscription.abort();
 
-    // Stop all recorders and discard captured blobs
     for (const session of sessionsRef.current) {
       try {
         if (session.recorder.state !== "inactive") {
@@ -402,6 +459,47 @@ export function useMediaRecorder(
   useEffect(() => () => clearTimer(), [clearTimer]);
 
   return { recording, durationSeconds, liveTranscript: browserTranscription.liveTranscript, startRecording, stopRecording, cancelRecording, error };
+}
+
+// ---------------------------------------------------------------------------
+// Full-session recorder — records the entire interview as one continuous video
+// ---------------------------------------------------------------------------
+
+export interface FullSessionRecorderControls {
+  startSession: () => void;
+  stopSession: () => Promise<Blob | null>;
+}
+
+export function useFullSessionRecorder(stream: MediaStream | null): FullSessionRecorderControls {
+  const sessionRef = useRef<RecorderSession | null>(null);
+
+  const startSession = useCallback(() => {
+    if (!stream || sessionRef.current) return;
+    const session = createRecorderSession(stream, "video");
+    if (!session) return;
+    sessionRef.current = session;
+    session.recorder.start(1000); // collect data every second
+  }, [stream]);
+
+  const stopSession = useCallback(async (): Promise<Blob | null> => {
+    const session = sessionRef.current;
+    sessionRef.current = null;
+    if (!session) return null;
+    return stopRecorderSession(session);
+  }, []);
+
+  // Clean up if component unmounts mid-recording
+  useEffect(() => {
+    return () => {
+      const session = sessionRef.current;
+      if (session && session.recorder.state !== "inactive") {
+        try { session.recorder.stop(); } catch { /* ignore */ }
+      }
+      sessionRef.current = null;
+    };
+  }, []);
+
+  return { startSession, stopSession };
 }
 
 export function useSpeechSynthesis() {

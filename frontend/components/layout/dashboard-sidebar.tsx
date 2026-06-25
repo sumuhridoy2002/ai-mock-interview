@@ -17,6 +17,7 @@ import {
   Server,
   GitCompare,
   Workflow,
+  List,
 } from "lucide-react";
 import { fetchUser, getStoredUser, type User as AuthUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -82,6 +83,12 @@ const NAV_GROUPS: NavGroup[] = [
         label: "Compare",
         description: "vs other platforms",
         icon: GitCompare,
+      },
+      {
+        href: "/system/features",
+        label: "Features",
+        description: "Full capability list",
+        icon: List,
       },
       {
         href: "/system/how-it-works",
