@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Mic, TrendingUp, Award, ArrowRight, Bell, BellOff, Calendar, Pencil, Trash2, X, Check, TrendingDown, Minus, Star, Target, BarChart2, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -135,9 +136,11 @@ function EditScheduleForm({ row, onSave, onClear, onCancel }: EditScheduleFormPr
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [interviews, setInterviews] = useState<InterviewRow[]>([]);
   const [scheduled, setScheduled] = useState<ScheduledRow[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [resumingId, setResumingId] = useState<number | null>(null);
 
   const loadScheduled = useCallback(() => {
     api<ScheduledRow[]>("/interviews/scheduled")
@@ -220,6 +223,19 @@ export default function DashboardPage() {
       method: "POST",
     });
     window.location.href = `/interview/live/${session.session_uuid}?interviewId=${row.id}`;
+  }
+
+  async function handleResumeInterview(interview: InterviewRow) {
+    if (resumingId) return;
+    setResumingId(interview.id);
+    try {
+      const session = await api<{ session_uuid: string }>(`/interviews/${interview.id}/start`, {
+        method: "POST",
+      });
+      router.push(`/interview/live/${session.session_uuid}?interviewId=${interview.id}`);
+    } catch {
+      setResumingId(null);
+    }
   }
 
   return (
@@ -510,35 +526,72 @@ export default function DashboardPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {interviews.map((interview) => (
-                  <Link
-                    key={interview.id}
-                    href={
-                      interview.status === "completed"
-                        ? `/interview/result/${interview.id}`
-                        : `/interview/setup`
-                    }
-                    className="flex items-center justify-between p-4 rounded-lg border border-slate-700/50 hover:bg-slate-800/50 transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium text-white">{interview.job_title}</p>
-                      <p className="text-sm text-slate-400 capitalize flex items-center gap-2">
-                        {interview.experience_level} · {interview.status}
-                        {interview.scheduled_at && interview.status !== "completed" && (
-                          <span className="inline-flex items-center gap-1 text-indigo-400 text-xs">
-                            <Bell className="h-3 w-3" />
-                            {formatScheduledAt(interview.scheduled_at)}
+                {interviews.map((interview) => {
+                  const isActive = interview.status === "active";
+                  const isCompleted = interview.status === "completed";
+                  const isResuming = resumingId === interview.id;
+
+                  const inner = (
+                    <>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-white">{interview.job_title}</p>
+                        <p className="text-sm text-slate-400 capitalize flex items-center gap-2 flex-wrap">
+                          {interview.experience_level} · {interview.interview_type}
+                          {isActive && (
+                            <span className="inline-flex items-center gap-1 text-amber-400 text-xs font-medium">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                              In progress
+                            </span>
+                          )}
+                          {interview.scheduled_at && !isCompleted && (
+                            <span className="inline-flex items-center gap-1 text-indigo-400 text-xs">
+                              <Bell className="h-3 w-3" />
+                              {formatScheduledAt(interview.scheduled_at)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-3">
+                        {interview.report && (
+                          <span className="text-emerald-400 font-semibold">
+                            {formatScore(interview.report.overall_score)}
                           </span>
                         )}
-                      </p>
-                    </div>
-                    {interview.report && (
-                      <span className="text-emerald-400 font-semibold">
-                        {formatScore(interview.report.overall_score)}
-                      </span>
-                    )}
-                  </Link>
-                ))}
+                        {isActive && (
+                          <span className="text-xs font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded-full px-2.5 py-0.5">
+                            {isResuming ? "Resuming…" : "Resume →"}
+                          </span>
+                        )}
+                        {!isActive && !isCompleted && (
+                          <span className="text-xs text-slate-500">Setup</span>
+                        )}
+                      </div>
+                    </>
+                  );
+
+                  if (isActive) {
+                    return (
+                      <button
+                        key={interview.id}
+                        onClick={() => void handleResumeInterview(interview)}
+                        disabled={isResuming}
+                        className="w-full flex items-center justify-between p-4 rounded-lg border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors text-left disabled:opacity-60"
+                      >
+                        {inner}
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={interview.id}
+                      href={isCompleted ? `/interview/result/${interview.id}` : `/interview/setup`}
+                      className="flex items-center justify-between p-4 rounded-lg border border-slate-700/50 hover:bg-slate-800/50 transition-colors"
+                    >
+                      {inner}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </CardContent>
