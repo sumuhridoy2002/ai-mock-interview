@@ -40,7 +40,7 @@ function WorkCard({ item }: { item: RecentWorkItem }) {
   );
 }
 
-export function RecentWorkBanner({ title = "Latest work" }: { title?: string }) {
+export function RecentWorkBanner({ title = "All Platform Work" }: { title?: string }) {
   return (
     <section>
       <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">

@@ -133,7 +133,7 @@ export function SystemFeaturesView() {
         </p>
       </div>
 
-      <RecentWorkBanner title="Newest features" />
+      <RecentWorkBanner title="All Platform Work" />
 
       <div className="space-y-3">
         <div className="relative">

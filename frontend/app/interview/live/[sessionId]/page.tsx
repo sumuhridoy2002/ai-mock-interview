@@ -67,7 +67,7 @@ export default function LiveInterviewPage() {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
     }
-  }, [stream]);
+  }, [stream, mediaReady]);
 
   // ── Full-session recorder ─────────────────────────────────────────────────
   const { startSession: startFullRecording, stopSession: stopFullRecording } =

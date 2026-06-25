@@ -30,7 +30,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const handleSignOut = async () => {
-    await logout();
+    try {
+      await logout();
+    } catch {
+      // token is already cleared by logout()'s finally block
+    }
     router.push("/login");
   };
 
