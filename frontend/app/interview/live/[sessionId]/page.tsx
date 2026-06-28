@@ -76,7 +76,7 @@ export default function LiveInterviewPage() {
 
   // ── Per-answer snapshot capture (every 15s, no cv2 needed) ──────────────
   const [isRecordingActive, setIsRecordingActive] = useState(false);
-  const { getAndClear: getSnapshots } = useSnapshotCapture(videoRef, isRecordingActive, 15);
+  const { getAndClear: getSnapshots } = useSnapshotCapture(videoRef, isRecordingActive, 10);
 
   // Start full-session recording as soon as media is ready
   useEffect(() => {
@@ -145,28 +145,27 @@ export default function LiveInterviewPage() {
           throw new Error("Failed to submit answer.");
         }
 
-        // Upload snapshots captured during this answer (fire-and-forget)
+        const answerData = await response.json();
+        const answerId = answerData?.answer_id as number | undefined;
+
+        // Upload snapshots captured during this answer
         const snapshots = getSnapshots();
-        if (snapshots.length > 0) {
+        if (answerId && snapshots.length > 0) {
+          const snapForm = new FormData();
+          snapshots.forEach((blob, i) =>
+            snapForm.append("snapshots[]", blob, `snap_${i}.jpg`)
+          );
           try {
-            const answerId = (await response.json())?.answer_id;
-            if (answerId) {
-              const snapForm = new FormData();
-              snapshots.forEach((blob, i) =>
-                snapForm.append("snapshots", blob, `snap_${i}.jpg`)
-              );
-              if (question?.question) snapForm.append("question", question.question);
-              void fetch(
-                `${API_URL}/interviews/${interviewId}/answers/${answerId}/snapshots`,
-                {
-                  method: "POST",
-                  headers: { Authorization: `Bearer ${getToken()}`, Accept: "application/json" },
-                  body: snapForm,
-                }
-              );
-            }
+            await fetch(
+              `${API_URL}/interviews/${interviewId}/answers/${answerId}/snapshots`,
+              {
+                method: "POST",
+                headers: { Authorization: `Bearer ${getToken()}`, Accept: "application/json" },
+                body: snapForm,
+              }
+            );
           } catch {
-            // non-critical
+            // non-critical — gallery may be missing this answer's photos
           }
         }
 
@@ -177,7 +176,7 @@ export default function LiveInterviewPage() {
         setSubmitting(false);
       }
     },
-    [question, interviewId, markAwaitingNextQuestion]
+    [question, interviewId, markAwaitingNextQuestion, getSnapshots]
   );
 
   const {

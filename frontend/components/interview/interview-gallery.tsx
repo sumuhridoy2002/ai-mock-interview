@@ -110,7 +110,6 @@ function QuestionSnapGroup({ interviewId, q }: { interviewId: string | number; q
 }
 
 export function InterviewGallery({ interviewId, questions }: Props) {
-  const withSnaps = questions.filter((q) => q.snapshotCount > 0);
   const totalSnaps = questions.reduce((s, q) => s + q.snapshotCount, 0);
 
   if (questions.length === 0) {
@@ -125,7 +124,9 @@ export function InterviewGallery({ interviewId, questions }: Props) {
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-slate-400 text-sm mb-4">
         <Camera className="h-4 w-4" />
-        {totalSnaps} snapshot{totalSnaps !== 1 ? "s" : ""} captured across {withSnaps.length} answer{withSnaps.length !== 1 ? "s" : ""}
+        {totalSnaps > 0
+          ? `${totalSnaps} snapshot${totalSnaps !== 1 ? "s" : ""} across ${questions.length} question${questions.length !== 1 ? "s" : ""}`
+          : `No snapshots stored for this interview (${questions.length} question${questions.length !== 1 ? "s" : ""})`}
       </div>
 
       <div className="space-y-8">

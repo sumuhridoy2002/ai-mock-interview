@@ -17,7 +17,10 @@ export interface AggregateBehavior {
   avg_head_stability: number;
   avg_blink_rate: number;
   emotion_distribution?: Record<string, number>;
+  coaching_narrative?: string;
   questions_analyzed: number;
+  snapshots_analyzed?: number;
+  frames_analyzed?: number;
 }
 
 function ScoreBar({ value, color }: { value: number; color: string }) {
@@ -132,7 +135,9 @@ export function AggregateBehaviorCard({ summary }: { summary: AggregateBehavior 
         <Activity className="h-5 w-5 text-purple-400" />
         <h3 className="text-white font-semibold">Body Language & Presence</h3>
         <span className="text-xs text-slate-500 ml-auto">
-          across {summary.questions_analyzed} question{summary.questions_analyzed !== 1 ? "s" : ""}
+          {summary.snapshots_analyzed
+            ? `${summary.snapshots_analyzed} snapshots`
+            : `${summary.questions_analyzed} answer${summary.questions_analyzed !== 1 ? "s" : ""}`}
         </span>
       </div>
 
@@ -164,7 +169,19 @@ export function AggregateBehaviorCard({ summary }: { summary: AggregateBehavior 
 
       <div className="grid grid-cols-2 gap-4 text-xs text-slate-400">
         <p>Blink rate: <span className="text-white">{summary.avg_blink_rate} bpm</span> <span className="text-slate-600">(normal 12–20)</span></p>
+        {summary.frames_analyzed ? (
+          <p>Frames analysed: <span className="text-white">{summary.frames_analyzed}</span></p>
+        ) : null}
       </div>
+
+      {summary.coaching_narrative && (
+        <div className="rounded-md bg-purple-950/30 border border-purple-500/20 p-3">
+          <p className="text-[10px] text-purple-300 uppercase tracking-wide mb-1 font-medium">
+            Coaching summary
+          </p>
+          <p className="text-sm text-slate-300 leading-relaxed">{summary.coaching_narrative}</p>
+        </div>
+      )}
     </div>
   );
 }

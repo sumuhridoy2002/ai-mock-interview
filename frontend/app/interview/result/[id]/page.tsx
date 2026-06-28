@@ -131,6 +131,35 @@ export default function InterviewResultPage() {
     };
   }, [recordingBlobUrl]);
 
+  // Poll until post-interview snapshot analysis finishes
+  useEffect(() => {
+    if (!interviewId || !report || report.behavior_summary) return;
+
+    let cancelled = false;
+    let attempts = 0;
+
+    const poll = async () => {
+      if (cancelled || attempts >= 20) return;
+      attempts += 1;
+      try {
+        const data = await api<ReportData>(`/interviews/${interviewId}/report`);
+        if (!cancelled && data.behavior_summary) {
+          setReport(data);
+          return;
+        }
+      } catch {
+        // keep polling
+      }
+      if (!cancelled) setTimeout(poll, 4000);
+    };
+
+    const timer = setTimeout(poll, 4000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [interviewId, report]);
+
   const questionReviews = report?.report?.question_reviews ?? [];
 
   const galleryQuestions = questionReviews

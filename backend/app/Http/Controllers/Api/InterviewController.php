@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAnswerRequest;
 use App\Http\Requests\StoreInterviewRequest;
 use App\Http\Requests\StoreRecordingRequest;
-use App\Jobs\AnalyzeInterviewSnapshotsJob;
 use App\Jobs\EvaluateAnswerJob;
 use App\Jobs\GenerateQuestionJob;
 use App\Jobs\GenerateReportJob;
@@ -238,9 +237,6 @@ class InterviewController extends Controller
         $this->authorize('update', $interview);
 
         $this->interviewService->complete($interview);
-
-        // Analyse all snapshots from all answers together after the interview ends
-        AnalyzeInterviewSnapshotsJob::dispatch($interview);
 
         return response()->json(['status' => 'generating_report']);
     }

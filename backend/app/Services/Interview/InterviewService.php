@@ -3,6 +3,7 @@
 namespace App\Services\Interview;
 
 use App\Events\InterviewCompleted;
+use App\Jobs\AnalyzeInterviewSnapshotsJob;
 use App\Jobs\AnalyzeJobDescriptionJob;
 use App\Jobs\GenerateQuestionJob;
 use App\Jobs\GenerateReportJob;
@@ -166,6 +167,9 @@ class InterviewService
             if (! $interview->report) {
                 GenerateReportJob::dispatchSync($interview->fresh());
             }
+            if (! $interview->report?->behavior_summary) {
+                AnalyzeInterviewSnapshotsJob::dispatch($interview->fresh());
+            }
 
             return;
         }
@@ -178,6 +182,7 @@ class InterviewService
         $interview->update(['status' => 'completed']);
 
         GenerateReportJob::dispatchSync($interview->fresh());
+        AnalyzeInterviewSnapshotsJob::dispatch($interview->fresh());
 
         // Bump the user's completed-interview counter in their memory profile
         $user = $interview->user;

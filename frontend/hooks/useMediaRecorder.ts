@@ -503,6 +503,25 @@ export function useFullSessionRecorder(stream: MediaStream | null): FullSessionR
   return { startSession, stopSession };
 }
 
+function captureFrame(video: HTMLVideoElement): Blob | null {
+  if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+    return null;
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+  const parts = dataUrl.split(",");
+  if (parts.length < 2) return null;
+  const binary = atob(parts[1]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: "image/jpeg" });
+}
+
 /**
  * Captures a JPEG snapshot from the live video stream every `intervalSeconds`
  * while `active` is true. Returns all collected snapshots when stopped.
@@ -510,49 +529,45 @@ export function useFullSessionRecorder(stream: MediaStream | null): FullSessionR
 export function useSnapshotCapture(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   active: boolean,
-  intervalSeconds: number = 15,
+  intervalSeconds: number = 10,
 ) {
   const snapshotsRef = useRef<Blob[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const capture = useCallback(() => {
     const video = videoRef.current;
-    if (!video || video.readyState < 2) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 320;
-    canvas.height = video.videoHeight || 240;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob((blob) => {
-      if (blob) snapshotsRef.current.push(blob);
-    }, "image/jpeg", 0.8);
+    if (!video) return;
+    const blob = captureFrame(video);
+    if (blob) snapshotsRef.current.push(blob);
   }, [videoRef]);
 
   useEffect(() => {
     if (active) {
       snapshotsRef.current = [];
-      capture(); // immediate first snapshot
+      // Delay first capture slightly so video frames are ready
+      const t = setTimeout(capture, 400);
       intervalRef.current = setInterval(capture, intervalSeconds * 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      return () => {
+        clearTimeout(t);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
     }
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
   }, [active, capture, intervalSeconds]);
 
   const getAndClear = useCallback((): Blob[] => {
+    // Final synchronous capture when recording stops
+    capture();
     const snaps = [...snapshotsRef.current];
     snapshotsRef.current = [];
     return snaps;
-  }, []);
+  }, [capture]);
 
   return { getAndClear };
 }
