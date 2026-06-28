@@ -422,7 +422,8 @@ export function useMediaRecorder(
     );
 
     const blobs = await Promise.all(sessions.map((session) => stopRecorderSession(session)));
-    browserTranscription.stop();
+    const finalTranscript =
+      browserTranscription.stop() || browserTranscription.liveTranscript.trim();
     sessionsRef.current = [];
 
     const videoIndex = sessions.findIndex((session) => session.kind === "video");
@@ -452,7 +453,7 @@ export function useMediaRecorder(
       videoFilename: `answer.${extensionForMime(videoMime)}`,
       audioFilename: `audio.${extensionForMime(audioMime)}`,
       durationSeconds: elapsedSeconds,
-      transcript: "",
+      transcript: finalTranscript,
     });
   }, [recording, clearTimer, browserTranscription]);
 

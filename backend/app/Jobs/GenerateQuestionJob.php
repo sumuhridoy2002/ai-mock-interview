@@ -42,8 +42,14 @@ class GenerateQuestionJob implements ShouldQueue
             return;
         }
 
+        $this->interview->refresh();
+
+        // Do not create a second unanswered question if one already exists.
+        if ($this->interview->questions()->whereDoesntHave('answer')->exists()) {
+            return;
+        }
+
         try {
-            $this->interview->refresh();
             $sequence = $interviewService->questionCount($this->interview) + 1;
 
             // Load cross-interview user memory (mastered questions/topics from all past interviews)
@@ -427,7 +433,9 @@ class GenerateQuestionJob implements ShouldQueue
     {
         $text = preg_replace('/\s*\(follow-up\s*#\d+\)\s*$/i', '', trim($question)) ?? trim($question);
         $text = preg_replace('/\s*\(additional detail\s*#\d+\)\s*$/i', '', $text) ?? $text;
+        // Strip skip-retry prefix so duplicate detection matches the core question text.
+        $text = preg_replace('/^no problem — let\'s try a different topic\.\s*/iu', '', $text) ?? $text;
 
-        return mb_strtolower($text);
+        return mb_strtolower(trim($text));
     }
 }
