@@ -60,15 +60,6 @@ class AnalyzeSnapshotsJob implements ShouldQueue
             ]);
 
             throw $e;
-        } finally {
-            // Clean up stored snapshot files
-            foreach ($this->snapshotPaths as $path) {
-                try {
-                    Storage::disk('local')->delete($path);
-                } catch (\Throwable) {
-                    // ignore
-                }
-            }
         }
     }
 }

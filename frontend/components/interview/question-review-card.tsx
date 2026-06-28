@@ -3,6 +3,7 @@ import { MessageCircle } from "lucide-react";
 import { formatScore } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { BehaviorPanel, type BehaviorData } from "@/components/interview/behavior-card";
+import { AnswerSnapshotsGallery } from "@/components/interview/answer-snapshots-gallery";
 
 interface QuestionReview {
   sequence: number;
@@ -22,6 +23,8 @@ interface QuestionReview {
   needs_improvement?: boolean;
   transcript_quality_poor?: boolean;
   behavior?: BehaviorData | null;
+  answer_id?: number;
+  snapshot_count?: number;
 }
 
 const DIMENSION_LABELS: { key: keyof QuestionReview; label: string }[] = [
@@ -119,6 +122,14 @@ export function QuestionReviewCard({
 
       {review.behavior && (
         <BehaviorPanel behavior={review.behavior} />
+      )}
+
+      {review.answer_id && (review.snapshot_count ?? 0) > 0 && (
+        <AnswerSnapshotsGallery
+          interviewId={interviewId}
+          answerId={review.answer_id}
+          snapshotCount={review.snapshot_count!}
+        />
       )}
 
       <div className="pt-1">

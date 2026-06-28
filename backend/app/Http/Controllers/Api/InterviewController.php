@@ -276,12 +276,35 @@ class InterviewController extends Controller
             ? url('/api/v1/interviews/'.$interview->id.'/recording')
             : null;
 
+        // Enrich question_reviews with answer_id and snapshot_count
+        $reportJson = $report->report_json;
+        if (! empty($reportJson['question_reviews'])) {
+            $answerMap = $interview->questions()
+                ->with('answer')
+                ->get()
+                ->keyBy('sequence')
+                ->map(fn ($q) => $q->answer);
+
+            $reportJson['question_reviews'] = array_map(function ($review) use ($answerMap, $interview) {
+                $seq = $review['sequence'] ?? null;
+                $answer = $seq ? ($answerMap[$seq] ?? null) : null;
+                if ($answer) {
+                    $review['answer_id'] = $answer->id;
+                    $snapshotDir = 'interviews/'.$interview->id.'/snapshots/'.$answer->id;
+                    $review['snapshot_count'] = count(
+                        Storage::disk('local')->files($snapshotDir)
+                    );
+                }
+                return $review;
+            }, $reportJson['question_reviews']);
+        }
+
         return response()->json([
-            'report' => $report->report_json,
-            'overall_score' => $report->overall_score,
+            'report'                => $reportJson,
+            'overall_score'         => $report->overall_score,
             'hiring_recommendation' => $report->hiring_recommendation,
-            'pdf_url' => $pdfUrl,
-            'recording_url' => $recordingUrl,
+            'pdf_url'               => $pdfUrl,
+            'recording_url'         => $recordingUrl,
         ]);
     }
 
@@ -497,6 +520,56 @@ class InterviewController extends Controller
         AnalyzeSnapshotsJob::dispatch($answer, $paths, $question);
 
         return response()->json(['status' => 'processing', 'snapshots' => count($paths)], 202);
+    }
+
+    /**
+     * List all snapshot filenames for a given answer.
+     * GET /interviews/{interview}/answers/{answerId}/snapshots
+     */
+    public function listSnapshots(Request $request, Interview $interview, int $answerId): JsonResponse
+    {
+        $this->authorize('view', $interview);
+
+        $dir = 'interviews/'.$interview->id.'/snapshots/'.$answerId;
+        $files = Storage::disk('local')->exists($dir)
+            ? Storage::disk('local')->files($dir)
+            : [];
+
+        $urls = array_map(
+            fn ($path) => url('/api/v1/interviews/'.$interview->id.'/answers/'.$answerId.'/snapshots/'.basename($path)),
+            $files
+        );
+
+        return response()->json(['snapshots' => array_values($urls)]);
+    }
+
+    /**
+     * Stream a single snapshot image file (authenticated).
+     * GET /interviews/{interview}/answers/{answerId}/snapshots/{filename}
+     */
+    public function streamSnapshot(Request $request, Interview $interview, int $answerId, string $filename): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\JsonResponse
+    {
+        $this->authorize('view', $interview);
+
+        // Sanitise filename — no path traversal
+        $filename = basename($filename);
+        $path = 'interviews/'.$interview->id.'/snapshots/'.$answerId.'/'.$filename;
+
+        if (! Storage::disk('local')->exists($path)) {
+            return response()->json(['message' => 'Snapshot not found.'], 404);
+        }
+
+        $mime = str_ends_with($filename, '.png') ? 'image/png' : 'image/jpeg';
+
+        return response()->stream(function () use ($path) {
+            $stream = Storage::disk('local')->readStream($path);
+            if ($stream === null) return;
+            fpassthru($stream);
+            fclose($stream);
+        }, 200, [
+            'Content-Type'  => $mime,
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
     }
 
     public function downloadPdf(Request $request, Interview $interview)

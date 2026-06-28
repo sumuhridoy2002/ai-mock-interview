@@ -39,6 +39,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/interviews/{interview}/recording', [InterviewController::class, 'storeRecording'])->middleware('throttle:5,1');
         Route::get('/interviews/{interview}/recording', [InterviewController::class, 'streamRecording']);
         Route::post('/interviews/{interview}/answers/{answerId}/snapshots', [InterviewController::class, 'submitSnapshots'])->middleware('throttle:30,1');
+        Route::get('/interviews/{interview}/answers/{answerId}/snapshots', [InterviewController::class, 'listSnapshots']);
+        Route::get('/interviews/{interview}/answers/{answerId}/snapshots/{filename}', [InterviewController::class, 'streamSnapshot']);
         Route::get('/interviews/{interview}/report', [InterviewController::class, 'report']);
         Route::get('/interviews/{interview}/questions/{sequence}/explain', [InterviewController::class, 'explainQuestion']);
         Route::post('/interviews/{interview}/report/regenerate', [InterviewController::class, 'regenerateReport']);
