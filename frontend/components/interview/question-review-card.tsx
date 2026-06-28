@@ -3,7 +3,6 @@ import { MessageCircle } from "lucide-react";
 import { formatScore } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { BehaviorPanel, type BehaviorData } from "@/components/interview/behavior-card";
-import { AnswerSnapshotsGallery } from "@/components/interview/answer-snapshots-gallery";
 
 interface QuestionReview {
   sequence: number;
@@ -79,17 +78,19 @@ export function QuestionReviewCard({
         </div>
       )}
 
-      {review.your_answer && (
-        <div>
-          <p className="text-xs text-slate-500 mb-1">Your answer</p>
-          {review.transcript_quality_poor && (
-            <p className="text-xs text-slate-500 mb-1 italic">
-              Captured via speech-to-text — some words may be inaccurate.
-            </p>
-          )}
+      <div>
+        <p className="text-xs text-slate-500 mb-1">Your answer</p>
+        {review.transcript_quality_poor && (
+          <p className="text-xs text-amber-500/80 mb-1 italic">
+            Captured via speech-to-text — some words may be inaccurate.
+          </p>
+        )}
+        {review.your_answer ? (
           <p className="text-sm text-slate-300 italic">&ldquo;{review.your_answer}&rdquo;</p>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-slate-600 italic">No transcript recorded for this answer.</p>
+        )}
+      </div>
 
       {review.strengths?.length > 0 && (
         <div>
@@ -122,14 +123,6 @@ export function QuestionReviewCard({
 
       {review.behavior && (
         <BehaviorPanel behavior={review.behavior} />
-      )}
-
-      {review.answer_id && (review.snapshot_count ?? 0) > 0 && (
-        <AnswerSnapshotsGallery
-          interviewId={interviewId}
-          answerId={review.answer_id}
-          snapshotCount={review.snapshot_count!}
-        />
       )}
 
       <div className="pt-1">
