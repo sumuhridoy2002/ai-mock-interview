@@ -241,6 +241,39 @@ class AiGatewayService
         }
     }
 
+    /**
+     * Send an array of JPEG snapshot file paths to the AI snapshot analysis endpoint.
+     *
+     * @param  string[]  $storagePaths  Paths on the `local` disk
+     * @param  string    $question      Interview question (for narrative context)
+     */
+    public function analyzeSnapshots(array $storagePaths, string $question = ''): array
+    {
+        $timeout = (int) config('ai.timeout', 120);
+        $request = Http::timeout($timeout)->withHeaders($this->headers());
+
+        foreach ($storagePaths as $i => $path) {
+            $abs = Storage::disk('local')->path($path);
+            if (is_readable($abs)) {
+                $request = $request->attach("snapshots", file_get_contents($abs), "snap_{$i}.jpg");
+            }
+        }
+
+        try {
+            $response = $request->post(config('ai.service_url').'/pipeline/vision/analyze-snapshots', [
+                'question'           => $question,
+                'generate_narrative' => 'true',
+            ]);
+
+            $response->throw();
+
+            return $response->json();
+        } catch (RequestException|ConnectionException $e) {
+            Log::error('AI snapshot analysis failed', ['message' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
     public function processVoice(array $payload, $audioFile): array
     {
         $response = Http::timeout(config('ai.timeout'))

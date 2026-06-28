@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAnswerRequest;
 use App\Http\Requests\StoreInterviewRequest;
 use App\Http\Requests\StoreRecordingRequest;
+use App\Jobs\AnalyzeSnapshotsJob;
 use App\Jobs\EvaluateAnswerJob;
 use App\Jobs\GenerateQuestionJob;
 use App\Jobs\GenerateReportJob;
 use App\Models\Interview;
+use App\Models\InterviewAnswer;
 use App\Models\InterviewQuestion;
 use App\Services\Interview\AiGatewayService;
 use App\Services\Interview\EvaluationService;
@@ -188,32 +190,6 @@ class InterviewController extends Controller
             );
         }
 
-        $transcribeContext = [
-            'job_title'       => $interview->job_title ?? '',
-            'required_skills' => $interview->job_analysis['required_skills'] ?? [],
-            'question'        => $question->question_text ?? '',
-        ];
-
-        if (! $transcript && $request->hasFile('audio')) {
-            try {
-                $transcript = $this->aiGateway->transcribeAudio($request->file('audio'), $transcribeContext);
-            } catch (\Throwable $e) {
-                Log::warning('Inline transcription failed; job will retry from stored file', [
-                    'interview_id' => $interview->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        } elseif (! $transcript && $request->hasFile('video') && ! $request->hasFile('audio')) {
-            try {
-                $transcript = $this->aiGateway->transcribeAudio($request->file('video'), $transcribeContext);
-            } catch (\Throwable $e) {
-                Log::warning('Inline video transcription failed; job will retry from stored file', [
-                    'interview_id' => $interview->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
         $answer = $this->interviewService->submitAnswer(
             $interview,
             $question,
@@ -225,7 +201,7 @@ class InterviewController extends Controller
         );
 
         if ($interview->session && ! $answer->score) {
-            EvaluateAnswerJob::dispatchSync($interview, $interview->session, $answer);
+            EvaluateAnswerJob::dispatch($interview, $interview->session, $answer);
         }
 
         return response()->json([
@@ -492,6 +468,35 @@ class InterviewController extends Controller
             'Content-Length' => $size,
             'Content-Disposition' => 'inline; filename="interview-recording.webm"',
         ]);
+    }
+
+    /**
+     * Accept snapshot images captured every ~15 s during an answer recording.
+     * Stores the images and queues AnalyzeSnapshotsJob (no cv2 required).
+     */
+    public function submitSnapshots(Request $request, Interview $interview, int $answerId): JsonResponse
+    {
+        $this->authorize('update', $interview);
+
+        $answer = InterviewAnswer::where('id', $answerId)
+            ->whereHas('question', fn ($q) => $q->where('interview_id', $interview->id))
+            ->firstOrFail();
+
+        $request->validate([
+            'snapshots'   => 'required|array|min:1|max:30',
+            'snapshots.*' => 'required|file|mimes:jpg,jpeg,png|max:2048',
+        ]);
+
+        $paths = [];
+        foreach ($request->file('snapshots') as $file) {
+            $paths[] = $file->store('interviews/'.$interview->id.'/snapshots/'.$answerId, 'local');
+        }
+
+        $question = $answer->question?->question ?? '';
+
+        AnalyzeSnapshotsJob::dispatch($answer, $paths, $question);
+
+        return response()->json(['status' => 'processing', 'snapshots' => count($paths)], 202);
     }
 
     public function downloadPdf(Request $request, Interview $interview)

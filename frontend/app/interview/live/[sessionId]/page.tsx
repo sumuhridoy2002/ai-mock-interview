@@ -12,6 +12,7 @@ import {
   useMediaStream,
   useMediaRecorder,
   useFullSessionRecorder,
+  useSnapshotCapture,
   useSpeechSynthesis,
 } from "@/hooks/useMediaRecorder";
 import { api, API_URL } from "@/lib/api";
@@ -72,6 +73,10 @@ export default function LiveInterviewPage() {
   // ── Full-session recorder ─────────────────────────────────────────────────
   const { startSession: startFullRecording, stopSession: stopFullRecording } =
     useFullSessionRecorder(stream);
+
+  // ── Per-answer snapshot capture (every 15s, no cv2 needed) ──────────────
+  const [isRecordingActive, setIsRecordingActive] = useState(false);
+  const { getAndClear: getSnapshots } = useSnapshotCapture(videoRef, isRecordingActive, 15);
 
   // Start full-session recording as soon as media is ready
   useEffect(() => {
@@ -145,6 +150,31 @@ export default function LiveInterviewPage() {
           throw new Error("Failed to submit answer.");
         }
 
+        // Upload snapshots captured during this answer (fire-and-forget)
+        const snapshots = getSnapshots();
+        if (snapshots.length > 0) {
+          try {
+            const answerId = (await response.json())?.answer_id;
+            if (answerId) {
+              const snapForm = new FormData();
+              snapshots.forEach((blob, i) =>
+                snapForm.append("snapshots", blob, `snap_${i}.jpg`)
+              );
+              if (question?.question) snapForm.append("question", question.question);
+              void fetch(
+                `${API_URL}/interviews/${interviewId}/answers/${answerId}/snapshots`,
+                {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${getToken()}`, Accept: "application/json" },
+                  body: snapForm,
+                }
+              );
+            }
+          } catch {
+            // non-critical
+          }
+        }
+
         markAwaitingNextQuestion();
       } catch {
         setSubmitError("Could not submit your answer. Please try recording again.");
@@ -164,6 +194,11 @@ export default function LiveInterviewPage() {
     cancelRecording,
     error: recorderError,
   } = useMediaRecorder(stream, submitAnswer);
+
+  // Keep snapshot capture in sync with recording state
+  useEffect(() => {
+    setIsRecordingActive(recording);
+  }, [recording]);
 
   async function handleEnableMedia() {
     const media = await startMedia();

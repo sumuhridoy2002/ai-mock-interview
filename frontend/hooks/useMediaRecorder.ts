@@ -502,6 +502,60 @@ export function useFullSessionRecorder(stream: MediaStream | null): FullSessionR
   return { startSession, stopSession };
 }
 
+/**
+ * Captures a JPEG snapshot from the live video stream every `intervalSeconds`
+ * while `active` is true. Returns all collected snapshots when stopped.
+ */
+export function useSnapshotCapture(
+  videoRef: React.RefObject<HTMLVideoElement | null>,
+  active: boolean,
+  intervalSeconds: number = 15,
+) {
+  const snapshotsRef = useRef<Blob[]>([]);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const capture = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || video.readyState < 2) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 320;
+    canvas.height = video.videoHeight || 240;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (blob) snapshotsRef.current.push(blob);
+    }, "image/jpeg", 0.8);
+  }, [videoRef]);
+
+  useEffect(() => {
+    if (active) {
+      snapshotsRef.current = [];
+      capture(); // immediate first snapshot
+      intervalRef.current = setInterval(capture, intervalSeconds * 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [active, capture, intervalSeconds]);
+
+  const getAndClear = useCallback((): Blob[] => {
+    const snaps = [...snapshotsRef.current];
+    snapshotsRef.current = [];
+    return snaps;
+  }, []);
+
+  return { getAndClear };
+}
+
 export function useSpeechSynthesis() {
   const speak = useCallback((text: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;

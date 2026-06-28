@@ -13,7 +13,7 @@ from app.agents.job_analyzer import analyze_job
 from app.agents.question_generator import generate_question
 from app.agents.report_generator import generate_report
 from app.pipelines.transcribe import transcribe_audio
-from app.pipelines.vision import analyze_video
+from app.pipelines.vision import analyze_video, analyze_images
 from app.pipelines.voice import process_voice
 
 app = FastAPI(title="Mock Interview AI Service", version="1.0.0")
@@ -195,6 +195,22 @@ async def vision_analyze(
         question=question,
         generate_narrative=want_narrative,
     )
+
+
+@app.post("/pipeline/vision/analyze-snapshots", dependencies=[Depends(verify_secret)] if AI_SECRET else [])
+async def vision_analyze_snapshots(
+    snapshots: list[UploadFile] = File(...),
+    question: str = Form(""),
+    generate_narrative: str = Form("true"),
+):
+    """
+    Analyse a list of JPEG/PNG snapshot images (captured ~every 15s during recording).
+    No cv2 required — uses PIL + mediapipe static image mode.
+    Returns the same behavioural metrics as /pipeline/vision/analyze.
+    """
+    images: list[bytes] = [await s.read() for s in snapshots]
+    want_narrative = generate_narrative.lower() not in ("false", "0", "no")
+    return await analyze_images(images, question=question, generate_narrative=want_narrative)
 
 
 @app.post("/pipeline/voice/process", dependencies=[Depends(verify_secret)] if AI_SECRET else [])

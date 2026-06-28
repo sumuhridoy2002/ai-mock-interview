@@ -279,6 +279,114 @@ def _derive_scores(
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+async def analyze_images(
+    images: list[bytes],
+    question: str = "",
+    generate_narrative: bool = True,
+) -> dict[str, Any]:
+    """
+    Analyse a list of JPEG/PNG snapshot bytes captured during recording.
+
+    No cv2 required — uses PIL + mediapipe static image mode.
+    This is the preferred path when snapshots are available.
+    """
+    if USE_MOCK or not images:
+        return _mock_result(question)
+
+    try:
+        import mediapipe as mp
+        import numpy as np
+        from PIL import Image as PILImage
+
+        face_mesh = mp.solutions.face_mesh.FaceMesh(
+            static_image_mode=True,
+            max_num_faces=1,
+            refine_landmarks=True,
+            min_detection_confidence=0.5,
+        )
+        emotion_pipe = _get_emotion_pipeline()
+
+        ear_values: list[float] = []
+        yaw_values: list[float] = []
+        pitch_values: list[float] = []
+        emotion_accumulator: dict[str, list[float]] = {}
+        frames_analyzed = 0
+
+        for img_bytes in images:
+            try:
+                pil_img = PILImage.open(io.BytesIO(img_bytes)).convert("RGB")
+                rgb_arr = np.array(pil_img)
+                h, w = rgb_arr.shape[:2]
+
+                results = face_mesh.process(rgb_arr)
+                if not results.multi_face_landmarks:
+                    continue
+
+                lms = results.multi_face_landmarks[0].landmark
+                ear_values.append(_ear(lms, w, h))
+                yaw, pitch = _head_pose(lms, w, h)
+                yaw_values.append(yaw)
+                pitch_values.append(pitch)
+
+                # Emotion on PIL image directly
+                preds = emotion_pipe(pil_img)
+                if preds:
+                    for p in preds:
+                        label = p["label"].lower()
+                        emotion_accumulator.setdefault(label, []).append(round(p["score"], 4))
+
+                frames_analyzed += 1
+            except Exception as e:
+                logger.debug("Snapshot analysis error: %s", e)
+                continue
+
+        face_mesh.close()
+
+        if frames_analyzed == 0:
+            logger.warning("No faces detected in snapshots — returning mock")
+            return _mock_result(question)
+
+        ear_arr = np.array(ear_values)
+        blinks = int(np.sum(np.diff((ear_arr < 0.21).astype(int)) == 1))
+        duration_sec = max(1, len(images) * 15)  # ~15s between snapshots
+        blink_rate = round(blinks / duration_sec * 60, 1)
+
+        eye_contact_ratio = round(float(np.mean(np.array(yaw_values) < 0.08)), 3)
+        head_stability = round(float(1.0 - min(np.std(yaw_values) + np.std(pitch_values), 1.0)), 3)
+
+        emotion_dist: dict[str, float] = {
+            label: round(float(np.mean(probs)), 4)
+            for label, probs in emotion_accumulator.items()
+        }
+
+        confidence, nervousness = _derive_scores(
+            emotion_dist, eye_contact_ratio, head_stability, blink_rate, {}
+        )
+
+        coaching_narrative = ""
+        if generate_narrative:
+            coaching_narrative = _generate_narrative(
+                confidence, nervousness, eye_contact_ratio,
+                head_stability, blink_rate, emotion_dist, {}, question
+            )
+
+        return {
+            "confidence": confidence,
+            "nervousness": nervousness,
+            "eye_contact_ratio": eye_contact_ratio,
+            "head_stability": head_stability,
+            "blink_rate": blink_rate,
+            "emotion_distribution": emotion_dist,
+            "prosody": {},
+            "coaching_narrative": coaching_narrative,
+            "frames_analyzed": frames_analyzed,
+            "mock": False,
+        }
+    except Exception as e:
+        logger.error("analyze_images failed: %s", e)
+        return _mock_result(question)
+
+
 async def analyze_video(
     video_bytes: bytes,
     filename: str = "answer.webm",
@@ -291,6 +399,12 @@ async def analyze_video(
     Returns a dict suitable for storing in answer_behaviors.
     """
     if USE_MOCK:
+        return _mock_result(question)
+
+    try:
+        import cv2  # noqa: F401
+    except ImportError:
+        logger.warning("cv2 not available — returning mock result for video analysis")
         return _mock_result(question)
 
     import cv2
