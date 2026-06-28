@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAnswerRequest;
 use App\Http\Requests\StoreInterviewRequest;
 use App\Http\Requests\StoreRecordingRequest;
-use App\Jobs\AnalyzeSnapshotsJob;
+use App\Jobs\AnalyzeInterviewSnapshotsJob;
 use App\Jobs\EvaluateAnswerJob;
 use App\Jobs\GenerateQuestionJob;
 use App\Jobs\GenerateReportJob;
@@ -255,6 +255,9 @@ class InterviewController extends Controller
 
         $this->interviewService->complete($interview);
 
+        // Analyse all snapshots from all answers together after the interview ends
+        AnalyzeInterviewSnapshotsJob::dispatch($interview);
+
         return response()->json(['status' => 'generating_report']);
     }
 
@@ -305,6 +308,7 @@ class InterviewController extends Controller
             'hiring_recommendation' => $report->hiring_recommendation,
             'pdf_url'               => $pdfUrl,
             'recording_url'         => $recordingUrl,
+            'behavior_summary'      => $report->behavior_summary,
         ]);
     }
 
@@ -515,11 +519,8 @@ class InterviewController extends Controller
             $paths[] = $file->store('interviews/'.$interview->id.'/snapshots/'.$answerId, 'local');
         }
 
-        $question = $answer->question?->question ?? '';
-
-        AnalyzeSnapshotsJob::dispatch($answer, $paths, $question);
-
-        return response()->json(['status' => 'processing', 'snapshots' => count($paths)], 202);
+        // Snapshots are stored for batch analysis at interview completion — no per-answer job dispatched here.
+        return response()->json(['status' => 'stored', 'snapshots' => count($paths)], 202);
     }
 
     /**

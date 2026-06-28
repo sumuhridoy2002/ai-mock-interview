@@ -17,16 +17,18 @@ class InterviewReport extends Model
         'hiring_recommendation',
         'pdf_path',
         'report_json',
+        'behavior_summary',
     ];
 
     protected function casts(): array
     {
         return [
-            'category_scores' => 'array',
-            'strengths' => 'array',
-            'weaknesses' => 'array',
+            'category_scores'  => 'array',
+            'strengths'        => 'array',
+            'weaknesses'       => 'array',
             'improvement_areas' => 'array',
-            'report_json' => 'array',
+            'report_json'      => 'array',
+            'behavior_summary' => 'array',
         ];
     }
 
