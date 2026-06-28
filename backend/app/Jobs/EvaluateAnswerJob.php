@@ -7,7 +7,6 @@ use App\Models\Interview;
 use App\Models\InterviewAnswer;
 use App\Models\InterviewScore;
 use App\Models\InterviewSession;
-use App\Jobs\AnalyzeBehaviorJob;
 use App\Services\Interview\AiGatewayService;
 use App\Services\Interview\EvaluationService;
 use App\Services\Interview\InterviewService;
@@ -28,9 +27,9 @@ class EvaluateAnswerJob implements ShouldQueue
     ) {}
 
     public function handle(
-        AiGatewayService $aiGateway,
         InterviewService $interviewService,
         EvaluationService $evaluationService,
+        AiGatewayService $aiGateway,
         TranscriptCleaner $transcriptCleaner,
         MasteryService $masteryService,
     ): void {
@@ -41,38 +40,22 @@ class EvaluateAnswerJob implements ShouldQueue
         try {
             $question = $this->answer->question;
             $transcript = trim($this->answer->transcript ?? '');
-            $transcribeContext = [
-                'job_title'       => $this->interview->job_title ?? '',
-                'required_skills' => $this->interview->job_analysis['required_skills'] ?? [],
-                'question'        => $question?->question_text ?? '',
-            ];
 
-            if ($transcript === '' && $this->answer->audio_path) {
-                $filename = basename($this->answer->audio_path);
-                $transcript = $aiGateway->transcribeStoredFile($this->answer->audio_path, $filename, $transcribeContext);
-
-                if ($transcript !== '') {
-                    $this->answer->update(['transcript' => $transcript]);
-                    Log::info('Transcribed answer from stored audio', [
-                        'answer_id' => $this->answer->id,
-                        'chars' => strlen($transcript),
-                    ]);
-                }
-            }
-
-            if ($transcript === '' && $this->answer->video_path) {
-                $filename = basename($this->answer->video_path);
-                $transcript = $aiGateway->transcribeStoredFile($this->answer->video_path, $filename, $transcribeContext);
-
-                if ($transcript !== '') {
-                    $this->answer->update(['transcript' => $transcript]);
-                }
-            }
-
+            // Transcript is provided by the frontend real-time STT — no Whisper call needed.
             $cleaned = $transcriptCleaner->clean($transcript);
             $transcript = $cleaned['text'];
             if ($transcript !== ($this->answer->transcript ?? '')) {
                 $this->answer->update(['transcript' => $transcript]);
+            }
+
+            // Kick off next-question generation immediately after transcription — it
+            // only needs the transcript as context and can run while evaluation proceeds.
+            $this->interview->refresh();
+            if (
+                ! $interviewService->hasAnsweredAllQuestions($this->interview) &&
+                ! $interviewService->hasReachedQuestionLimit($this->interview)
+            ) {
+                GenerateQuestionJob::dispatch($this->interview, $this->session, $transcript);
             }
 
             $requiredSkills = $this->interview->job_analysis['required_skills'] ?? [];
@@ -145,32 +128,12 @@ class EvaluateAnswerJob implements ShouldQueue
                 $masteryService->recordAnswer($user, $this->interview, $this->answer, $score);
             }
 
-            // Dispatch behaviour analysis job if a video was recorded for this answer
-            $videoPath = $this->answer->video_path;
-            if ($videoPath) {
-                AnalyzeBehaviorJob::dispatch(
-                    $this->answer,
-                    $videoPath,
-                    $question?->question_text ?? '',
-                );
-            }
-
             event(new AnswerEvaluated($this->interview, $this->session, $this->answer, $score));
 
             $this->interview->refresh();
 
             if ($interviewService->hasAnsweredAllQuestions($this->interview)) {
                 $interviewService->complete($this->interview);
-
-                return;
-            }
-
-            if (! $interviewService->hasReachedQuestionLimit($this->interview)) {
-                GenerateQuestionJob::dispatchSync(
-                    $this->interview,
-                    $this->session,
-                    $transcript
-                );
             }
         } catch (\Throwable $e) {
             Log::error('EvaluateAnswerJob failed', [

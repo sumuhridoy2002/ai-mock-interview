@@ -171,33 +171,17 @@ class InterviewController extends Controller
             ->where('interview_id', $interview->id)
             ->firstOrFail();
 
-        $audioPath = null;
-        $videoPath = null;
-        $hasMedia = $request->hasFile('audio') || $request->hasFile('video');
-        $transcript = $hasMedia ? null : $request->input('transcript');
-
-        if ($request->hasFile('video')) {
-            $videoPath = $request->file('video')->store(
-                'interviews/'.$interview->id.'/video',
-                'local'
-            );
-        }
-
-        if ($request->hasFile('audio')) {
-            $audioPath = $request->file('audio')->store(
-                'interviews/'.$interview->id.'/audio',
-                'local'
-            );
-        }
+        // Transcript is provided by frontend real-time STT; no audio/video stored per-answer.
+        $transcript = $request->input('transcript');
 
         $answer = $this->interviewService->submitAnswer(
             $interview,
             $question,
             $transcript,
-            $audioPath,
+            null,  // audio_path
             $request->input('idempotency_key'),
             $request->integer('duration_seconds') ?: null,
-            $videoPath,
+            null,  // video_path
         );
 
         if ($interview->session && ! $answer->score) {

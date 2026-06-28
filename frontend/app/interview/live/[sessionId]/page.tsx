@@ -112,10 +112,6 @@ export default function LiveInterviewPage() {
 
   const submitAnswer = useCallback(
     async ({
-      videoBlob,
-      audioBlob,
-      videoFilename,
-      audioFilename,
       durationSeconds,
       transcript,
     }: {
@@ -132,9 +128,8 @@ export default function LiveInterviewPage() {
       const form = new FormData();
       form.append("question_id", String(question.question_id));
       form.append("idempotency_key", uuid());
-      form.append("video", videoBlob, videoFilename);
-      form.append("audio", audioBlob, audioFilename);
       form.append("duration_seconds", String(durationSeconds));
+      // Transcript comes from real-time browser STT — no audio upload needed
       if (transcript.trim()) {
         form.append("transcript", transcript.trim());
       }
