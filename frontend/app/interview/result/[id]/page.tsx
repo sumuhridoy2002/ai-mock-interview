@@ -148,14 +148,19 @@ export default function InterviewResultPage() {
     };
   }, [recordingBlobUrl]);
 
-  // Poll until post-interview snapshot analysis finishes
+  function reportHasSnapshotBehavior(data: ReportData): boolean {
+    const reviews = data.report?.question_reviews ?? [];
+    const withSnaps = reviews.filter((r) => (r.snapshot_count ?? 0) > 0);
+    if (withSnaps.length === 0) {
+      return true;
+    }
+    return withSnaps.every((r) => Boolean(r.snapshot_behavior));
+  }
+
+  // Poll until per-question snapshot behaviour is attached to the report payload
   useEffect(() => {
     if (!interviewId || !report) return;
-    const hasAnalysis = Boolean(
-      report.behavior_summary?.by_answer &&
-        Object.keys(report.behavior_summary.by_answer).length > 0
-    );
-    if (hasAnalysis) return;
+    if (reportHasSnapshotBehavior(report)) return;
 
     let cancelled = false;
     let attempts = 0;
@@ -165,11 +170,7 @@ export default function InterviewResultPage() {
       attempts += 1;
       try {
         const data = await api<ReportData>(`/interviews/${interviewId}/report`);
-        const ready = Boolean(
-          data.behavior_summary?.by_answer &&
-            Object.keys(data.behavior_summary.by_answer).length > 0
-        );
-        if (!cancelled && ready) {
+        if (!cancelled && reportHasSnapshotBehavior(data)) {
           setReport(data);
           return;
         }

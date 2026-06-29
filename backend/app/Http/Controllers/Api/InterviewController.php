@@ -13,6 +13,7 @@ use App\Jobs\GenerateReportJob;
 use App\Models\Interview;
 use App\Models\InterviewAnswer;
 use App\Models\InterviewQuestion;
+use App\Models\InterviewReport;
 use App\Services\Interview\AiGatewayService;
 use App\Services\Interview\EvaluationService;
 use App\Services\Interview\InterviewService;
@@ -252,6 +253,16 @@ class InterviewController extends Controller
             return response()->json(['message' => 'Report not ready.'], 404);
         }
 
+        // Run snapshot analysis synchronously if snapshots exist but results are missing
+        if ($this->snapshotsNeedAnalysis($interview, $report)) {
+            AnalyzeInterviewSnapshotsJob::dispatchSync($interview->fresh(), true);
+            $report = $interview->fresh()->report;
+        }
+
+        if (! $report) {
+            return response()->json(['message' => 'Report not ready.'], 404);
+        }
+
         $pdfUrl = $report->pdf_path
             ? url('/api/v1/interviews/'.$interview->id.'/report/pdf')
             : null;
@@ -269,7 +280,7 @@ class InterviewController extends Controller
                 ->keyBy('sequence')
                 ->map(fn ($q) => $q->answer);
 
-            $reportJson['question_reviews'] = array_map(function ($review) use ($answerMap, $interview) {
+            $reportJson['question_reviews'] = array_map(function ($review) use ($answerMap, $interview, $report) {
                 $seq = $review['sequence'] ?? null;
                 $answer = $seq ? ($answerMap[$seq] ?? null) : null;
                 if ($answer) {
@@ -278,7 +289,7 @@ class InterviewController extends Controller
                     $review['snapshot_count'] = count(
                         Storage::disk('local')->files($snapshotDir)
                     );
-                    $byAnswer = $report->behavior_summary['by_answer'] ?? [];
+                    $byAnswer = ($report->behavior_summary ?? [])['by_answer'] ?? [];
                     $review['snapshot_behavior'] = $byAnswer[(string) $answer->id] ?? null;
                 }
                 return $review;
@@ -565,6 +576,41 @@ class InterviewController extends Controller
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
             'Cache-Control'       => 'private, max-age=3600',
         ]);
+    }
+
+    private function snapshotsNeedAnalysis(Interview $interview, InterviewReport $report): bool
+    {
+        $dir = 'interviews/'.$interview->id.'/snapshots';
+        if (! Storage::disk('local')->exists($dir)) {
+            return false;
+        }
+
+        $allPaths = Storage::disk('local')->allFiles($dir);
+        if ($allPaths === []) {
+            return false;
+        }
+
+        $snapshotAnswerIds = [];
+        foreach ($allPaths as $path) {
+            $normalized = str_replace('\\', '/', $path);
+            if (preg_match('#interviews/\d+/snapshots/(\d+)/#', $normalized, $matches)) {
+                $snapshotAnswerIds[$matches[1]] = true;
+            }
+        }
+
+        if ($snapshotAnswerIds === []) {
+            return false;
+        }
+
+        $byAnswer = ($report->behavior_summary ?? [])['by_answer'] ?? [];
+
+        foreach (array_keys($snapshotAnswerIds) as $answerId) {
+            if (! isset($byAnswer[(string) $answerId])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function downloadPdf(Request $request, Interview $interview)

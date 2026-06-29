@@ -161,12 +161,12 @@ function QuestionSnapGroup({ interviewId, q }: { interviewId: string | number; q
         <p className="text-sm text-slate-300">{q.question}</p>
       </div>
 
-      {behaviorForPanel && q.snapshotBehavior?.frames_analyzed ? (
+      {behaviorForPanel ? (
         <BehaviorPanel behavior={behaviorForPanel} />
       ) : q.snapshotCount > 0 && !loading ? (
         <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
-          <Brain className="h-3.5 w-3.5" />
-          Behaviour analysis pending — refresh in a moment
+          <Brain className="h-3.5 w-3.5 animate-pulse" />
+          Behaviour analysis pending — refresh the page in a moment
         </div>
       ) : null}
 
