@@ -495,8 +495,12 @@ class InterviewController extends Controller
         ]);
 
         $paths = [];
-        foreach ($request->file('snapshots') as $file) {
-            $paths[] = $file->store('interviews/'.$interview->id.'/snapshots/'.$answerId, 'local');
+        foreach ($request->file('snapshots') as $i => $file) {
+            $paths[] = $file->storeAs(
+                'interviews/'.$interview->id.'/snapshots/'.$answerId,
+                'snap_'.$i.'_'.time().'.jpg',
+                'local'
+            );
         }
 
         // Snapshots are stored for batch analysis at interview completion — no per-answer job dispatched here.
@@ -516,12 +520,9 @@ class InterviewController extends Controller
             ? Storage::disk('local')->files($dir)
             : [];
 
-        $urls = array_map(
-            fn ($path) => url('/api/v1/interviews/'.$interview->id.'/answers/'.$answerId.'/snapshots/'.basename($path)),
-            $files
-        );
+        $filenames = array_map('basename', $files);
 
-        return response()->json(['snapshots' => array_values($urls)]);
+        return response()->json(['snapshots' => array_values($filenames)]);
     }
 
     /**
