@@ -1,63 +1,91 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Camera, ImageOff } from "lucide-react";
+import { Camera, ImageOff, Brain } from "lucide-react";
 import { API_URL } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { BehaviorPanel, type BehaviorData } from "@/components/interview/behavior-card";
+import { AggregateBehaviorCard, type AggregateBehavior } from "@/components/interview/behavior-card";
+
+export interface FrameScore {
+  face_detected?: boolean;
+  confidence?: number;
+  nervousness?: number;
+  dominant_emotion?: string;
+  eye_contact?: number;
+}
+
+export interface SnapshotBehavior extends BehaviorData {
+  frame_scores?: FrameScore[];
+  snapshots_count?: number;
+}
 
 interface QuestionSnap {
   sequence: number;
   question: string;
   answerId: number;
   snapshotCount: number;
+  snapshotBehavior?: SnapshotBehavior | null;
+}
+
+interface SnapshotItem {
+  filename: string;
+  data_url: string;
 }
 
 interface Props {
   interviewId: string | number;
   questions: QuestionSnap[];
+  overallBehavior?: AggregateBehavior | null;
 }
 
-function snapshotStreamUrl(
-  interviewId: string | number,
-  answerId: number,
-  filename: string,
-): string {
-  return `${API_URL}/interviews/${interviewId}/answers/${answerId}/snapshots/${encodeURIComponent(filename)}`;
-}
-
-function parseFilenames(entries: string[]): string[] {
-  return entries.map((entry) => {
-    if (entry.startsWith("http://") || entry.startsWith("https://")) {
-      return decodeURIComponent(entry.split("/").pop() ?? entry);
-    }
-    return entry;
-  });
-}
-
-async function fetchSnapshotBlob(
-  interviewId: string | number,
-  answerId: number,
-  filename: string,
-): Promise<Blob | null> {
-  const token = getToken();
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
-  try {
-    const res = await fetch(snapshotStreamUrl(interviewId, answerId, filename), {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      signal: controller.signal,
-    });
-    if (!res.ok) return null;
-    return await res.blob();
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
+function SnapshotThumb({
+  item,
+  frameScore,
+  onClick,
+}: {
+  item: SnapshotItem;
+  frameScore?: FrameScore;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    >
+      <img
+        src={item.data_url}
+        alt={item.filename}
+        className="w-full h-full object-cover"
+        loading="lazy"
+      />
+      {frameScore?.face_detected && frameScore.confidence != null && (
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1.5 py-1.5 pt-4">
+          <p className="text-[10px] text-emerald-300 font-semibold leading-tight">
+            {frameScore.confidence}% confident
+          </p>
+          <p className="text-[9px] text-red-300/90 leading-tight">
+            {frameScore.nervousness}% nervous
+          </p>
+          {frameScore.dominant_emotion && (
+            <p className="text-[9px] text-slate-400 capitalize truncate">
+              {frameScore.dominant_emotion}
+            </p>
+          )}
+        </div>
+      )}
+      {frameScore && !frameScore.face_detected && (
+        <div className="absolute inset-x-0 bottom-0 bg-black/70 px-1 py-0.5">
+          <p className="text-[9px] text-slate-500">No face detected</p>
+        </div>
+      )}
+    </button>
+  );
 }
 
 function QuestionSnapGroup({ interviewId, q }: { interviewId: string | number; q: QuestionSnap }) {
-  const [blobUrls, setBlobUrls] = useState<string[]>([]);
+  const [snapshots, setSnapshots] = useState<SnapshotItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
@@ -69,7 +97,6 @@ function QuestionSnapGroup({ interviewId, q }: { interviewId: string | number; q
     }
 
     let cancelled = false;
-    const objectUrls: string[] = [];
 
     async function load() {
       setLoading(true);
@@ -87,33 +114,17 @@ function QuestionSnapGroup({ interviewId, q }: { interviewId: string | number; q
         );
 
         if (!res.ok) {
-          if (!cancelled) setError("Could not load snapshot list.");
+          if (!cancelled) setError("Could not load snapshots.");
           return;
         }
 
-        const data: { snapshots: string[] } = await res.json();
-        const filenames = parseFilenames(data.snapshots ?? []);
-
-        if (filenames.length === 0) {
-          if (!cancelled) setError("No snapshot files found.");
-          return;
+        const data: { snapshots: SnapshotItem[] } = await res.json();
+        if (!cancelled) {
+          setSnapshots(data.snapshots ?? []);
+          if ((data.snapshots ?? []).length === 0) {
+            setError("No snapshot files found on server.");
+          }
         }
-
-        const blobs = await Promise.all(
-          filenames.map((filename) => fetchSnapshotBlob(interviewId, q.answerId, filename)),
-        );
-
-        const validBlobs = blobs.filter((b): b is Blob => b !== null);
-        if (validBlobs.length === 0) {
-          if (!cancelled) setError("Snapshots could not be downloaded.");
-          return;
-        }
-
-        for (const blob of validBlobs) {
-          objectUrls.push(URL.createObjectURL(blob));
-        }
-
-        if (!cancelled) setBlobUrls(objectUrls);
       } catch {
         if (!cancelled) setError("Failed to load snapshots.");
       } finally {
@@ -122,28 +133,45 @@ function QuestionSnapGroup({ interviewId, q }: { interviewId: string | number; q
     }
 
     load();
-
     return () => {
       cancelled = true;
-      objectUrls.forEach(URL.revokeObjectURL);
     };
   }, [interviewId, q.answerId, q.snapshotCount]);
 
-  useEffect(() => {
-    return () => {
-      blobUrls.forEach(URL.revokeObjectURL);
-    };
-  }, [blobUrls]);
+  const behaviorForPanel: BehaviorData | null = q.snapshotBehavior
+    ? {
+        confidence: q.snapshotBehavior.confidence,
+        nervousness: q.snapshotBehavior.nervousness,
+        eye_contact_ratio: q.snapshotBehavior.eye_contact_ratio,
+        head_stability: q.snapshotBehavior.head_stability,
+        blink_rate: q.snapshotBehavior.blink_rate,
+        emotion_distribution: q.snapshotBehavior.emotion_distribution,
+        coaching_narrative: q.snapshotBehavior.coaching_narrative,
+      }
+    : null;
+
+  const frameScores = q.snapshotBehavior?.frame_scores ?? [];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/30 p-4">
       <div>
-        <p className="text-xs uppercase tracking-wide text-slate-500 mb-0.5">Question {q.sequence}</p>
-        <p className="text-sm text-slate-300 line-clamp-2">{q.question}</p>
+        <p className="text-xs uppercase tracking-wide text-slate-500 mb-0.5">
+          Question {q.sequence}
+        </p>
+        <p className="text-sm text-slate-300">{q.question}</p>
       </div>
 
+      {behaviorForPanel && q.snapshotBehavior?.frames_analyzed ? (
+        <BehaviorPanel behavior={behaviorForPanel} />
+      ) : q.snapshotCount > 0 && !loading ? (
+        <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
+          <Brain className="h-3.5 w-3.5" />
+          Behaviour analysis pending — refresh in a moment
+        </div>
+      ) : null}
+
       {q.snapshotCount === 0 ? (
-        <div className="flex items-center gap-2 text-xs text-slate-600 py-3">
+        <div className="flex items-center gap-2 text-xs text-slate-600 py-2">
           <ImageOff className="h-4 w-4" />
           No snapshots captured for this answer
         </div>
@@ -154,25 +182,22 @@ function QuestionSnapGroup({ interviewId, q }: { interviewId: string | number; q
         </div>
       ) : error ? (
         <p className="text-xs text-amber-500/90 py-2">{error}</p>
-      ) : blobUrls.length === 0 ? (
-        <p className="text-xs text-slate-600 py-2">Snapshots unavailable</p>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-          {blobUrls.map((url, i) => (
-            <button
-              key={i}
-              onClick={() => setLightbox(url)}
-              className="aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <img src={url} alt={`Q${q.sequence} snapshot ${i + 1}`} className="w-full h-full object-cover" />
-            </button>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {snapshots.map((item, i) => (
+            <SnapshotThumb
+              key={item.filename}
+              item={item}
+              frameScore={frameScores[i]}
+              onClick={() => setLightbox(item.data_url)}
+            />
           ))}
         </div>
       )}
 
       {lightbox && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
           <img
@@ -182,6 +207,7 @@ function QuestionSnapGroup({ interviewId, q }: { interviewId: string | number; q
             onClick={(e) => e.stopPropagation()}
           />
           <button
+            type="button"
             onClick={() => setLightbox(null)}
             className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl leading-none"
           >
@@ -193,7 +219,7 @@ function QuestionSnapGroup({ interviewId, q }: { interviewId: string | number; q
   );
 }
 
-export function InterviewGallery({ interviewId, questions }: Props) {
+export function InterviewGallery({ interviewId, questions, overallBehavior }: Props) {
   const totalSnaps = questions.reduce((s, q) => s + q.snapshotCount, 0);
 
   if (questions.length === 0) {
@@ -205,15 +231,19 @@ export function InterviewGallery({ interviewId, questions }: Props) {
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 text-slate-400 text-sm mb-4">
+    <div className="space-y-6">
+      {overallBehavior && totalSnaps > 0 && (
+        <AggregateBehaviorCard summary={overallBehavior} />
+      )}
+
+      <div className="flex items-center gap-2 text-slate-400 text-sm">
         <Camera className="h-4 w-4" />
         {totalSnaps > 0
-          ? `${totalSnaps} snapshot${totalSnaps !== 1 ? "s" : ""} across ${questions.length} question${questions.length !== 1 ? "s" : ""}`
-          : `No snapshots stored for this interview (${questions.length} question${questions.length !== 1 ? "s" : ""})`}
+          ? `${totalSnaps} snapshot${totalSnaps !== 1 ? "s" : ""} · scores shown on each image`
+          : `No snapshots stored (${questions.length} questions)`}
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-4">
         {questions.map((q) => (
           <QuestionSnapGroup key={q.answerId} interviewId={interviewId} q={q} />
         ))}

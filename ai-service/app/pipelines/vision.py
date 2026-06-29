@@ -311,8 +311,10 @@ async def analyze_images(
         pitch_values: list[float] = []
         emotion_accumulator: dict[str, list[float]] = {}
         frames_analyzed = 0
+        frame_scores: list[dict[str, Any]] = []
 
         for img_bytes in images:
+            frame_entry: dict[str, Any] = {"face_detected": False}
             try:
                 pil_img = PILImage.open(io.BytesIO(img_bytes)).convert("RGB")
                 rgb_arr = np.array(pil_img)
@@ -320,24 +322,40 @@ async def analyze_images(
 
                 results = face_mesh.process(rgb_arr)
                 if not results.multi_face_landmarks:
+                    frame_scores.append(frame_entry)
                     continue
 
                 lms = results.multi_face_landmarks[0].landmark
-                ear_values.append(_ear(lms, w, h))
+                ear_val = _ear(lms, w, h)
                 yaw, pitch = _head_pose(lms, w, h)
+                ear_values.append(ear_val)
                 yaw_values.append(yaw)
                 pitch_values.append(pitch)
 
-                # Emotion on PIL image directly
                 preds = emotion_pipe(pil_img)
+                frame_emotions: dict[str, float] = {}
                 if preds:
                     for p in preds:
                         label = p["label"].lower()
-                        emotion_accumulator.setdefault(label, []).append(round(p["score"], 4))
+                        score = round(p["score"], 4)
+                        frame_emotions[label] = score
+                        emotion_accumulator.setdefault(label, []).append(score)
 
+                eye_contact = 1.0 if yaw < 0.08 else 0.0
+                f_conf, f_nerv = _derive_scores(frame_emotions, eye_contact, 0.85, 16.0, {})
+                dominant = max(frame_emotions, key=frame_emotions.get) if frame_emotions else "neutral"
+                frame_entry = {
+                    "face_detected": True,
+                    "confidence": f_conf,
+                    "nervousness": f_nerv,
+                    "dominant_emotion": dominant,
+                    "eye_contact": round(eye_contact, 2),
+                }
+                frame_scores.append(frame_entry)
                 frames_analyzed += 1
             except Exception as e:
                 logger.debug("Snapshot analysis error: %s", e)
+                frame_scores.append(frame_entry)
                 continue
 
         face_mesh.close()
@@ -380,6 +398,7 @@ async def analyze_images(
             "prosody": {},
             "coaching_narrative": coaching_narrative,
             "frames_analyzed": frames_analyzed,
+            "frame_scores": frame_scores,
             "mock": False,
         }
     except Exception as e:

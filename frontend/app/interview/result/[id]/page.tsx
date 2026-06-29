@@ -40,6 +40,23 @@ interface QuestionReview {
     emotion_distribution?: Record<string, number>;
     coaching_narrative?: string | null;
   } | null;
+  answer_id?: number;
+  snapshot_count?: number;
+  snapshot_behavior?: {
+    confidence: number;
+    nervousness: number;
+    eye_contact_ratio: number;
+    head_stability: number;
+    blink_rate: number;
+    emotion_distribution?: Record<string, number>;
+    coaching_narrative?: string;
+    frame_scores?: Array<{
+      face_detected?: boolean;
+      confidence?: number;
+      nervousness?: number;
+      dominant_emotion?: string;
+    }>;
+  } | null;
 }
 
 interface ReportData {
@@ -56,7 +73,7 @@ interface ReportData {
   hiring_recommendation: string;
   pdf_url: string | null;
   recording_url: string | null;
-  behavior_summary?: AggregateBehavior | null;
+  behavior_summary?: (AggregateBehavior & { by_answer?: Record<string, unknown> }) | null;
 }
 
 type Tab = "report" | "gallery";
@@ -133,7 +150,12 @@ export default function InterviewResultPage() {
 
   // Poll until post-interview snapshot analysis finishes
   useEffect(() => {
-    if (!interviewId || !report || report.behavior_summary) return;
+    if (!interviewId || !report) return;
+    const hasAnalysis = Boolean(
+      report.behavior_summary?.by_answer &&
+        Object.keys(report.behavior_summary.by_answer).length > 0
+    );
+    if (hasAnalysis) return;
 
     let cancelled = false;
     let attempts = 0;
@@ -143,7 +165,11 @@ export default function InterviewResultPage() {
       attempts += 1;
       try {
         const data = await api<ReportData>(`/interviews/${interviewId}/report`);
-        if (!cancelled && data.behavior_summary) {
+        const ready = Boolean(
+          data.behavior_summary?.by_answer &&
+            Object.keys(data.behavior_summary.by_answer).length > 0
+        );
+        if (!cancelled && ready) {
           setReport(data);
           return;
         }
@@ -169,6 +195,7 @@ export default function InterviewResultPage() {
       question: r.question,
       answerId: r.answer_id!,
       snapshotCount: r.snapshot_count ?? 0,
+      snapshotBehavior: r.snapshot_behavior ?? null,
     }));
 
   const totalSnaps = galleryQuestions.reduce((s, q) => s + q.snapshotCount, 0);
@@ -352,7 +379,11 @@ export default function InterviewResultPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <InterviewGallery interviewId={interviewId!} questions={galleryQuestions} />
+                  <InterviewGallery
+                    interviewId={interviewId!}
+                    questions={galleryQuestions}
+                    overallBehavior={report.behavior_summary ?? null}
+                  />
                 </CardContent>
               </Card>
             )}

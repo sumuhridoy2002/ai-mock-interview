@@ -167,7 +167,7 @@ class InterviewService
             if (! $interview->report) {
                 GenerateReportJob::dispatchSync($interview->fresh());
             }
-            if (! $interview->report?->behavior_summary) {
+            if (empty($interview->report?->behavior_summary['by_answer'] ?? null)) {
                 AnalyzeInterviewSnapshotsJob::dispatch($interview->fresh());
             }
 

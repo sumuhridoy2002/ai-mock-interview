@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Interview;
+use App\Models\InterviewAnswer;
 use App\Services\Interview\AiGatewayService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -10,9 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Analyses ALL snapshots captured across every answer in an interview.
- * Runs once after the interview is completed, producing a single behaviour
- * summary stored on the interview_reports row.
+ * Analyses snapshots per answer and produces an interview-wide behaviour summary.
  */
 class AnalyzeInterviewSnapshotsJob implements ShouldQueue
 {
@@ -20,22 +19,26 @@ class AnalyzeInterviewSnapshotsJob implements ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 300;
+    public int $timeout = 600;
 
-    public function __construct(public Interview $interview) {}
+    public function __construct(
+        public Interview $interview,
+        public bool $force = false,
+    ) {}
 
     public function handle(AiGatewayService $aiGateway): void
     {
         $this->interview->refresh();
 
-        if ($this->interview->report?->behavior_summary) {
+        $existing = $this->interview->report?->behavior_summary;
+        if (! $this->force && is_array($existing) && ! empty($existing['by_answer'])) {
             return;
         }
 
         $baseDir = 'interviews/'.$this->interview->id.'/snapshots';
 
         if (! Storage::disk('local')->exists($baseDir)) {
-            Log::info('AnalyzeInterviewSnapshotsJob: no snapshot directory found', [
+            Log::info('AnalyzeInterviewSnapshotsJob: no snapshot directory', [
                 'interview_id' => $this->interview->id,
             ]);
 
@@ -44,76 +47,129 @@ class AnalyzeInterviewSnapshotsJob implements ShouldQueue
 
         $allPaths = Storage::disk('local')->allFiles($baseDir);
 
-        if (empty($allPaths)) {
-            Log::info('AnalyzeInterviewSnapshotsJob: no snapshots found', [
+        if ($allPaths === []) {
+            Log::info('AnalyzeInterviewSnapshotsJob: no snapshot files', [
                 'interview_id' => $this->interview->id,
             ]);
 
             return;
         }
 
-        $answerDirs = count(array_unique(array_map(
-            fn ($path) => dirname($path),
-            $allPaths
-        )));
+        // Group storage paths by answer id: interviews/{id}/snapshots/{answerId}/file.jpg
+        $byAnswerPaths: array = [];
+        foreach ($allPaths as $path) {
+            $parts = explode('/', $path);
+            $answerId = $parts[3] ?? null;
+            if ($answerId !== null && is_numeric($answerId)) {
+                $byAnswerPaths[$answerId][] = $path;
+            }
+        }
 
-        Log::info('AnalyzeInterviewSnapshotsJob: analysing snapshots', [
-            'interview_id' => $this->interview->id,
-            'count'        => count($allPaths),
-        ]);
+        $byAnswerResults = [];
 
-        try {
-            $result = $aiGateway->analyzeSnapshots(
-                $allPaths,
-                $this->interview->job_title ?? ''
-            );
-        } catch (\Throwable $e) {
-            Log::error('AnalyzeInterviewSnapshotsJob: AI call failed', [
+        foreach ($byAnswerPaths as $answerId => $paths) {
+            sort($paths);
+            $answer = InterviewAnswer::with('question')->find($answerId);
+            $questionText = $answer?->question?->question_text ?? '';
+
+            try {
+                $result = $aiGateway->analyzeSnapshots($paths, $questionText);
+                $byAnswerResults[(string) $answerId] = $this->normalizePerAnswer($result, count($paths));
+            } catch (\Throwable $e) {
+                Log::warning('AnalyzeInterviewSnapshotsJob: per-answer failed', [
+                    'interview_id' => $this->interview->id,
+                    'answer_id'    => $answerId,
+                    'error'        => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($byAnswerResults === []) {
+            Log::warning('AnalyzeInterviewSnapshotsJob: no per-answer results', [
                 'interview_id' => $this->interview->id,
-                'error'        => $e->getMessage(),
             ]);
 
-            throw $e;
+            return;
         }
 
         $report = $this->interview->report ?? $this->waitForReport();
 
         if (! $report) {
-            Log::warning('AnalyzeInterviewSnapshotsJob: report not ready after waiting, skipping save', [
+            Log::warning('AnalyzeInterviewSnapshotsJob: report not ready', [
                 'interview_id' => $this->interview->id,
             ]);
 
             return;
         }
 
-        $report->update(['behavior_summary' => $this->normalizeSummary($result, count($allPaths), $answerDirs)]);
+        $summary = $this->aggregateSummary($byAnswerResults, count($allPaths));
 
-        Log::info('AnalyzeInterviewSnapshotsJob: behavior_summary stored', [
-            'interview_id' => $this->interview->id,
-            'confidence'   => $result['confidence'] ?? null,
-            'nervousness'  => $result['nervousness'] ?? null,
-            'snapshots'    => count($allPaths),
+        $report->update(['behavior_summary' => $summary]);
+
+        Log::info('AnalyzeInterviewSnapshotsJob: stored', [
+            'interview_id'  => $this->interview->id,
+            'answers'       => count($byAnswerResults),
+            'snapshots'     => count($allPaths),
+            'avg_confidence' => $summary['avg_confidence'] ?? null,
         ]);
     }
 
-    /** Map AI pipeline output to the aggregate format expected by the frontend. */
-    private function normalizeSummary(array $result, int $snapshotCount, int $answerDirs): array
+    private function normalizePerAnswer(array $result, int $snapshotCount): array
     {
         return [
-            'avg_confidence'       => (int) ($result['confidence'] ?? 0),
-            'avg_nervousness'      => (int) ($result['nervousness'] ?? 0),
-            'avg_eye_contact'      => (float) ($result['eye_contact_ratio'] ?? 0),
-            'avg_head_stability'   => (float) ($result['head_stability'] ?? 0),
-            'avg_blink_rate'       => (float) ($result['blink_rate'] ?? 0),
+            'confidence'           => (int) ($result['confidence'] ?? 0),
+            'nervousness'          => (int) ($result['nervousness'] ?? 0),
+            'eye_contact_ratio'    => (float) ($result['eye_contact_ratio'] ?? 0),
+            'head_stability'       => (float) ($result['head_stability'] ?? 0),
+            'blink_rate'           => (float) ($result['blink_rate'] ?? 0),
             'emotion_distribution' => $result['emotion_distribution'] ?? [],
             'coaching_narrative'   => $result['coaching_narrative'] ?? '',
-            'questions_analyzed'   => max(1, $answerDirs),
-            'snapshots_analyzed'   => $snapshotCount,
-            'frames_analyzed'      => (int) ($result['frames_analyzed'] ?? $snapshotCount),
+            'frames_analyzed'      => (int) ($result['frames_analyzed'] ?? 0),
+            'snapshots_count'      => $snapshotCount,
+            'frame_scores'         => $result['frame_scores'] ?? [],
         ];
     }
 
-    /** Poll for up to 2 minutes until the report row exists. */
+    /** Build interview-wide averages from per-answer results. */
+    private function aggregateSummary(array $byAnswer, int $totalSnapshots): array
+    {
+        $items = array_values($byAnswer);
+        $count = count($items);
+
+        $avg = fn (string $key) => (int) round(array_sum(array_column($items, $key)) / max(1, $count));
+        $avgFloat = fn (string $key) => round(array_sum(array_column($items, $key)) / max(1, $count), 3);
+
+        $emotionKeys = [];
+        foreach ($items as $item) {
+            $emotionKeys = array_merge($emotionKeys, array_keys($item['emotion_distribution'] ?? []));
+        }
+        $emotionKeys = array_unique($emotionKeys);
+        $emotionAvg = [];
+        foreach ($emotionKeys as $label) {
+            $vals = array_map(fn ($b) => $b['emotion_distribution'][$label] ?? 0, $items);
+            $emotionAvg[$label] = round(array_sum($vals) / max(1, $count), 4);
+        }
+        arsort($emotionAvg);
+
+        $narratives = array_filter(array_column($items, 'coaching_narrative'));
+        $coaching = $narratives !== []
+            ? implode(' ', array_slice($narratives, 0, 2))
+            : '';
+
+        return [
+            'avg_confidence'       => $avg('confidence'),
+            'avg_nervousness'      => $avg('nervousness'),
+            'avg_eye_contact'      => $avgFloat('eye_contact_ratio'),
+            'avg_head_stability'   => $avgFloat('head_stability'),
+            'avg_blink_rate'       => round(array_sum(array_column($items, 'blink_rate')) / max(1, $count), 1),
+            'emotion_distribution' => $emotionAvg,
+            'coaching_narrative'   => $coaching,
+            'questions_analyzed'   => $count,
+            'snapshots_analyzed'   => $totalSnapshots,
+            'by_answer'            => $byAnswer,
+        ];
+    }
+
     private function waitForReport(int $maxWaitSeconds = 120): ?\App\Models\InterviewReport
     {
         $waited = 0;

@@ -8,6 +8,7 @@ use App\Http\Requests\StoreInterviewRequest;
 use App\Http\Requests\StoreRecordingRequest;
 use App\Jobs\EvaluateAnswerJob;
 use App\Jobs\GenerateQuestionJob;
+use App\Jobs\AnalyzeInterviewSnapshotsJob;
 use App\Jobs\GenerateReportJob;
 use App\Models\Interview;
 use App\Models\InterviewAnswer;
@@ -277,6 +278,8 @@ class InterviewController extends Controller
                     $review['snapshot_count'] = count(
                         Storage::disk('local')->files($snapshotDir)
                     );
+                    $byAnswer = $report->behavior_summary['by_answer'] ?? [];
+                    $review['snapshot_behavior'] = $byAnswer[(string) $answer->id] ?? null;
                 }
                 return $review;
             }, $reportJson['question_reviews']);
@@ -403,7 +406,10 @@ class InterviewController extends Controller
     {
         $this->authorize('view', $interview);
 
+        $interview->report?->update(['behavior_summary' => null]);
+
         GenerateReportJob::dispatchSync($interview->fresh());
+        AnalyzeInterviewSnapshotsJob::dispatchSync($interview->fresh(), true);
 
         return $this->report($request, $interview->fresh());
     }
@@ -520,9 +526,20 @@ class InterviewController extends Controller
             ? Storage::disk('local')->files($dir)
             : [];
 
-        $filenames = array_map('basename', $files);
+        sort($files);
 
-        return response()->json(['snapshots' => array_values($filenames)]);
+        $items = array_map(function (string $path) {
+            $filename = basename($path);
+            $mime = str_ends_with($filename, '.png') ? 'image/png' : 'image/jpeg';
+            $bytes = Storage::disk('local')->get($path);
+
+            return [
+                'filename' => $filename,
+                'data_url' => 'data:'.$mime.';base64,'.base64_encode($bytes),
+            ];
+        }, $files);
+
+        return response()->json(['snapshots' => array_values($items)]);
     }
 
     /**
@@ -543,14 +560,10 @@ class InterviewController extends Controller
 
         $mime = str_ends_with($filename, '.png') ? 'image/png' : 'image/jpeg';
 
-        return response()->stream(function () use ($path) {
-            $stream = Storage::disk('local')->readStream($path);
-            if ($stream === null) return;
-            fpassthru($stream);
-            fclose($stream);
-        }, 200, [
-            'Content-Type'  => $mime,
-            'Cache-Control' => 'private, max-age=3600',
+        return response()->file(Storage::disk('local')->path($path), [
+            'Content-Type'        => $mime,
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control'       => 'private, max-age=3600',
         ]);
     }
 
