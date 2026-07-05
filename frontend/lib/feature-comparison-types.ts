@@ -30,6 +30,19 @@ export const COMPETITOR_LABELS: Record<CompetitorKey, string> = {
 
 export const COMPETITOR_KEYS = Object.keys(COMPETITOR_LABELS) as CompetitorKey[];
 
+export function supportLabelShort(value: FeatureSupport): string {
+  switch (value) {
+    case "yes":
+      return "Full";
+    case "partial":
+      return "Partial";
+    case "rare":
+      return "Rare";
+    default:
+      return "None";
+  }
+}
+
 export function supportLabel(value: FeatureSupport): string {
   switch (value) {
     case "yes":

@@ -3,40 +3,44 @@
 import { cn } from "@/lib/utils";
 import {
   COMPETITOR_KEYS,
-  COMPETITOR_LABELS,
   FEATURE_COMPARISON_MAIN,
   supportBadgeClass,
-  supportLabel,
+  supportLabelShort,
   type CompetitorKey,
   type PlatformCapability,
 } from "@/lib/feature-comparison";
+
+/** Shorter header labels so the table fits without horizontal scroll. */
+const TABLE_HEADERS: Record<CompetitorKey, string> = {
+  mockInterviewPro: "Mock Interview Pro",
+  pramp: "Pramp",
+  interviewingIo: "Interviewing.io",
+  finalRoundAi: "Final Round AI",
+  hireVue: "HireVue",
+  googleWarmup: "Google Warmup",
+};
 
 function TableCell({ platformKey, cap }: { platformKey: CompetitorKey; cap: PlatformCapability }) {
   const isOurs = platformKey === "mockInterviewPro";
 
   return (
-    <td
-      className={cn(
-        "align-top px-3 py-3 text-left min-w-[11rem] max-w-[14rem]",
-        isOurs && "bg-primary/5"
-      )}
-    >
+    <td className={cn("align-top px-1.5 py-2 text-left break-words", isOurs && "bg-primary/5")}>
       <span
         className={cn(
-          "inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold mb-2",
+          "inline-block rounded border px-1 py-px text-[9px] font-semibold mb-1 leading-none",
           supportBadgeClass(cap.level)
         )}
       >
-        {supportLabel(cap.level)}
+        {supportLabelShort(cap.level)}
       </span>
-      <p className="text-[11px] leading-snug">
-        <span className="font-semibold text-emerald-800 dark:text-emerald-400">Has: </span>
-        <span className="text-foreground font-medium">{cap.has}</span>
+      <p className="text-[9px] leading-tight">
+        <span className="font-semibold text-emerald-800 dark:text-emerald-400">+ </span>
+        <span className="text-foreground">{cap.has}</span>
       </p>
       {cap.lacks !== "—" && (
-        <p className="text-[11px] leading-snug mt-1.5">
-          <span className="font-semibold text-rose-800 dark:text-rose-400">Lacks: </span>
-          <span className="text-muted-foreground font-medium">{cap.lacks}</span>
+        <p className="text-[9px] leading-tight mt-1">
+          <span className="font-semibold text-rose-800 dark:text-rose-400">− </span>
+          <span className="text-muted-foreground">{cap.lacks}</span>
         </p>
       )}
     </td>
@@ -45,22 +49,28 @@ function TableCell({ platformKey, cap }: { platformKey: CompetitorKey; cap: Plat
 
 export function FeatureComparisonTable() {
   return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-      <table className="w-full text-left border-collapse">
+    <div className="w-full rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <table className="w-full table-fixed text-left border-collapse">
+        <colgroup>
+          <col style={{ width: "13%" }} />
+          {COMPETITOR_KEYS.map((key) => (
+            <col key={key} style={{ width: `${87 / COMPETITOR_KEYS.length}%` }} />
+          ))}
+        </colgroup>
         <thead>
           <tr className="border-b border-border bg-muted/50">
-            <th className="sticky left-0 z-10 bg-card px-3 py-3 text-xs font-bold text-foreground min-w-[10rem] border-r border-border">
+            <th className="px-1.5 py-2 text-[10px] font-bold text-foreground align-bottom border-r border-border">
               Feature
             </th>
             {COMPETITOR_KEYS.map((key) => (
               <th
                 key={key}
                 className={cn(
-                  "px-3 py-3 text-xs font-bold whitespace-nowrap",
+                  "px-1 py-2 text-[9px] font-bold leading-tight align-bottom whitespace-normal",
                   key === "mockInterviewPro" ? "text-primary bg-primary/5" : "text-muted-foreground"
                 )}
               >
-                {COMPETITOR_LABELS[key]}
+                {TABLE_HEADERS[key]}
               </th>
             ))}
           </tr>
@@ -69,12 +79,9 @@ export function FeatureComparisonTable() {
           {FEATURE_COMPARISON_MAIN.map((row, i) => (
             <tr
               key={row.feature}
-              className={cn(
-                "border-b border-border hover:bg-muted/20",
-                i % 2 === 1 && "bg-muted/10"
-              )}
+              className={cn("border-b border-border", i % 2 === 1 && "bg-muted/10")}
             >
-              <td className="sticky left-0 z-10 bg-card px-3 py-3 text-xs font-bold text-foreground align-top border-r border-border">
+              <td className="px-1.5 py-2 text-[9px] font-bold text-foreground align-top border-r border-border leading-tight">
                 {row.feature}
               </td>
               {COMPETITOR_KEYS.map((key) => (

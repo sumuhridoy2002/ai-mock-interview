@@ -10,6 +10,7 @@ export {
   COMPETITOR_LABELS,
   supportBadgeClass,
   supportLabel,
+  supportLabelShort,
 } from "./feature-comparison-types";
 
 export { FEATURE_COMPARISON } from "./feature-comparison-data";
