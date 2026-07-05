@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from "react";
 import { useTheme } from "next-themes";
+import { JOURNEY_STEPS, RUNTIME_STEPS } from "@/lib/methodology-copy";
 
 /* ─── colours ─────────────────────────────────────────────────────────────── */
 const DARK_COLORS = {
@@ -26,6 +27,10 @@ const DARK_COLORS = {
   aiStroke: "#9333ea",
   aiText: "#e9d5ff",
   aiSub: "#c084fc",
+  memoryFill: "#1a2e05",
+  memoryStroke: "#65a30d",
+  memoryText: "#bbf7d0",
+  memorySub: "#86efac",
   dbFill: "#111827",
   dbStroke: "#374151",
   dbText: "#d1d5db",
@@ -38,6 +43,9 @@ const DARK_COLORS = {
   lineLabel: "#64748b",
   noteLine: "#3b82f6",
   wsLine: "#8b5cf6",
+  memoryLine: "#65a30d",
+  avatarFill: "#6366f1",
+  avatarRing: "#a5b4fc",
 } as const;
 
 const LIGHT_COLORS = {
@@ -62,6 +70,10 @@ const LIGHT_COLORS = {
   aiStroke: "#9333ea",
   aiText: "#581c87",
   aiSub: "#7e22ce",
+  memoryFill: "#f0fdf4",
+  memoryStroke: "#16a34a",
+  memoryText: "#14532d",
+  memorySub: "#15803d",
   dbFill: "#f9fafb",
   dbStroke: "#6b7280",
   dbText: "#374151",
@@ -74,11 +86,12 @@ const LIGHT_COLORS = {
   lineLabel: "#475569",
   noteLine: "#2563eb",
   wsLine: "#7c3aed",
+  memoryLine: "#16a34a",
+  avatarFill: "#6366f1",
+  avatarRing: "#c7d2fe",
 } as const;
 
-type DiagramColors = {
-  [K in keyof typeof DARK_COLORS]: string;
-};
+type DiagramColors = { [K in keyof typeof DARK_COLORS]: string };
 
 const DiagramColorsContext = createContext<DiagramColors>(DARK_COLORS);
 
@@ -86,436 +99,324 @@ function useDiagramColors() {
   return useContext(DiagramColorsContext);
 }
 
-/* ─── shared SVG primitives ───────────────────────────────────────────────── */
 const F = "ui-sans-serif,system-ui,sans-serif";
-const D = "6 4"; /* dash pattern */
-const SW = "1.5"; /* stroke width */
+const D = "6 4";
+const SW = "1.5";
 
 function Arrow({ id, fill }: { id: string; fill: string }) {
   return (
-    <marker
-      id={id}
-      refX="8"
-      refY="3.5"
-      markerWidth="8"
-      markerHeight="7"
-      orient="auto"
-      markerUnits="userSpaceOnUse"
-    >
+    <marker id={id} refX="8" refY="3.5" markerWidth="8" markerHeight="7" orient="auto" markerUnits="userSpaceOnUse">
       <polygon points="0 0, 8 3.5, 0 7" fill={fill} />
     </marker>
   );
 }
 
-type LineProps = {
-  x1: number; y1: number; x2: number; y2: number;
-  color?: string; mark?: string;
-};
-function Line({ x1, y1, x2, y2, color, mark = "url(#a)" }: LineProps) {
+function Line({ x1, y1, x2, y2, color, mark = "url(#a)", dash }: {
+  x1: number; y1: number; x2: number; y2: number; color?: string; mark?: string; dash?: boolean;
+}) {
   const C = useDiagramColors();
   return (
     <line
       x1={x1} y1={y1} x2={x2} y2={y2}
-      stroke={color ?? C.line} strokeWidth={SW} strokeDasharray={D}
+      stroke={color ?? C.line} strokeWidth={SW} strokeDasharray={dash ? D : undefined}
       markerEnd={mark}
     />
   );
 }
 
-type PathProps = { d: string; color?: string; mark?: string };
-function Path({ d, color, mark }: PathProps) {
+function Path({ d, color, mark, dash }: { d: string; color?: string; mark?: string; dash?: boolean }) {
   const C = useDiagramColors();
   return (
     <path
       d={d} fill="none"
-      stroke={color ?? C.line} strokeWidth={SW} strokeDasharray={D}
-      strokeLinejoin="round"
-      markerEnd={mark}
+      stroke={color ?? C.line} strokeWidth={SW} strokeDasharray={dash ? D : undefined}
+      strokeLinejoin="round" markerEnd={mark}
     />
   );
 }
 
-/* boxLabel: single label centred; dual: label + smaller sub */
-function BoxText({
-  x, cy, label, sub, color, subColor, size = 12, subSize = 9.5,
-}: {
+function BoxText({ x, cy, label, sub, color, subColor, size = 11, subSize = 8.5 }: {
   x: number; cy: number; label: string; sub?: string;
   color: string; subColor?: string; size?: number; subSize?: number;
 }) {
   if (!sub) {
     return (
-      <text x={x} y={cy + 5} textAnchor="middle" fill={color}
-        fontSize={size} fontWeight="600" fontFamily={F}>
+      <text x={x} y={cy + 4} textAnchor="middle" fill={color} fontSize={size} fontWeight="600" fontFamily={F}>
         {label}
       </text>
     );
   }
   return (
     <>
-      <text x={x} y={cy - 4} textAnchor="middle" fill={color}
-        fontSize={size} fontWeight="600" fontFamily={F}>
-        {label}
-      </text>
-      <text x={x} y={cy + 10} textAnchor="middle" fill={subColor ?? color}
-        fontSize={subSize} fontFamily={F}>
-        {sub}
-      </text>
+      <text x={x} y={cy - 5} textAnchor="middle" fill={color} fontSize={size} fontWeight="600" fontFamily={F}>{label}</text>
+      <text x={x} y={cy + 8} textAnchor="middle" fill={subColor ?? color} fontSize={subSize} fontFamily={F}>{sub}</text>
     </>
   );
 }
 
-/* process rectangle node */
-function ProcNode({
-  x, y, w = 160, h = 46, rx = 7,
-  fill, stroke,
-  label, sub, lc, sc,
-}: {
+function ProcNode({ x, y, w = 200, h = 52, rx = 7, fill, stroke, label, sub, lc, sc }: {
   x: number; y: number; w?: number; h?: number; rx?: number;
-  fill?: string; stroke?: string;
-  label: string; sub?: string; lc?: string; sc?: string;
+  fill?: string; stroke?: string; label: string; sub?: string; lc?: string; sc?: string;
 }) {
   const C = useDiagramColors();
   const cx = x + w / 2;
   const cy = y + h / 2;
   return (
     <>
-      <rect x={x} y={y} width={w} height={h} rx={rx}
-        fill={fill ?? C.procFill} stroke={stroke ?? C.procStroke} strokeWidth={SW} />
+      <rect x={x} y={y} width={w} height={h} rx={rx} fill={fill ?? C.procFill} stroke={stroke ?? C.procStroke} strokeWidth={SW} />
       <BoxText x={cx} cy={cy} label={label} sub={sub} color={lc ?? C.procText} subColor={sc ?? C.procSub} />
     </>
   );
 }
 
-/* pill (start / end) */
-function PillNode({
-  x, y, w = 140, h = 38,
-  label, sub,
-}: { x: number; y: number; w?: number; h?: number; label: string; sub?: string }) {
+function PillNode({ x, y, w = 150, h = 36, label, sub }: {
+  x: number; y: number; w?: number; h?: number; label: string; sub?: string;
+}) {
   const C = useDiagramColors();
   const cx = x + w / 2;
   const cy = y + h / 2;
   return (
     <>
-      <rect x={x} y={y} width={w} height={h} rx={h / 2}
-        fill={C.pillFill} stroke={C.pillStroke} strokeWidth={SW} />
-      <BoxText x={cx} cy={cy} label={label} sub={sub}
-        color={C.pillText} subColor={C.pillSub} size={13} subSize={9.5} />
+      <rect x={x} y={y} width={w} height={h} rx={h / 2} fill={C.pillFill} stroke={C.pillStroke} strokeWidth={SW} />
+      <BoxText x={cx} cy={cy} label={label} sub={sub} color={C.pillText} subColor={C.pillSub} size={12} subSize={8.5} />
     </>
   );
 }
 
-/* diamond decision node — centred at (cx, cy), half-extents hw × hh */
-function Diamond({
-  cx, cy, hw, hh,
-  label, label2,
-}: { cx: number; cy: number; hw: number; hh: number; label: string; label2?: string }) {
+function Diamond({ cx, cy, hw, hh, label, label2 }: {
+  cx: number; cy: number; hw: number; hh: number; label: string; label2?: string;
+}) {
   const C = useDiagramColors();
   const pts = `${cx},${cy - hh} ${cx + hw},${cy} ${cx},${cy + hh} ${cx - hw},${cy}`;
   return (
     <>
-      <polygon points={pts}
-        fill={C.diaFill} stroke={C.diaStroke} strokeWidth={SW} />
+      <polygon points={pts} fill={C.diaFill} stroke={C.diaStroke} strokeWidth={SW} />
       {label2 ? (
         <>
-          <text x={cx} y={cy - 3} textAnchor="middle" fill={C.diaText}
-            fontSize="11" fontWeight="700" fontFamily={F}>{label}</text>
-          <text x={cx} y={cy + 11} textAnchor="middle" fill={C.diaText}
-            fontSize="11" fontWeight="700" fontFamily={F}>{label2}</text>
+          <text x={cx} y={cy - 3} textAnchor="middle" fill={C.diaText} fontSize="10" fontWeight="700" fontFamily={F}>{label}</text>
+          <text x={cx} y={cy + 11} textAnchor="middle" fill={C.diaText} fontSize="10" fontWeight="700" fontFamily={F}>{label2}</text>
         </>
       ) : (
-        <text x={cx} y={cy + 4} textAnchor="middle" fill={C.diaText}
-          fontSize="11" fontWeight="700" fontFamily={F}>{label}</text>
+        <text x={cx} y={cy + 4} textAnchor="middle" fill={C.diaText} fontSize="10" fontWeight="700" fontFamily={F}>{label}</text>
       )}
     </>
   );
 }
 
 function EdgeLabel({ x, y, text, anchor = "start" }: {
-  x: number; y: number; text: string;
-  anchor?: "start" | "middle" | "end" | "inherit";
+  x: number; y: number; text: string; anchor?: "start" | "middle" | "end";
 }) {
   const C = useDiagramColors();
+  return <text x={x} y={y} textAnchor={anchor} fill={C.lineLabel} fontSize="9" fontFamily={F}>{text}</text>;
+}
+
+function UserAvatar({ cx, cy, initials = "AA" }: { cx: number; cy: number; initials?: string }) {
+  const C = useDiagramColors();
   return (
-    <text x={x} y={y} textAnchor={anchor} fill={C.lineLabel}
-      fontSize="9.5" fontFamily={F}>{text}</text>
+    <g>
+      <circle cx={cx} cy={cy} r={16} fill={C.avatarRing} opacity={0.35} />
+      <circle cx={cx} cy={cy} r={13} fill={C.avatarFill} stroke={C.avatarRing} strokeWidth={1.5} />
+      <text x={cx} y={cy + 4} textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="700" fontFamily={F}>{initials}</text>
+    </g>
   );
 }
 
-/* ─── Diagram A: User Journey ─────────────────────────────────────────────── */
 function UserJourneyDiagram() {
   const C = useDiagramColors();
-  /*
-    Layout key (all x/y in SVG user units, viewBox 0 0 560 755)
-    ─────────────────────────────────────────────────────────────
-    START pill          cx=280  y=30
-    REGISTER            x=200   y=110   w=160 h=46
-    WELCOME EMAIL note  x=400   y=110   w=145 h=46   (side)
-    UPLOAD CV           x=200   y=205   w=160 h=46
-    INTERVIEW SETUP     x=200   y=300   w=160 h=46
-    DECISION diamond    cx=280  cy=420  hw=90 hh=52
-    SCHEDULE            x=48    y=510   w=152 h=46
-    START NOW           x=360   y=510   w=152 h=46
-    EMAIL REMINDER      x=48    y=605   w=152 h=46
-    LIVE INTERVIEW      x=360   y=605   w=152 h=46
-    PDF REPORT pill     cx=280  y=695   w=160 h=40
-  */
+  const cx = 340;
+
   return (
-    <svg viewBox="0 0 560 755" className="w-full max-w-xl mx-auto"
-      aria-label="User journey flowchart">
+    <svg viewBox="0 0 680 1020" className="w-full" aria-label="User journey flowchart">
       <defs>
         <Arrow id="a" fill={C.line} />
         <Arrow id="ab" fill={C.noteLine} />
+        <Arrow id="am" fill={C.memoryLine} />
       </defs>
 
-      {/* ── connections (drawn first = behind shapes) ─────────────────── */}
+      <Line x1={cx} y1={56} x2={cx} y2={78} />
+      <Line x1={cx} y1={130} x2={cx} y2={152} />
+      <Line x1={cx} y1={204} x2={cx} y2={226} />
+      <Line x1={cx} y1={278} x2={cx} y2={300} />
+      <Line x1={cx} y1={352} x2={cx} y2={378} />
+      <Path d={`M ${cx - 95},430 L 120,430 L 120,498`} mark="url(#a)" />
+      <Path d={`M ${cx + 95},430 L 560,430 L 560,498`} mark="url(#a)" />
+      <Line x1={120} y1={550} x2={120} y2={578} />
+      <Line x1={560} y1={550} x2={560} y2={578} />
+      <Path d="M 120,630 L 120,660 L 340,660 L 340,678" mark="url(#a)" />
+      <Path d="M 560,630 L 560,660 L 340,660" />
+      <Line x1={cx} y1={730} x2={cx} y2={752} />
+      <Line x1={cx} y1={804} x2={cx} y2={826} />
+      <Line x1={cx} y1={878} x2={cx} y2={900} />
+      <Path d="M 530,940 L 580,940 L 580,325 L 530,325" color={C.memoryLine} mark="url(#am)" dash />
+      <circle cx={cx} cy={660} r={3} fill={C.line} />
 
-      {/* Start → Register */}
-      <Line x1={280} y1={68} x2={280} y2={108} />
+      <EdgeLabel x={200} y={424} text="Later" anchor="middle" />
+      <EdgeLabel x={480} y={424} text="Now" anchor="middle" />
+      <EdgeLabel x={545} y={932} text="next interview" anchor="end" />
 
-      {/* Register side → Welcome Email */}
-      <Line x1={360} y1={133} x2={398} y2={133} color={C.noteLine} mark="url(#ab)" />
-
-      {/* Register → Upload CV */}
-      <Line x1={280} y1={156} x2={280} y2={203} />
-
-      {/* Upload CV → Interview Setup */}
-      <Line x1={280} y1={251} x2={280} y2={298} />
-
-      {/* Interview Setup → Diamond */}
-      <Line x1={280} y1={346} x2={280} y2={366} />
-
-      {/* Diamond left → Schedule */}
-      <Path d="M 190,420 L 124,420 L 124,508" mark="url(#a)" />
-
-      {/* Diamond right → Start Now */}
-      <Path d="M 370,420 L 436,420 L 436,508" mark="url(#a)" />
-
-      {/* Schedule → Email Reminder */}
-      <Line x1={124} y1={556} x2={124} y2={603} />
-
-      {/* Start Now → Live Interview */}
-      <Line x1={436} y1={556} x2={436} y2={603} />
-
-      {/* Merge: Email Reminder → Report */}
-      <Path d="M 124,651 L 124,682 L 280,682 L 280,693" mark="url(#a)" />
-
-      {/* Merge: Live Interview → same horizontal */}
-      <Path d="M 436,651 L 436,682 L 280,682" />
-
-      {/* Junction dot */}
-      <circle cx={280} cy={682} r={3} fill={C.line} />
-
-      {/* ── branch labels ─────────────────────────────────────────────── */}
-      <EdgeLabel x={154} y={414} text="Later" anchor="middle" />
-      <EdgeLabel x={406} y={414} text="Now" anchor="middle" />
-
-      {/* ── shapes ────────────────────────────────────────────────────── */}
-
-      {/* START */}
-      <PillNode x={210} y={30} w={140} h={38} label="Start" />
-
-      {/* REGISTER */}
-      <ProcNode x={200} y={108} label="Register" sub="Create account" />
-
-      {/* WELCOME EMAIL side note */}
+      <PillNode x={cx - 75} y={20} label="Start" sub="Open app" />
+      <ProcNode x={cx - 100} y={78} w={200} label="Register · Login" sub="Sanctum token · /login · /register" />
+      <ProcNode x={cx - 100} y={152} w={200} label="Dashboard" sub="History · scores · scheduled alarms" />
+      <UserAvatar cx={cx - 130} cy={178} initials="AA" />
       <ProcNode
-        x={398} y={108} w={148} h={46}
+        x={455} y={152} w={175} h={52}
         fill={C.noteFill} stroke={C.noteStroke}
-        label="Welcome Email" sub="queued via worker"
+        label="Profile" sub="Avatar · name · theme · password"
         lc={C.noteText} sc={C.noteSub}
       />
-
-      {/* UPLOAD CV */}
-      <ProcNode x={200} y={203} label="Upload CV" sub="PDF / DOCX → parsed" />
-
-      {/* INTERVIEW SETUP */}
-      <ProcNode x={200} y={298} label="Interview Setup" sub="Job title + description" />
-
-      {/* DECISION */}
-      <Diamond cx={280} cy={420} hw={90} hh={52} label="When to" label2="start?" />
-
-      {/* SCHEDULE */}
-      <ProcNode x={48} y={508} w={152} label="Schedule" sub="Set date & time" />
-
-      {/* START NOW */}
-      <ProcNode x={360} y={508} w={152} label="Start Now" sub="Jump straight in" />
-
-      {/* EMAIL REMINDER */}
-      <ProcNode x={48} y={603} w={152} label="Email Reminder" sub="10 min before" />
-
-      {/* LIVE INTERVIEW */}
-      <ProcNode x={360} y={603} w={152} label="Live Interview" sub="Whisper + Ollama" />
-
-      {/* PDF REPORT */}
-      <PillNode x={200} y={693} w={160} h={40} label="PDF Report" sub="Scores + feedback" />
+      <Line x1={440} y1={178} x2={453} y2={178} color={C.noteLine} mark="url(#ab)" />
+      <ProcNode x={cx - 100} y={226} w={200} label="Upload CV" sub="PDF/DOCX → parse skills (queue)" />
+      <ProcNode x={cx - 100} y={300} w={200} label="Interview Setup" sub="JD · level · type · memory-aware Qs" />
+      <Diamond cx={cx} cy={408} hw={88} hh={48} label="When to" label2="start?" />
+      <ProcNode x={44} y={498} w={152} label="Schedule" sub="Date/time · alarm message" />
+      <ProcNode x={484} y={498} w={152} label="Start Now" sub="Instant session UUID" />
+      <ProcNode x={44} y={578} w={152} label="Browser Alarm" sub="In-app banner + email queue" />
+      <ProcNode x={cx - 110} y={678} w={220} h={52} label="Live Interview" sub="WS questions · cam/mic · record A/V" />
+      <ProcNode
+        x={455} y={668} w={175} h={52}
+        fill={C.noteFill} stroke={C.noteStroke}
+        label="Full-session video" sub="MediaRecorder → upload on end"
+        lc={C.noteText} sc={C.noteSub}
+      />
+      <Line x1={450} y1={694} x2={453} y2={694} color={C.noteLine} mark="url(#ab)" />
+      <ProcNode
+        x={cx - 110} y={752} w={220} h={52}
+        fill={C.aiFill} stroke={C.aiStroke}
+        label="AI Evaluation" sub="Ollama score · vision behavior · mastery"
+        lc={C.aiText} sc={C.aiSub}
+      />
+      <ProcNode x={cx - 100} y={826} w={200} label="Results · Explain" sub="Per-question STAR · behavior charts" />
+      <PillNode x={cx - 85} y={900} w={170} h={38} label="PDF Report" sub="Download · dashboard analytics" />
+      <ProcNode
+        x={455} y={900} w={195} h={52}
+        fill={C.memoryFill} stroke={C.memoryStroke}
+        label="Cross-interview memory" sub="Skip mastered Qs (≥60) next time"
+        lc={C.memoryText} sc={C.memorySub}
+      />
     </svg>
   );
 }
 
-/* ─── Diagram B: Runtime Architecture ────────────────────────────────────── */
 function RuntimeDiagram() {
   const C = useDiagramColors();
-  /*
-    Layout (viewBox 0 0 560 490)
-    ──────────────────────────────────────────
-    BROWSER             cx=280  y=28    w=200 h=46
-    LARAVEL API         cx=280  y=133   w=210 h=46
-    MYSQL DB            cx=485  y=133   w=110 h=46  (right)
-    REVERB WS           cx=70   y=133   w=115 h=46  (left)
-    QUEUE WORKER        cx=280  y=238   w=190 h=46
-    FASTAPI             cx=280  y=338   w=190 h=46
-    OLLAMA              cx=110  y=428   w=160 h=46
-    WHISPER             cx=450  y=428   w=160 h=46
-  */
+  const cx = 340;
+
   return (
-    <svg viewBox="0 0 560 490" className="w-full max-w-xl mx-auto"
-      aria-label="Runtime architecture flowchart">
+    <svg viewBox="0 0 680 620" className="w-full" aria-label="Runtime architecture flowchart">
       <defs>
         <Arrow id="ra" fill={C.line} />
         <Arrow id="rws" fill={C.wsLine} />
+        <Arrow id="rm" fill={C.memoryLine} />
+        <Arrow id="ab" fill={C.noteLine} />
       </defs>
 
-      {/* ── connections ───────────────────────────────────────────────── */}
+      <Line x1={cx} y1={88} x2={cx} y2={118} mark="url(#ra)" />
+      <EdgeLabel x={cx + 6} y={106} text="REST · Sanctum" />
+      <Path d="M 200,62 L 90,62 L 90,148" color={C.wsLine} mark="url(#rws)" />
+      <EdgeLabel x={94} y={108} text="WS subscribe" />
+      <Line x1={430} y1={148} x2={500} y2={148} mark="url(#ra)" />
+      <EdgeLabel x={438} y={142} text="CRUD" />
+      <Line x1={250} y1={148} x2={175} y2={148} mark="url(#ra)" />
+      <EdgeLabel x={182} y={142} text="broadcast" anchor="end" />
+      <Line x1={cx} y1={174} x2={cx} y2={208} mark="url(#ra)" />
+      <EdgeLabel x={cx + 6} y={194} text="dispatch" />
+      <Line x1={cx} y1={262} x2={cx} y2={298} mark="url(#ra)" />
+      <EdgeLabel x={cx + 6} y={282} text="HTTP jobs" />
+      <Path d="M 250,350 L 130,410" mark="url(#ra)" />
+      <Path d="M 340,350 L 340,410" mark="url(#ra)" />
+      <Path d="M 430,350 L 550,410" mark="url(#ra)" />
+      <EdgeLabel x={138} y={388} text="LLM" anchor="end" />
+      <EdgeLabel x={346} y={388} text="STT" anchor="middle" />
+      <EdgeLabel x={542} y={388} text="vision" />
+      <Path d="M 500,174 L 580,174 L 580,240 L 480,240" color={C.memoryLine} mark="url(#rm)" dash />
+      <EdgeLabel x={555} y={168} text="mastery" anchor="end" />
+      <Path d="M 480,62 L 580,62 L 580,148" color={C.noteLine} mark="url(#ab)" dash />
+      <EdgeLabel x={555} y={56} text="video upload" anchor="end" />
 
-      {/* Browser → Laravel (REST) */}
-      <Line x1={280} y1={74} x2={280} y2={131} mark="url(#ra)" />
-      <EdgeLabel x={286} y={106} text="REST · Sanctum" />
-
-      {/* Laravel right → MySQL */}
-      <Line x1={385} y1={156} x2={428} y2={156} mark="url(#ra)" />
-      <EdgeLabel x={392} y={150} text="reads/writes" />
-
-      {/* Laravel left → Reverb */}
-      <Line x1={175} y1={156} x2={128} y2={156} mark="url(#ra)" />
-      <EdgeLabel x={135} y={150} text="broadcast" anchor="end" />
-
-      {/* Reverb → Browser (WebSocket events) */}
-      <Path
-        d="M 70,133 L 70,51 L 180,51"
-        color={C.wsLine} mark="url(#rws)"
-      />
-      <EdgeLabel x={74} y={95} text="WS events" />
-
-      {/* Laravel → Queue */}
-      <Line x1={280} y1={179} x2={280} y2={236} mark="url(#ra)" />
-      <EdgeLabel x={286} y={211} text="dispatch jobs" />
-
-      {/* Queue → FastAPI */}
-      <Line x1={280} y1={284} x2={280} y2={336} mark="url(#ra)" />
-      <EdgeLabel x={286} y={313} text="HTTP" />
-
-      {/* FastAPI → Ollama (diagonal) */}
-      <Path d="M 185,361 L 110,426" mark="url(#ra)" />
-      <EdgeLabel x={120} y={398} text="LLM" anchor="end" />
-
-      {/* FastAPI → Whisper (diagonal) */}
-      <Path d="M 375,361 L 450,426" mark="url(#ra)" />
-      <EdgeLabel x={440} y={398} text="STT" />
-
-      {/* ── shapes ────────────────────────────────────────────────────── */}
-
-      {/* BROWSER */}
       <ProcNode
-        x={180} y={28} w={200}
+        x={cx - 110} y={28} w={220} h={60}
         fill={C.browserFill} stroke={C.browserStroke}
         label="Browser · Next.js 16"
-        sub="React · Tailwind · WS client"
+        sub="MediaRecorder · consent · live room"
         lc={C.noteText} sc={C.noteSub}
       />
-
-      {/* LARAVEL API */}
+      <ProcNode x={cx - 105} y={118} w={210} h={56} label="Laravel 13 API" sub="Auth · interviews · reports · upload" />
+      <ProcNode x={500} y={118} w={130} h={56} fill={C.dbFill} stroke={C.dbStroke} label="MySQL" sub="scores · mastery · behaviors" lc={C.dbText} sc={C.dbSub} />
+      <ProcNode x={44} y={118} w={130} h={56} fill={C.wsFill} stroke={C.wsStroke} label="Reverb WS" sub="Pusher protocol" lc={C.wsText} sc={C.wsSub} />
+      <ProcNode x={cx - 115} y={208} w={230} h={54} label="Queue Worker" sub="Evaluate · GenerateQ · BehaviorJob · email" />
       <ProcNode
-        x={175} y={133} w={210}
-        label="Laravel 13 API"
-        sub="Auth · Routes · Services"
-      />
-
-      {/* MYSQL */}
-      <ProcNode
-        x={430} y={133} w={110}
-        fill={C.dbFill} stroke={C.dbStroke}
-        label="MySQL" sub="persistence"
-        lc={C.dbText} sc={C.dbSub}
-      />
-
-      {/* REVERB WS */}
-      <ProcNode
-        x={12} y={133} w={116}
-        fill={C.wsFill} stroke={C.wsStroke}
-        label="Reverb WS" sub="real-time"
-        lc={C.wsText} sc={C.wsSub}
-      />
-
-      {/* QUEUE WORKER */}
-      <ProcNode
-        x={185} y={238} w={190}
-        label="Queue Worker"
-        sub="Laravel Queue · email jobs"
-      />
-
-      {/* FASTAPI */}
-      <ProcNode
-        x={185} y={338} w={190}
+        x={cx - 105} y={298} w={210} h={52}
         fill={C.aiFill} stroke={C.aiStroke}
-        label="FastAPI · Python"
-        sub="AI service orchestration"
+        label="FastAPI · Python" sub="Orchestration · PDF reports"
         lc={C.aiText} sc={C.aiSub}
       />
-
-      {/* OLLAMA */}
+      <ProcNode x={44} y={410} w={155} h={52} fill={C.aiFill} stroke={C.aiStroke} label="Ollama Llama 3" sub="Questions · scoring" lc={C.aiText} sc={C.aiSub} />
+      <ProcNode x={262} y={410} w={155} h={52} fill={C.aiFill} stroke={C.aiStroke} label="Whisper small" sub="Speech → text" lc={C.aiText} sc={C.aiSub} />
+      <ProcNode x={480} y={410} w={165} h={52} fill={C.aiFill} stroke={C.aiStroke} label="Vision Pipeline" sub="GPU · emotion · gaze · prosody" lc={C.aiText} sc={C.aiSub} />
       <ProcNode
-        x={30} y={428} w={160}
-        fill={C.aiFill} stroke={C.aiStroke}
-        label="Ollama (Llama 3)"
-        sub="Questions + scoring"
-        lc={C.aiText} sc={C.aiSub}
+        x={44} y={500} w={200} h={52}
+        fill={C.memoryFill} stroke={C.memoryStroke}
+        label="Mastery Service" sub="user_question_mastery · memory profiles"
+        lc={C.memoryText} sc={C.memorySub}
       />
-
-      {/* WHISPER */}
       <ProcNode
-        x={370} y={428} w={160}
-        fill={C.aiFill} stroke={C.aiStroke}
-        label="Whisper (small)"
-        sub="Speech → text"
-        lc={C.aiText} sc={C.aiSub}
+        x={400} y={500} w={200} h={52}
+        fill={C.noteFill} stroke={C.noteStroke}
+        label="File Storage" sub="Per-answer clips · full_session video"
+        lc={C.noteText} sc={C.noteSub}
       />
+      <Line x1={500} y1={462} x2={500} y2={498} color={C.noteLine} dash />
     </svg>
   );
 }
 
-/* ─── public export ───────────────────────────────────────────────────────── */
+function StepLegend({ steps }: { steps: readonly { n: number; title: string; desc: string }[] }) {
+  return (
+    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      {steps.map((s) => (
+        <div key={s.n} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+          <p className="text-[10px] font-bold text-primary">{s.n}. {s.title}</p>
+          <p className="text-[10px] text-muted-foreground font-medium mt-0.5 leading-snug">{s.desc}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function SystemMethodologyDiagram() {
   const { resolvedTheme } = useTheme();
   const colors = resolvedTheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
 
   return (
     <DiagramColorsContext.Provider value={colors}>
-      <div className="space-y-10">
-        <div>
-          <div className="flex items-center gap-3 mb-5">
+      <div className="w-full space-y-10">
+        <section>
+          <div className="flex items-center gap-3 mb-4">
             <span className="h-px flex-1 bg-border" />
             <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               End-to-end user journey
             </span>
             <span className="h-px flex-1 bg-border" />
           </div>
-          <div className="overflow-x-auto rounded-xl border border-border bg-card py-4 px-2 shadow-sm">
+          <div className="rounded-xl border border-border bg-card py-4 px-3 shadow-sm">
             <UserJourneyDiagram />
           </div>
-        </div>
+          <StepLegend steps={JOURNEY_STEPS} />
+        </section>
 
-        <div>
-          <div className="flex items-center gap-3 mb-5">
+        <section>
+          <div className="flex items-center gap-3 mb-4">
             <span className="h-px flex-1 bg-border" />
             <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               Runtime architecture
             </span>
             <span className="h-px flex-1 bg-border" />
           </div>
-          <div className="overflow-x-auto rounded-xl border border-border bg-card py-4 px-2 shadow-sm">
+          <div className="rounded-xl border border-border bg-card py-4 px-3 shadow-sm">
             <RuntimeDiagram />
           </div>
-        </div>
+          <StepLegend steps={RUNTIME_STEPS} />
+        </section>
       </div>
     </DiagramColorsContext.Provider>
   );
