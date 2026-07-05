@@ -153,6 +153,24 @@ See [docs/architecture.md](docs/architecture.md) and [docs/api.md](docs/api.md).
 .\scripts\fresh-db.ps1
 ```
 
+### Demo data (20 completed interviews)
+
+Seed realistic completed interviews for the test user — scores, PDF reports, behavior summaries, snapshot galleries, and a playable full-session MP4 (no live recording required):
+
+```powershell
+cd backend
+php artisan db:seed
+php artisan interviews:seed-demo --count=20 --email=test@example.com
+```
+
+Options:
+
+- `--fresh` — delete existing interviews for that user first
+- `--no-pdf` — skip PDF generation (faster)
+- `--count=20` — number of interviews (max 100)
+
+Log in as `test@example.com` / `password`, then open the dashboard and any result page.
+
 ### Full browser journey (Playwright)
 
 Requires Laragon Redis, and all dev services running (API, queue, scheduler, Reverb, AI service, frontend).

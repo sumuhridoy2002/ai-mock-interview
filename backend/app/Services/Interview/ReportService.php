@@ -122,7 +122,7 @@ class ReportService
             'scores'           => $scores,
             'question_reviews' => $questionReviews,
             'memory'           => $memory,
-            'behavior_summary' => BehaviorAggregator::aggregate($items),
+            'behavior_summary' => BehaviorAggregator::aggregate($behaviorItems),
         ];
     }
 
