@@ -1,72 +1,75 @@
 "use client";
 
-import { type ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import {
   Activity,
   BookOpen,
+  ChevronDown,
   Clock,
   Database,
+  ExternalLink,
   Globe,
   HardDrive,
   RefreshCw,
   Server,
   TrendingDown,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 import { useSystemMetrics, type MetricComparison } from "@/hooks/useSystemMetrics";
-import { PageHeader } from "@/components/layout/page-header";
-import { FormulaReference } from "@/components/scoring/formula-reference";
 import { getMetricsPageFormulas } from "@/lib/scoring-docs";
 import {
-  ratingBadgeClass,
   ratingClass,
   ratingLabel,
   type MetricDelta,
+  type PerformanceRating,
 } from "@/lib/performance-benchmarks";
 import { cn, formatBytes } from "@/lib/utils";
 
-function ScoreBar({ score }: { score: number }) {
-  const color =
-    score >= 85 ? "bg-emerald-500" : score >= 65 ? "bg-amber-500" : "bg-rose-500";
+function ratingAccent(rating: PerformanceRating): string {
+  if (rating === "good") return "border-emerald-500 bg-emerald-500/5";
+  if (rating === "ok") return "border-amber-500 bg-amber-500/5";
+  return "border-rose-500 bg-rose-500/5";
+}
 
-  return (
-    <div className="flex items-center gap-3">
-      <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
-        <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${score}%` }} />
-      </div>
-      <span className="text-sm font-mono font-semibold text-foreground w-10 text-right">{score}%</span>
-    </div>
-  );
+function ratingIconBg(rating: PerformanceRating): string {
+  if (rating === "good") return "from-emerald-500 to-emerald-600";
+  if (rating === "ok") return "from-amber-500 to-amber-600";
+  return "from-rose-500 to-rose-600";
+}
+
+function ratingBadgeSolid(rating: PerformanceRating): string {
+  if (rating === "good") return "bg-emerald-500 text-white border-emerald-600";
+  if (rating === "ok") return "bg-amber-400 text-amber-950 border-amber-500";
+  return "bg-rose-500 text-white border-rose-600";
 }
 
 function DeltaText({ delta, unit }: { delta: MetricDelta | null; unit: string }) {
   if (!delta || delta.direction === "same") {
-    return <span className="text-muted-foreground">—</span>;
+    return <span className="text-muted-foreground">No change</span>;
   }
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 font-mono text-sm",
+        "inline-flex items-center gap-1 font-mono text-sm font-medium",
         delta.improved === true && "text-emerald-600 dark:text-emerald-400",
         delta.improved === false && "text-rose-600 dark:text-rose-400",
         delta.improved === null && "text-muted-foreground",
       )}
     >
-      {delta.direction === "up" ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+      {delta.direction === "up" ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
       {delta.formatted}
       {unit}
     </span>
   );
 }
 
-function MetricTile({
+function MetricCard({
   label,
   value,
   comparison,
   unit,
-  docId,
-  numericValue,
   icon: Icon,
   children,
 }: {
@@ -74,44 +77,82 @@ function MetricTile({
   value: string;
   comparison: MetricComparison;
   unit: string;
-  docId: string;
-  numericValue?: number | null;
   icon: ComponentType<{ className?: string }>;
   children?: React.ReactNode;
 }) {
+  const rating = comparison.rating;
+
   return (
-    <div className="rounded-xl border border-border bg-card px-4 py-4 shadow-sm">
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Icon className="h-4 w-4 text-primary" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-base font-medium text-foreground truncate">{label}</p>
-            <p className="text-sm text-muted-foreground truncate">Target: {comparison.target}</p>
-          </div>
+    <div
+      className={cn(
+        "rounded-2xl border-l-4 border border-border bg-card p-5 shadow-md hover:shadow-lg transition-shadow",
+        ratingAccent(rating),
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md",
+            ratingIconBg(rating),
+          )}
+        >
+          <Icon className="h-5 w-5" />
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", ratingBadgeClass(comparison.rating))}>
-            {ratingLabel(comparison.rating)}
-          </span>
-        </div>
+        <span
+          className={cn(
+            "rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide shadow-sm",
+            ratingBadgeSolid(rating),
+          )}
+        >
+          {ratingLabel(rating)}
+        </span>
       </div>
 
-      <p className={cn("text-2xl font-bold font-mono tracking-tight", ratingClass(comparison.rating))}>{value}</p>
+      <p className="mt-4 text-sm font-medium text-muted-foreground">{label}</p>
+      <p className={cn("text-3xl font-bold font-mono tracking-tight mt-0.5", ratingClass(rating))}>{value}</p>
 
-      <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-        <span>vs last</span>
+      <p className="mt-2 text-sm text-muted-foreground leading-snug line-clamp-2" title={comparison.target}>
+        {comparison.target}
+      </p>
+
+      <div className="mt-3 flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
+        <span className="text-muted-foreground">vs last refresh</span>
         <DeltaText delta={comparison.vsPrevious} unit={unit} />
       </div>
 
       {children}
+    </div>
+  );
+}
 
-      <FormulaReference
-        docId={docId}
-        currentValue={numericValue ?? undefined}
-        currentUnit={unit.trim() || undefined}
-      />
+function TimingStat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-4 py-3",
+        highlight
+          ? "border-primary/30 bg-primary/5"
+          : "border-border bg-card",
+      )}
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "mt-1 font-mono font-bold truncate",
+          highlight ? "text-primary text-lg" : "text-foreground text-base",
+        )}
+        title={value}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -127,238 +168,281 @@ export function SystemMetricsView() {
   const { metrics, refresh, isRefreshing, refreshIntervalSeconds } = useSystemMetrics();
   const { contextData, comparisons, apiTiming } = metrics;
   const contextLabel = formatBytes(contextData.appDataBytes);
+  const [formulasOpen, setFormulasOpen] = useState(false);
+
+  const scoreRating = comparisons.systemPerformanceScore.rating;
+  const scoreRingColor =
+    scoreRating === "good" ? "#10b981" : scoreRating === "ok" ? "#f59e0b" : "#f43f5e";
 
   return (
-    <div className="w-full space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageHeader
-          size="md"
-          title="Performance & Analytics"
-          subtitle="Live scores vs industry standards with calculation formulas shown on each metric."
-          className="flex-1 min-w-0"
-        />
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-        >
-          <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin text-primary")} />
-          Refresh
-        </button>
-      </div>
+    <div className="w-full space-y-6">
+      {/* Hero */}
+      <section className="rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-indigo-800 p-6 sm:p-8 text-white shadow-xl shadow-indigo-500/20 overflow-hidden relative">
+        <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden />
+        <div className="absolute -left-4 bottom-0 h-32 w-32 rounded-full bg-violet-400/20 blur-2xl" aria-hidden />
 
-      {/* Primary KPIs — one row, no duplicate formula blocks */}
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-          Performance vs standards
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricTile
-            label="System Performance Score"
-            value={`${metrics.performanceScore}%`}
-            comparison={comparisons.systemPerformanceScore}
-            unit="%"
-            docId="systemPerformanceScore"
-            numericValue={metrics.performanceScore}
-            icon={Activity}
-          />
-          <MetricTile
-            label="Page load"
-            value={`${metrics.pageLoadMs} ms`}
-            comparison={comparisons.pageLoad}
-            unit=" ms"
-            docId="pageLoad"
-            numericValue={metrics.pageLoadMs}
-            icon={Globe}
-          />
-          <MetricTile
-            label="API latency"
-            value={metrics.apiLatencyMs !== null ? `${metrics.apiLatencyMs} ms` : "—"}
-            comparison={comparisons.apiLatency}
-            unit=" ms"
-            docId="apiLatency"
-            numericValue={metrics.apiLatencyMs}
-            icon={Server}
-          >
-            {(apiTiming.pingMs != null || apiTiming.ttfbMs != null) && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1 text-sm text-muted-foreground">
-                {apiTiming.pingMs != null && (
-                  <div className="flex justify-between"><span>Ping</span><span className="font-mono text-foreground">{apiTiming.pingMs} ms</span></div>
-                )}
-                {apiTiming.ttfbMs != null && (
-                  <div className="flex justify-between"><span>TTFB</span><span className="font-mono text-foreground">{apiTiming.ttfbMs} ms</span></div>
-                )}
-                {apiTiming.transferMs != null && (
-                  <div className="flex justify-between"><span>Transfer</span><span className="font-mono text-foreground">{apiTiming.transferMs} ms</span></div>
-                )}
-                {apiTiming.wasNotModified && (
-                  <div className="flex justify-between"><span>Cache</span><span className="font-mono text-emerald-600 dark:text-emerald-400">304</span></div>
-                )}
+        <div className="relative flex flex-wrap items-center justify-between gap-6">
+          <div className="flex items-center gap-5 min-w-0">
+            <div
+              className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: `conic-gradient(${scoreRingColor} ${metrics.performanceScore}%, rgba(255,255,255,0.2) 0)`,
+              }}
+            >
+              <div className="flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center rounded-full bg-indigo-900/60 backdrop-blur-sm">
+                <span className="text-2xl font-bold font-mono leading-none">{metrics.performanceScore}</span>
+                <span className="text-xs font-medium opacity-80">/ 100</span>
               </div>
-            )}
-          </MetricTile>
-          <MetricTile
-            label="App data size"
-            value={contextLabel}
-            comparison={comparisons.context}
-            unit=""
-            docId="contextBytes"
-            numericValue={contextData.appDataBytes}
-            icon={Database}
-          />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-amber-300" />
+                <h1 className="text-xl sm:text-2xl font-bold">Performance &amp; Analytics</h1>
+              </div>
+              <p className="mt-1 text-sm text-indigo-100 max-w-md">
+                Live system health — page load, API latency, and client data vs industry standards.
+              </p>
+              <span
+                className={cn(
+                  "inline-block mt-3 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide",
+                  ratingBadgeSolid(scoreRating),
+                )}
+              >
+                {ratingLabel(scoreRating)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end gap-2">
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2.5 text-sm font-semibold text-white ring-1 ring-white/25 hover:bg-white/25 transition-colors backdrop-blur-sm"
+            >
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+              Refresh
+            </button>
+            <p className="text-xs text-indigo-200">
+              Updated {metrics.lastUpdated} · every {refreshIntervalSeconds}s
+            </p>
+          </div>
         </div>
+
         {comparisons.session && (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Session average ({comparisons.session.sampleCount} samples): score {comparisons.session.performanceScore}%
-            {comparisons.session.apiLatencyMs != null && ` · API ${comparisons.session.apiLatencyMs} ms`}
+          <p className="relative mt-4 text-sm text-indigo-100/90 rounded-lg bg-white/10 px-3 py-2 inline-block">
+            Session avg ({comparisons.session.sampleCount} samples):{" "}
+            <span className="font-mono font-bold text-white">{comparisons.session.performanceScore}%</span>
+            {comparisons.session.apiLatencyMs != null && (
+              <> · API <span className="font-mono font-bold text-white">{comparisons.session.apiLatencyMs} ms</span></>
+            )}
           </p>
         )}
       </section>
 
-      {/* Timing + overall health — side by side on wide screens */}
-      <div className="grid gap-6 lg:grid-cols-2">
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5" />
-          Timing breakdown
-        </h2>
-        <div className="grid gap-3 grid-cols-2">
-          {[
-            { label: "DOM ready", value: `${metrics.domReadyMs} ms`, docId: "domReady" },
-            { label: "Panel render", value: `${metrics.renderMs} ms`, docId: "renderMs" },
-            { label: "Route", value: metrics.route, docId: null },
-            { label: "API status", value: metrics.apiStatus, docId: null },
-          ].map((item) => (
-            <div key={item.label} className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-              <p className="text-sm uppercase tracking-wide text-muted-foreground">{item.label}</p>
-              <p className="text-sm font-mono font-medium text-foreground mt-0.5 truncate" title={item.value}>
-                {item.value}
-              </p>
-              {item.docId && (
-                <FormulaReference docId={item.docId} compact className="mt-2 !p-2" />
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Overall score + stack */}
-      <section className="rounded-xl border border-border bg-card p-5 shadow-sm h-full">
-        <div className="mb-4">
-          <h2 className="text-sm font-semibold text-foreground">Overall health</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Composite score from load time, API, and reachability</p>
-        </div>
-        <ScoreBar score={metrics.performanceScore} />
-        <FormulaReference
-          docId="systemPerformanceScore"
-          currentValue={metrics.performanceScore}
-          currentUnit="%"
-          className="mt-4"
+      {/* KPI grid */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="System Performance Score"
+          value={`${metrics.performanceScore}%`}
+          comparison={comparisons.systemPerformanceScore}
+          unit="%"
+          icon={Activity}
         />
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {STACK_STATUS.map((s) => (
-            <div key={s.name} className="rounded-lg bg-muted/40 px-3 py-2 text-center">
-              <p className="text-sm text-muted-foreground">{s.name}</p>
-              <p
-                className={cn(
-                  "text-xs font-medium mt-0.5",
-                  s.key === "api"
-                    ? metrics.apiStatus === "online"
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-rose-600 dark:text-rose-400"
-                    : s.ok === true
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-muted-foreground"
-                )}
-              >
-                {s.key === "api" ? (metrics.apiStatus === "online" ? "Online" : "Offline") : s.status}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+        <MetricCard
+          label="Page load"
+          value={`${metrics.pageLoadMs} ms`}
+          comparison={comparisons.pageLoad}
+          unit=" ms"
+          icon={Globe}
+        />
+        <MetricCard
+          label="API latency"
+          value={metrics.apiLatencyMs !== null ? `${metrics.apiLatencyMs} ms` : "—"}
+          comparison={comparisons.apiLatency}
+          unit=" ms"
+          icon={Server}
+        />
+        <MetricCard
+          label="App data size"
+          value={contextLabel}
+          comparison={comparisons.context}
+          unit=""
+          icon={Database}
+        />
       </div>
 
-      {/* Context storage — collapsed detail */}
-      <details className="rounded-xl border border-border bg-card group">
-        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-foreground flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <HardDrive className="h-4 w-4 text-muted-foreground" />
-            Storage breakdown
-          </span>
-          <span className="text-xs font-mono text-muted-foreground">{contextLabel} total</span>
-        </summary>
-        <div className="px-4 pb-4 grid gap-3 sm:grid-cols-3 border-t border-border pt-3">
-          <div>
-            <p className="text-xs text-muted-foreground">localStorage</p>
-            <p className="font-mono text-foreground">{formatBytes(contextData.localStorageBytes)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">sessionStorage</p>
-            <p className="font-mono text-foreground">{formatBytes(contextData.sessionStorageBytes)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Last API payload</p>
-            <p className="font-mono text-foreground">
-              {contextData.apiResponseBytes != null ? formatBytes(contextData.apiResponseBytes) : "—"}
-            </p>
-          </div>
-        </div>
-      </details>
-
-      {/* Full formula reference — exact math + industry sources */}
-      <section className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-primary shrink-0" />
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Exact formulas &amp; references</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Same calculations used by the live metrics above — thresholds from shared scoring constants.
-            </p>
-          </div>
-        </div>
-        <div className="divide-y divide-border">
-          {getMetricsPageFormulas().map((doc) => (
-            <div key={doc.id} className="px-4 py-4">
-              <h3 className="text-sm font-semibold text-foreground mb-2">{doc.title}</h3>
-              <pre className="font-mono text-sm text-primary leading-relaxed whitespace-pre-wrap break-words bg-muted/40 rounded-lg p-3 border border-border">
-                {doc.formula}
-              </pre>
-              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{doc.description}</p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2 text-sm">
-                <p>
-                  <span className="font-semibold text-foreground">Industry standard:</span>{" "}
-                  <span className="text-muted-foreground">{doc.industryStandard}</span>
-                </p>
-                <p>
-                  <span className="font-semibold text-foreground">Rating bands:</span>{" "}
-                  <span className="text-muted-foreground">{doc.ratingBands}</span>
-                </p>
-              </div>
-              {doc.references.length > 0 && (
-                <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                  {doc.references.map((ref) => (
-                    <li key={ref.url}>
-                      <a
-                        href={ref.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                      >
-                        {ref.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
+      {/* Detail panels */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* API breakdown */}
+        <section className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 shadow-md">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+              <Server className="h-4 w-4" />
             </div>
-          ))}
-        </div>
-      </section>
+            <div>
+              <h2 className="text-base font-bold text-foreground">API probe breakdown</h2>
+              <p className="text-sm text-muted-foreground">Ping, TTFB, and transfer from Resource Timing</p>
+            </div>
+          </div>
 
-      <p className="text-xs text-muted-foreground text-center pb-2">
-        Updated {metrics.lastUpdated} · auto-refresh every {refreshIntervalSeconds}s
-      </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <TimingStat label="Round-trip" value={metrics.apiLatencyMs != null ? `${metrics.apiLatencyMs} ms` : "—"} highlight />
+            <TimingStat label="Ping" value={apiTiming.pingMs != null ? `${apiTiming.pingMs} ms` : "—"} />
+            <TimingStat label="TTFB" value={apiTiming.ttfbMs != null ? `${apiTiming.ttfbMs} ms` : "—"} />
+            <TimingStat label="Transfer" value={apiTiming.transferMs != null ? `${apiTiming.transferMs} ms` : "—"} />
+          </div>
+
+          {apiTiming.wasNotModified && (
+            <p className="mt-3 text-sm font-medium text-emerald-600 dark:text-emerald-400 rounded-lg bg-emerald-500/10 px-3 py-2 border border-emerald-500/20">
+              ETag cache hit — 304 Not Modified
+            </p>
+          )}
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <TimingStat label="DOM ready" value={`${metrics.domReadyMs} ms`} />
+            <TimingStat label="Panel render" value={`${metrics.renderMs} ms`} />
+            <TimingStat label="Route" value={metrics.route} />
+            <TimingStat
+              label="API status"
+              value={metrics.apiStatus === "online" ? "Online" : metrics.apiStatus}
+              highlight={metrics.apiStatus === "online"}
+            />
+          </div>
+        </section>
+
+        {/* Stack + storage */}
+        <section className="space-y-4">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-md">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="h-4 w-4 text-primary" />
+              <h2 className="text-base font-bold text-foreground">Stack status</h2>
+            </div>
+            <div className="space-y-2">
+              {STACK_STATUS.map((s) => {
+                const isApi = s.key === "api";
+                const online = metrics.apiStatus === "online";
+                const statusText = isApi ? (online ? "Online" : "Offline") : s.status;
+                const ok = isApi ? online : s.ok === true;
+
+                return (
+                  <div
+                    key={s.name}
+                    className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2.5"
+                  >
+                    <span className="text-sm font-medium text-foreground">{s.name}</span>
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-0.5 text-xs font-bold",
+                        ok
+                          ? "bg-emerald-500 text-white"
+                          : isApi
+                            ? "bg-rose-500 text-white"
+                            : "bg-slate-400/30 text-muted-foreground",
+                      )}
+                    >
+                      {statusText}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-md">
+            <div className="flex items-center justify-between mb-3">
+              <span className="flex items-center gap-2 text-base font-bold text-foreground">
+                <HardDrive className="h-4 w-4 text-primary" />
+                Storage
+              </span>
+              <span className="font-mono text-sm font-bold text-primary">{contextLabel}</span>
+            </div>
+            <div className="space-y-2 text-sm">
+              {[
+                { label: "localStorage", value: formatBytes(contextData.localStorageBytes) },
+                { label: "sessionStorage", value: formatBytes(contextData.sessionStorageBytes) },
+                {
+                  label: "Last API payload",
+                  value: contextData.apiResponseBytes != null ? formatBytes(contextData.apiResponseBytes) : "—",
+                },
+              ].map((row) => (
+                <div key={row.label} className="flex justify-between rounded-lg bg-muted/40 px-3 py-2">
+                  <span className="text-muted-foreground">{row.label}</span>
+                  <span className="font-mono font-medium text-foreground">{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Formulas — collapsed by default */}
+      <section className="rounded-2xl border-2 border-primary/20 bg-card shadow-md overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setFormulasOpen((o) => !o)}
+          className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-muted/30 transition-colors"
+        >
+          <span className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-600 text-white shadow-md">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <span>
+              <span className="block text-base font-bold text-foreground">Calculations &amp; references</span>
+              <span className="block text-sm text-muted-foreground mt-0.5">
+                Exact formulas, industry standards, and source links
+              </span>
+            </span>
+          </span>
+          <ChevronDown
+            className={cn("h-5 w-5 text-muted-foreground shrink-0 transition-transform", formulasOpen && "rotate-180")}
+          />
+        </button>
+
+        {formulasOpen && (
+          <div className="border-t border-border p-5 grid gap-4 lg:grid-cols-2">
+            {getMetricsPageFormulas().map((doc) => (
+              <div
+                key={doc.id}
+                className="rounded-xl border border-border bg-gradient-to-br from-muted/30 to-card p-4 shadow-sm"
+              >
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  {doc.title}
+                </h3>
+                <pre className="mt-3 font-mono text-sm text-primary leading-relaxed whitespace-pre-wrap break-words rounded-lg bg-indigo-500/5 dark:bg-indigo-500/10 border border-primary/15 p-3">
+                  {doc.formula}
+                </pre>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{doc.description}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:text-emerald-300">
+                    {doc.industryStandard}
+                  </span>
+                  <span className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300">
+                    {doc.ratingBands}
+                  </span>
+                </div>
+                {doc.references.length > 0 && (
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {doc.references.map((ref) => (
+                      <li key={ref.url}>
+                        <a
+                          href={ref.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          {ref.label}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
