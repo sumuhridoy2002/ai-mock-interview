@@ -3,11 +3,11 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHero, SectionPanel } from "@/components/ui/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
+import { Mic } from "lucide-react";
 
 interface Resume {
   id: number;
@@ -123,18 +123,15 @@ export default function InterviewSetupPage() {
 
   return (
     <AppShell>
-      <div className="max-w-2xl mx-auto">
-        <PageHeader
+      <div className="max-w-2xl mx-auto space-y-6">
+        <PageHero
+          icon={Mic}
           title="Interview Setup"
-          subtitle="Configure your mock interview session"
-          className="mb-8"
+          subtitle="Configure resume, role, level, and start now or schedule for later."
+          accent="indigo"
         />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl text-slate-900 dark:text-white">Session Details</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <SectionPanel title="Session Details" description="All fields are used to tailor AI questions.">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
                 <div className="rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 p-3 text-sm font-medium text-red-700 dark:text-red-300">
@@ -299,8 +296,7 @@ export default function InterviewSetupPage() {
                   : "Start Interview"}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+        </SectionPanel>
       </div>
     </AppShell>
   );

@@ -18,6 +18,7 @@ import {
   appendPerformanceSample,
   computeSessionAverages,
   getPreviousSample,
+  type PerformanceSample,
   type SessionAverages,
 } from "@/lib/performance-history";
 
@@ -64,6 +65,7 @@ export interface SystemMetrics {
   route: string;
   contextData: ContextDataMetrics;
   comparisons: PerformanceComparisons;
+  performanceHistory: PerformanceSample[];
 }
 
 const EMPTY_API_TIMING: ApiTimingBreakdown = {
@@ -121,7 +123,7 @@ function buildComparisons(
   apiLatencyMs: number | null,
   performanceScore: number,
   contextBytes: number,
-): PerformanceComparisons {
+): { comparisons: PerformanceComparisons; samples: PerformanceSample[] } {
   const samples = appendPerformanceSample({
     pageLoadMs,
     domReadyMs,
@@ -150,11 +152,14 @@ function buildComparisons(
   };
 
   return {
+    comparisons: {
     pageLoad: build(pageLoadMs, "pageLoad", previous?.pageLoadMs, session?.pageLoadMs),
     apiLatency: build(apiLatencyMs, "apiLatency", previous?.apiLatencyMs, session?.apiLatencyMs),
     systemPerformanceScore: build(performanceScore, "systemPerformanceScore", previous?.performanceScore, session?.performanceScore, true),
     context: build(contextBytes, "contextBytes", previous?.contextBytes, session?.contextBytes),
     session,
+    },
+    samples,
   };
 }
 
@@ -174,6 +179,7 @@ export function useSystemMetrics() {
     route: pathname,
     contextData: EMPTY_CONTEXT_DATA,
     comparisons: EMPTY_COMPARISONS,
+    performanceHistory: [],
   }));
 
   const refresh = useCallback(async () => {
@@ -254,7 +260,7 @@ export function useSystemMetrics() {
     const contextData = measureClientContext(apiResponseBytes);
     const performanceScore = computePerformanceScore(pageLoadMs, apiLatencyMs, apiOnline);
 
-    const comparisons =
+    const historyResult =
       typeof window !== "undefined"
         ? buildComparisons(
             pageLoadMs,
@@ -263,7 +269,7 @@ export function useSystemMetrics() {
             performanceScore,
             contextData.appDataBytes,
           )
-        : EMPTY_COMPARISONS;
+        : { comparisons: EMPTY_COMPARISONS, samples: [] as PerformanceSample[] };
 
     setMetrics({
       pageLoadMs,
@@ -276,7 +282,8 @@ export function useSystemMetrics() {
       lastUpdated: new Date().toLocaleTimeString(),
       route: pathname,
       contextData,
-      comparisons,
+      comparisons: historyResult.comparisons,
+      performanceHistory: historyResult.samples,
     });
 
     refreshInFlight.current = false;

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, TrendingUp, Award, ArrowRight, Bell, BellOff, Calendar, Pencil, Trash2, X, Check, TrendingDown, Minus, Star, Target, BarChart2, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { PageHeader } from "@/components/layout/page-header";
+import { PageHero, StatTile } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,17 +96,17 @@ function EditScheduleForm({ row, onSave, onClear, onCancel }: EditScheduleFormPr
   return (
     <div className="mt-3 p-3 rounded-lg border border-indigo-500/30 bg-indigo-500/5 space-y-3">
       <div>
-        <label className="text-xs text-slate-400 block mb-1">Date &amp; Time</label>
+        <label className="text-xs text-muted-foreground block mb-1">Date &amp; Time</label>
         <input
           type="datetime-local"
           value={scheduledAt}
           min={minDatetime}
           onChange={(e) => setScheduledAt(e.target.value)}
-          className="w-full h-9 rounded border border-slate-600 bg-slate-900/60 px-2 text-white text-sm [color-scheme:dark]"
+          className="w-full h-9 rounded-lg border border-border bg-background px-2 text-foreground text-sm"
         />
       </div>
       <div>
-        <label className="text-xs text-slate-400 block mb-1">Alarm Message</label>
+        <label className="text-xs text-muted-foreground block mb-1">Alarm Message</label>
         <Input
           value={alarmMessage}
           onChange={(e) => setAlarmMessage(e.target.value)}
@@ -223,47 +223,18 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="max-w-6xl mx-auto space-y-8">
-        <PageHeader
+      <div className="w-full space-y-6">
+        <PageHero
+          icon={BarChart2}
           title="Dashboard"
-          subtitle="Track your interview progress and scores"
+          subtitle="Track interview progress, scheduled sessions, and score trends."
+          accent="indigo"
         />
 
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="pt-6 flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-indigo-500/20">
-                <Mic className="h-6 w-6 text-indigo-400" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">Total Interviews</p>
-                <p className="text-2xl font-bold text-foreground">{interviews.length}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-emerald-500/20">
-                <TrendingUp className="h-6 w-6 text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">Average Score</p>
-                <p className="text-2xl font-bold text-foreground">{formatScore(avgScore)}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-amber-500/20">
-                <Award className="h-6 w-6 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">Completed</p>
-                <p className="text-2xl font-bold text-foreground">{completed.length}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <StatTile icon={Mic} label="Total Interviews" value={interviews.length} accent="indigo" />
+          <StatTile icon={TrendingUp} label="Average Score" value={formatScore(avgScore)} accent="emerald" />
+          <StatTile icon={Award} label="Completed" value={completed.length} accent="amber" />
         </div>
 
         {/* Progress Overview */}
@@ -284,7 +255,7 @@ export default function DashboardPage() {
                   <div className="relative w-20 h-20 shrink-0">
                     <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
                       <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor"
-                        className="text-slate-700" strokeWidth="3" />
+                        className="text-muted" strokeWidth="3" />
                       <circle cx="18" cy="18" r="15.9" fill="none"
                         stroke="currentColor"
                         className={avgScore >= 85 ? "text-emerald-400" : avgScore >= 70 ? "text-indigo-400" : avgScore >= 55 ? "text-amber-400" : "text-red-400"}
@@ -297,23 +268,23 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-2xl font-bold text-white">{avgScore}<span className="text-sm text-slate-400 font-normal">/100</span></p>
-                    <p className="text-xs text-slate-400">Avg score</p>
+                    <p className="text-2xl font-bold text-foreground">{avgScore}<span className="text-sm text-muted-foreground font-normal">/100</span></p>
+                    <p className="text-xs text-muted-foreground">Avg score</p>
                     <div className="flex items-center gap-1 text-xs">
                       {trendDelta > 0 ? (
                         <><TrendingUp className="h-3.5 w-3.5 text-emerald-400" /><span className="text-emerald-400">+{trendDelta} improving</span></>
                       ) : trendDelta < 0 ? (
                         <><TrendingDown className="h-3.5 w-3.5 text-red-400" /><span className="text-red-400">{trendDelta} declining</span></>
                       ) : (
-                        <><Minus className="h-3.5 w-3.5 text-slate-500" /><span className="text-slate-500">Stable</span></>
+                        <><Minus className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-muted-foreground">Stable</span></>
                       )}
                     </div>
                   </div>
                 </div>
 
                 {/* Best score */}
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-800/50">
-                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Target className="h-3.5 w-3.5" /> Best score
                   </div>
                   <span className="text-sm font-semibold text-emerald-400">{bestScore}/100</span>
@@ -321,7 +292,7 @@ export default function DashboardPage() {
 
                 {/* Completion rate */}
                 <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs text-slate-400">
+                  <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Completion rate</span>
                     <span>{interviews.length > 0 ? Math.round((completed.length / interviews.length) * 100) : 0}%</span>
                   </div>
@@ -341,12 +312,12 @@ export default function DashboardPage() {
                 <CardTitle className="flex items-center gap-2 text-base">
                   <BarChart2 className="h-4 w-4 text-indigo-400" />
                   Score History
-                  <span className="ml-auto text-xs font-normal text-slate-500">Last {recent8.length} sessions</span>
+                  <span className="ml-auto text-xs font-normal text-muted-foreground">Last {recent8.length} sessions</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {recent8.length === 0 ? (
-                  <p className="text-slate-500 text-sm">Complete interviews to see your score history.</p>
+                  <p className="text-muted-foreground text-sm">Complete interviews to see your score history.</p>
                 ) : (
                   <div className="space-y-3">
                     {recent8.map((interview, idx) => {
@@ -361,8 +332,8 @@ export default function DashboardPage() {
                           href={`/interview/result/${interview.id}`}
                           className="flex items-center gap-3 group"
                         >
-                          <span className="text-xs text-slate-500 w-4 shrink-0">#{idx + 1}</span>
-                          <span className="text-xs text-slate-300 truncate w-36 shrink-0 group-hover:text-white transition-colors">
+                          <span className="text-xs text-muted-foreground w-4 shrink-0">#{idx + 1}</span>
+                          <span className="text-xs text-foreground/80 truncate w-36 shrink-0 group-hover:text-foreground transition-colors">
                             {interview.job_title}
                           </span>
                           <div className="flex-1 h-5 rounded bg-slate-800 overflow-hidden relative">
@@ -374,7 +345,7 @@ export default function DashboardPage() {
                               {score}
                             </span>
                           </div>
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-slate-400 shrink-0" />
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-muted-foreground shrink-0" />
                         </Link>
                       );
                     })}
@@ -384,15 +355,15 @@ export default function DashboardPage() {
                 {/* Score by type */}
                 {byType.some((t) => t.avg !== null) && (
                   <div className="mt-5 pt-4 border-t border-slate-700/50">
-                    <p className="text-xs text-slate-500 mb-3 uppercase tracking-wide">Score by type</p>
+                    <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wide">Score by type</p>
                     <div className="grid grid-cols-3 gap-3">
                       {byType.map(({ type, count, avg }) => (
                         <div key={type} className="rounded-lg bg-slate-800/60 p-3 text-center">
-                          <p className="text-xs text-slate-400 capitalize mb-1">{type}</p>
-                          <p className={`text-lg font-bold ${avg !== null ? (avg >= 85 ? "text-emerald-400" : avg >= 70 ? "text-indigo-400" : avg >= 55 ? "text-amber-400" : "text-red-400") : "text-slate-600"}`}>
+                          <p className="text-xs text-muted-foreground capitalize mb-1">{type}</p>
+                          <p className={`text-lg font-bold ${avg !== null ? (avg >= 85 ? "text-emerald-400" : avg >= 70 ? "text-indigo-400" : avg >= 55 ? "text-amber-400" : "text-red-400") : "text-muted-foreground"}`}>
                             {avg !== null ? avg : "—"}
                           </p>
-                          <p className="text-xs text-slate-500">{count} session{count !== 1 ? "s" : ""}</p>
+                          <p className="text-xs text-muted-foreground">{count} session{count !== 1 ? "s" : ""}</p>
                         </div>
                       ))}
                     </div>
@@ -411,7 +382,7 @@ export default function DashboardPage() {
                 <Bell className="h-5 w-5 text-indigo-400" />
                 Scheduled Interviews
               </CardTitle>
-              <span className="text-xs text-slate-500">{scheduled.length} upcoming</span>
+              <span className="text-xs text-muted-foreground">{scheduled.length} upcoming</span>
             </CardHeader>
             <CardContent className="space-y-3">
               {scheduled.map((row) => {
@@ -429,7 +400,7 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-medium text-white truncate">{row.job_title}</p>
+                        <p className="font-medium text-foreground truncate">{row.job_title}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <span
                             className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -441,17 +412,17 @@ export default function DashboardPage() {
                             <Calendar className="h-3 w-3" />
                             {st === "due" ? "Due now" : "Scheduled"}
                           </span>
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-muted-foreground">
                             {formatScheduledAt(row.scheduled_at)}
                           </span>
                           {row.alarm_triggered_at && (
-                            <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                               <BellOff className="h-3 w-3" /> Alarm fired
                             </span>
                           )}
                         </div>
                         {row.alarm_message && (
-                          <p className="text-xs text-slate-500 mt-1 truncate max-w-sm">
+                          <p className="text-xs text-muted-foreground mt-1 truncate max-w-sm">
                             &ldquo;{row.alarm_message}&rdquo;
                           </p>
                         )}
@@ -469,7 +440,7 @@ export default function DashboardPage() {
                         )}
                         <button
                           onClick={() => setEditingId(editing ? null : row.id)}
-                          className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                          className="p-1.5 rounded text-muted-foreground hover:text-white hover:bg-slate-700 transition-colors"
                           title="Edit schedule"
                         >
                           <Pencil className="h-4 w-4" />
@@ -504,7 +475,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {interviews.length === 0 ? (
-              <p className="text-slate-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 No interviews yet. Upload a resume and start practicing!
               </p>
             ) : (
@@ -518,7 +489,7 @@ export default function DashboardPage() {
                     <>
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-white">{interview.job_title}</p>
-                        <p className="text-sm text-slate-400 capitalize flex items-center gap-2 flex-wrap">
+                        <p className="text-sm text-muted-foreground capitalize flex items-center gap-2 flex-wrap">
                           {interview.experience_level} · {interview.interview_type}
                           {isActive && (
                             <span className="inline-flex items-center gap-1 text-amber-400 text-xs font-medium">
@@ -546,7 +517,7 @@ export default function DashboardPage() {
                           </span>
                         )}
                         {!isActive && !isCompleted && (
-                          <span className="text-xs text-slate-500">Setup</span>
+                          <span className="text-xs text-muted-foreground">Setup</span>
                         )}
                       </div>
                     </>
@@ -569,7 +540,7 @@ export default function DashboardPage() {
                     <Link
                       key={interview.id}
                       href={isCompleted ? `/interview/result/${interview.id}` : `/interview/setup`}
-                      className="flex items-center justify-between p-4 rounded-lg border border-slate-700/50 hover:bg-slate-800/50 transition-colors"
+                      className="flex items-center justify-between p-4 rounded-lg border border-slate-700/50 hover:bg-muted/50 transition-colors"
                     >
                       {inner}
                     </Link>

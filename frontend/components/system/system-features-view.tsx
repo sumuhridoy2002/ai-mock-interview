@@ -6,18 +6,23 @@ import {
   SYSTEM_FEATURES,
   type SystemFeature,
 } from "@/lib/system-features";
-import { PageHeader } from "@/components/layout/page-header";
 import { RecentWorkBanner } from "@/components/system/recent-work-banner";
+import {
+  CategoryHeading,
+  FilterChip,
+  PageHero,
+  SearchField,
+} from "@/components/ui/page-shell";
 import { cn } from "@/lib/utils";
 
 function StatusBadge({ status }: { status: SystemFeature["status"] }) {
   return (
     <span
       className={cn(
-        "shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold capitalize",
+        "shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide shadow-sm",
         status === "shipped"
-          ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-          : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300",
+          ? "border-emerald-600 bg-emerald-500 text-white"
+          : "border-amber-500 bg-amber-400 text-amber-950",
       )}
     >
       {status}
@@ -30,47 +35,47 @@ function FeatureCard({ feature }: { feature: SystemFeature }) {
   const hasMore = Boolean(feature.details?.length || feature.stack?.length || feature.apiRoute);
 
   return (
-    <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card px-4 py-4 shadow-md hover:shadow-lg transition-shadow border-l-4 border-l-primary/40">
       <button
         type="button"
         onClick={() => hasMore && setOpen((v) => !v)}
         className={cn("w-full text-left", hasMore && "cursor-pointer")}
       >
         <div className="flex items-start justify-between gap-3">
-          <p className="text-sm font-semibold text-foreground">{feature.title}</p>
+          <p className="text-sm font-bold text-foreground">{feature.title}</p>
           <div className="flex items-center gap-2">
             <StatusBadge status={feature.status} />
             {hasMore && (
               <ChevronDown
                 className={cn(
-                  "h-3.5 w-3.5 text-muted-foreground transition-transform",
+                  "h-4 w-4 text-muted-foreground transition-transform",
                   open && "rotate-180",
                 )}
               />
             )}
           </div>
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground font-medium">{feature.description}</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
       </button>
 
       {open && hasMore && (
         <div className="mt-3 space-y-2 border-t border-border pt-3">
           {feature.details && feature.details.length > 0 && (
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {feature.details.map((d) => (
-                <li key={d} className="flex items-start gap-2 text-xs text-muted-foreground font-medium">
-                  <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                <li key={d} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                   {d}
                 </li>
               ))}
             </ul>
           )}
           {feature.stack && feature.stack.length > 0 && (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1.5">
               {feature.stack.map((s) => (
                 <span
                   key={s}
-                  className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground font-medium"
+                  className="rounded-lg bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs font-medium text-primary"
                 >
                   {s}
                 </span>
@@ -78,7 +83,9 @@ function FeatureCard({ feature }: { feature: SystemFeature }) {
             </div>
           )}
           {feature.apiRoute && (
-            <p className="font-mono text-xs text-primary font-medium break-all">{feature.apiRoute}</p>
+            <p className="font-mono text-sm text-primary font-medium break-all rounded-lg bg-muted/50 px-2 py-1.5">
+              {feature.apiRoute}
+            </p>
           )}
         </div>
       )}
@@ -121,69 +128,41 @@ export function SystemFeaturesView() {
     return Array.from(map.entries());
   }, [filtered]);
 
-  const filterBtn = (active: boolean) =>
-    cn(
-      "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-      active
-        ? "border-primary/50 bg-primary/10 text-primary"
-        : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
-    );
-
   return (
     <div className="space-y-6">
-      <PageHeader
-        size="md"
+      <PageHero
         icon={List}
         title="Feature Catalog"
-        subtitle={`The complete capability list for Mock Interview Pro — ${SYSTEM_FEATURES.length} features across ${categories.length} categories. Tap a feature for stack and API details.`}
+        subtitle={`${SYSTEM_FEATURES.length} capabilities across ${categories.length} categories — tap any feature for stack and API details.`}
+        accent="violet"
       />
 
       <RecentWorkBanner title="All Platform Work" />
 
-      <div className="space-y-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search features..."
-            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-md space-y-4">
+        <SearchField value={query} onChange={setQuery} placeholder="Search features…" icon={Search} />
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setActiveCategory(null)} className={filterBtn(activeCategory === null)}>
+          <FilterChip active={activeCategory === null} onClick={() => setActiveCategory(null)}>
             All
-          </button>
+          </FilterChip>
           {categories.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setActiveCategory(c)}
-              className={filterBtn(activeCategory === c)}
-            >
+            <FilterChip key={c} active={activeCategory === c} onClick={() => setActiveCategory(c)}>
               {c}
-            </button>
+            </FilterChip>
           ))}
         </div>
       </div>
 
       {grouped.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground font-medium">
+        <p className="py-12 text-center text-sm text-muted-foreground font-medium rounded-2xl border border-dashed border-border">
           No features match &ldquo;{query}&rdquo;.
         </p>
       ) : (
         <div className="space-y-8">
           {grouped.map(([category, items]) => (
             <section key={category}>
-              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {category}
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-foreground font-semibold">
-                  {items.length}
-                </span>
-              </h2>
-              <div className="grid gap-3 lg:grid-cols-2">
+              <CategoryHeading count={items.length}>{category}</CategoryHeading>
+              <div className="grid gap-4 lg:grid-cols-2">
                 {items.map((f) => (
                   <FeatureCard key={f.id} feature={f} />
                 ))}

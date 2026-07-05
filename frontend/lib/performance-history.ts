@@ -1,5 +1,6 @@
 const STORAGE_KEY = "mip_perf_history";
-const MAX_SAMPLES = 30;
+export const PERFORMANCE_HISTORY_MAX_SAMPLES = 30;
+const MAX_SAMPLES = PERFORMANCE_HISTORY_MAX_SAMPLES;
 
 export interface PerformanceSample {
   ts: number;

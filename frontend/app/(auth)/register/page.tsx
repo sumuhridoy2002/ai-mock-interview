@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { register } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -38,48 +38,50 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-2.75rem)] flex items-center justify-center p-4 relative">
+    <div className="min-h-screen flex items-center justify-center p-4 relative bg-gradient-to-br from-slate-50 via-indigo-50/50 to-violet-50 dark:from-slate-950 dark:via-indigo-950/40 dark:to-violet-950/30">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-2">
-            <Sparkles className="h-10 w-10 text-indigo-400" />
+      <Card className="w-full max-w-md overflow-hidden border-2 border-primary/20 shadow-2xl shadow-primary/10">
+        <div className="bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-800 px-6 py-8 text-center text-white">
+          <div className="flex justify-center mb-3">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
+              <Sparkles className="h-7 w-7" />
+            </div>
           </div>
-          <CardTitle className="text-2xl">Create account</CardTitle>
-          <p className="text-muted-foreground text-sm">Start practicing AI-powered mock interviews</p>
-        </CardHeader>
-        <CardContent>
+          <h1 className="text-2xl font-bold">Create account</h1>
+          <p className="text-violet-100 text-sm mt-1">Start practicing AI-powered mock interviews</p>
+        </div>
+        <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-300">
+              <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-700 dark:text-red-300">
                 {error}
               </div>
             )}
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Name</label>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">Name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Email</label>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">Email</label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Password</label>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">Password</label>
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Confirm password</label>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">Confirm password</label>
               <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full font-semibold" disabled={loading}>
               {loading ? "Creating..." : "Create account"}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-indigo-400 hover:underline">
+            <Link href="/login" className="text-primary font-semibold hover:underline">
               Sign in
             </Link>
           </p>

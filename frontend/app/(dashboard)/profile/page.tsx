@@ -2,10 +2,10 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHero, SectionPanel } from "@/components/ui/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/layout/page-header";
+import { User as UserIcon } from "lucide-react";
 import { changePassword, fetchUser, getStoredUser, updateProfile, User } from "@/lib/auth";
 
 export default function ProfilePage() {
@@ -76,17 +76,14 @@ export default function ProfilePage() {
   return (
     <AppShell>
       <div className="max-w-xl mx-auto space-y-6">
-        <PageHeader
+        <PageHero
+          icon={UserIcon}
           title="Profile"
-          subtitle="Theme preference is saved in this browser via the toggle in the sidebar."
-          className="mb-6"
+          subtitle="Update your account and password. Theme preference is in the sidebar."
+          accent="violet"
         />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Information</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <SectionPanel title="Account Information">
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               {profileMsg && (
                 <div
@@ -111,14 +108,9 @@ export default function ProfilePage() {
                 {profileSaving ? "Saving…" : "Save changes"}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+        </SectionPanel>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <SectionPanel title="Change Password">
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               {passwordMsg && (
                 <div
@@ -163,8 +155,7 @@ export default function ProfilePage() {
                 {passwordSaving ? "Updating…" : "Update password"}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+        </SectionPanel>
       </div>
     </AppShell>
   );

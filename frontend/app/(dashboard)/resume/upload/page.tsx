@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Upload, FileText, CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHero, SectionPanel } from "@/components/ui/page-shell";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 
@@ -60,9 +60,11 @@ export default function ResumeUploadPage() {
   return (
     <AppShell>
       <div className="max-w-3xl mx-auto space-y-6">
-        <PageHeader
+        <PageHero
+          icon={Upload}
           title="Upload Resume"
-          subtitle="PDF or DOCX — max 5MB"
+          subtitle="PDF or DOCX — max 5MB. Parsed skills feed your interview questions."
+          accent="blue"
         />
 
         <Card
@@ -102,16 +104,13 @@ export default function ResumeUploadPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Resumes</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <SectionPanel title="Your Resumes" description="Parsed resumes are available in Interview Setup.">
+          <div className="space-y-3">
             {resumes.length === 0 ? (
               <p className="text-muted-foreground text-sm font-medium">No resumes uploaded yet.</p>
             ) : (
               resumes.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+                <div key={r.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border shadow-sm">
                   <FileText className="h-5 w-5 text-primary" />
                   <div className="flex-1">
                     <p className="text-foreground text-sm font-medium">{r.original_filename}</p>
@@ -131,8 +130,8 @@ export default function ResumeUploadPage() {
                 </div>
               ))
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </SectionPanel>
       </div>
     </AppShell>
   );

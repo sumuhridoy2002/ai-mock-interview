@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
+import { PerformanceSamplesDialog } from "@/components/system/performance-samples-dialog";
 import { useSystemMetrics, type MetricComparison } from "@/hooks/useSystemMetrics";
 import { getMetricsPageFormulas } from "@/lib/scoring-docs";
 import {
@@ -169,6 +170,7 @@ export function SystemMetricsView() {
   const { contextData, comparisons, apiTiming } = metrics;
   const contextLabel = formatBytes(contextData.appDataBytes);
   const [formulasOpen, setFormulasOpen] = useState(false);
+  const [samplesOpen, setSamplesOpen] = useState(false);
 
   const scoreRating = comparisons.systemPerformanceScore.rating;
   const scoreRingColor =
@@ -229,15 +231,35 @@ export function SystemMetricsView() {
         </div>
 
         {comparisons.session && (
-          <p className="relative mt-4 text-sm text-indigo-100/90 rounded-lg bg-white/10 px-3 py-2 inline-block">
-            Session avg ({comparisons.session.sampleCount} samples):{" "}
+          <button
+            type="button"
+            onClick={() => setSamplesOpen(true)}
+            className="relative mt-4 text-sm text-indigo-100 rounded-lg bg-white/10 px-3 py-2 inline-flex flex-wrap items-center gap-x-1.5 gap-y-1 ring-1 ring-white/20 hover:bg-white/20 hover:ring-white/40 transition-colors cursor-pointer text-left"
+          >
+            <span className="font-semibold text-white underline decoration-white/50 underline-offset-2">
+              {comparisons.session.sampleCount} samples
+            </span>
+            <span className="text-indigo-100/90">session avg:</span>
             <span className="font-mono font-bold text-white">{comparisons.session.performanceScore}%</span>
             {comparisons.session.apiLatencyMs != null && (
-              <> · API <span className="font-mono font-bold text-white">{comparisons.session.apiLatencyMs} ms</span></>
+              <>
+                <span className="text-indigo-100/90">· API</span>
+                <span className="font-mono font-bold text-white">{comparisons.session.apiLatencyMs} ms</span>
+              </>
             )}
-          </p>
+            <span className="text-xs text-indigo-200 ml-1">(click to view)</span>
+          </button>
         )}
       </section>
+
+      {comparisons.session && (
+        <PerformanceSamplesDialog
+          open={samplesOpen}
+          onClose={() => setSamplesOpen(false)}
+          samples={metrics.performanceHistory}
+          averages={comparisons.session}
+        />
+      )}
 
       {/* KPI grid */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

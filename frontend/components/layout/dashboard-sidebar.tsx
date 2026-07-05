@@ -202,7 +202,7 @@ export function DashboardSidebar({
                       className={cn(
                         "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all",
                         active
-                          ? "bg-primary/10 text-foreground shadow-sm ring-1 ring-primary/25"
+                          ? "bg-gradient-to-r from-primary/15 to-violet-500/10 text-foreground shadow-md ring-1 ring-primary/30"
                           : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
                       )}
                     >
@@ -216,7 +216,7 @@ export function DashboardSidebar({
                         className={cn(
                           "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
                           active
-                            ? "bg-primary/15 text-primary"
+                            ? "bg-gradient-to-br from-primary to-violet-600 text-white shadow-md"
                             : "bg-muted/80 text-muted-foreground group-hover:bg-muted group-hover:text-foreground",
                         )}
                       >
