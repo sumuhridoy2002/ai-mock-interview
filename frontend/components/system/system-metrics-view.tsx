@@ -4,22 +4,17 @@ import { type ComponentType } from "react";
 import {
   Activity,
   Clock,
-  Cpu,
   Database,
   Globe,
   HardDrive,
-  Monitor,
   RefreshCw,
   Server,
-  Signal,
   TrendingDown,
   TrendingUp,
-  Wifi,
-  Zap,
 } from "lucide-react";
 import { useSystemMetrics, type MetricComparison } from "@/hooks/useSystemMetrics";
-import { MetricCalculationInline } from "@/components/system/metric-calculation-inline";
-import { RecentWorkBanner } from "@/components/system/recent-work-banner";
+import { PageHeader } from "@/components/layout/page-header";
+import { FormulaReference } from "@/components/scoring/formula-reference";
 import {
   ratingBadgeClass,
   ratingClass,
@@ -33,46 +28,44 @@ function ScoreBar({ score }: { score: number }) {
     score >= 85 ? "bg-emerald-500" : score >= 65 ? "bg-amber-500" : "bg-rose-500";
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="h-1.5 flex-1 rounded-full bg-slate-700/80 overflow-hidden">
+    <div className="flex items-center gap-3">
+      <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
         <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${score}%` }} />
       </div>
-      <span className="text-xs font-mono text-slate-300 w-8 text-right">{score}%</span>
+      <span className="text-sm font-mono font-semibold text-foreground w-10 text-right">{score}%</span>
     </div>
   );
 }
 
 function DeltaText({ delta, unit }: { delta: MetricDelta | null; unit: string }) {
   if (!delta || delta.direction === "same") {
-    return <span className="text-slate-600">—</span>;
+    return <span className="text-muted-foreground">—</span>;
   }
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 font-mono",
-        delta.improved === true && "text-emerald-400",
-        delta.improved === false && "text-rose-400",
-        delta.improved === null && "text-slate-500",
+        "inline-flex items-center gap-0.5 font-mono text-xs",
+        delta.improved === true && "text-emerald-600 dark:text-emerald-400",
+        delta.improved === false && "text-rose-600 dark:text-rose-400",
+        delta.improved === null && "text-muted-foreground",
       )}
     >
-      {delta.direction === "up" ? (
-        <TrendingUp className="h-3 w-3" />
-      ) : (
-        <TrendingDown className="h-3 w-3" />
-      )}
+      {delta.direction === "up" ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
       {delta.formatted}
       {unit}
     </span>
   );
 }
 
-function ComparisonRow({
+function MetricTile({
   label,
   value,
   comparison,
   unit,
   docId,
+  numericValue,
+  icon: Icon,
   children,
 }: {
   label: string;
@@ -80,89 +73,52 @@ function ComparisonRow({
   comparison: MetricComparison;
   unit: string;
   docId: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-sm text-slate-300 font-medium">{label}</span>
-        <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", ratingBadgeClass(comparison.rating))}>
-          {ratingLabel(comparison.rating)}
-        </span>
-      </div>
-      <p className={cn("text-lg font-semibold font-mono", ratingClass(comparison.rating))}>{value}</p>
-      <div className="mt-2 grid grid-cols-1 gap-1 text-[11px] text-slate-500">
-        <p>Target: <span className="text-slate-400">{comparison.target}</span></p>
-        <p className="flex items-center justify-between gap-2">
-          <span>vs last check</span>
-          <DeltaText delta={comparison.vsPrevious} unit={unit} />
-        </p>
-        <p className="flex items-center justify-between gap-2">
-          <span>vs session avg</span>
-          <DeltaText delta={comparison.vsSessionAvg} unit={unit} />
-        </p>
-      </div>
-      {children}
-      <MetricCalculationInline docId={docId} />
-    </div>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-  sub,
-  icon: Icon,
-  docId,
-  children,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
+  numericValue?: number | null;
   icon: ComponentType<{ className?: string }>;
-  docId: string;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 px-4 py-3">
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-slate-500 mb-1">
-        <Icon className="h-3 w-3" />
-        {label}
+    <div className="rounded-xl border border-border bg-card px-4 py-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <Icon className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{label}</p>
+            <p className="text-[11px] text-muted-foreground truncate">Target: {comparison.target}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", ratingBadgeClass(comparison.rating))}>
+            {ratingLabel(comparison.rating)}
+          </span>
+        </div>
       </div>
-      <p className="text-base font-semibold text-slate-100 font-mono">{value}</p>
-      {sub && <p className="text-[11px] text-slate-500 mt-0.5">{sub}</p>}
+
+      <p className={cn("text-2xl font-bold font-mono tracking-tight", ratingClass(comparison.rating))}>{value}</p>
+
+      <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>vs last</span>
+        <DeltaText delta={comparison.vsPrevious} unit={unit} />
+      </div>
+
       {children}
-      <MetricCalculationInline docId={docId} />
+
+      <FormulaReference
+        docId={docId}
+        currentValue={numericValue ?? undefined}
+        currentUnit={unit.trim() || undefined}
+      />
     </div>
   );
 }
 
-/* Small sub-row inside a card */
-function SubStat({ label, value, dim = false }: { label: string; value: string; dim?: boolean }) {
-  return (
-    <div className="flex items-center justify-between text-[10px] mt-1">
-      <span className="text-slate-600">{label}</span>
-      <span className={cn("font-mono", dim ? "text-slate-600" : "text-slate-400")}>{value}</span>
-    </div>
-  );
-}
-
-const PLATFORM_CAPABILITIES: { label: string; description: string; endpoint: string }[] = [
-  {
-    label: "Vision behavior pipeline",
-    description: "GPU facial emotion, eye contact, head pose, blink rate, and audio prosody per answer.",
-    endpoint: "POST /pipeline/vision/analyze",
-  },
-  {
-    label: "Full interview recording",
-    description: "Continuous full-session video uploaded and stored against each interview.",
-    endpoint: "POST /interviews/{id}/recording",
-  },
-  {
-    label: "Cross-interview memory",
-    description: "Mastered questions and topics persist per user so they are never asked again.",
-    endpoint: "user_question_mastery · user_memory_profiles",
-  },
+const STACK_STATUS = [
+  { name: "Next.js 16", status: "Active", ok: true },
+  { name: "Laravel API", key: "api" as const },
+  { name: "Vision / AI", status: "Server-side", ok: null },
+  { name: "Queue worker", status: "Background", ok: null },
 ];
 
 export function SystemMetricsView() {
@@ -171,299 +127,181 @@ export function SystemMetricsView() {
   const contextLabel = formatBytes(contextData.appDataBytes);
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-8 max-w-5xl">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">System Metrics</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Live performance scores with targets, trends, and calculation details.
-          </p>
-        </div>
+        <PageHeader
+          size="md"
+          title="Performance & Analytics"
+          subtitle="Live scores vs industry standards with calculation formulas shown on each metric."
+        />
         <button
           type="button"
           onClick={() => void refresh()}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
         >
-          <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin text-indigo-400")} />
+          <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin text-primary")} />
           Refresh
         </button>
       </div>
 
-      {/* Latest work */}
-      <RecentWorkBanner />
-
-      {/* Platform capabilities */}
+      {/* Primary KPIs — one row, no duplicate formula blocks */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-1.5">
-          <Server className="h-3.5 w-3.5" />
-          Platform capabilities
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+          Performance vs standards
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {PLATFORM_CAPABILITIES.map((cap) => (
-            <div key={cap.label} className="rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
-              <p className="text-sm font-semibold text-slate-200">{cap.label}</p>
-              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{cap.description}</p>
-              <p className="mt-2 font-mono text-[10px] text-indigo-300/90 break-all">{cap.endpoint}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Performance vs targets */}
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-1.5">
-          <TrendingUp className="h-3.5 w-3.5" />
-          Performance vs targets
-        </h2>
-        <div className="grid gap-3 lg:grid-cols-2">
-          <ComparisonRow
+        <div className="grid gap-4 sm:grid-cols-2">
+          <MetricTile
             label="System Performance Score"
             value={`${metrics.performanceScore}%`}
             comparison={comparisons.systemPerformanceScore}
             unit="%"
             docId="systemPerformanceScore"
+            numericValue={metrics.performanceScore}
+            icon={Activity}
           />
-          <ComparisonRow
+          <MetricTile
             label="Page load"
             value={`${metrics.pageLoadMs} ms`}
             comparison={comparisons.pageLoad}
             unit=" ms"
             docId="pageLoad"
+            numericValue={metrics.pageLoadMs}
+            icon={Globe}
           />
-
-          {/* API latency with breakdown */}
-          <ComparisonRow
+          <MetricTile
             label="API latency"
             value={metrics.apiLatencyMs !== null ? `${metrics.apiLatencyMs} ms` : "—"}
             comparison={comparisons.apiLatency}
             unit=" ms"
             docId="apiLatency"
+            numericValue={metrics.apiLatencyMs}
+            icon={Server}
           >
-            <div className="mt-2 pt-2 border-t border-slate-800/60 space-y-0.5">
-              <SubStat
-                label="Network baseline (ping)"
-                value={apiTiming.pingMs !== null ? `${apiTiming.pingMs} ms` : "—"}
-              />
-              <SubStat
-                label="TTFB (server + network)"
-                value={apiTiming.ttfbMs !== null ? `${apiTiming.ttfbMs} ms` : "—"}
-              />
-              <SubStat
-                label="Body transfer"
-                value={apiTiming.transferMs !== null ? `${apiTiming.transferMs} ms` : "—"}
-              />
-              {apiTiming.wasNotModified && (
-                <SubStat label="ETag" value="304 Not Modified" />
-              )}
-            </div>
-          </ComparisonRow>
-
-          {/* App data size — heap excluded */}
-          <ComparisonRow
+            {(apiTiming.pingMs != null || apiTiming.ttfbMs != null) && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1 text-[11px] text-muted-foreground">
+                {apiTiming.pingMs != null && (
+                  <div className="flex justify-between"><span>Ping</span><span className="font-mono text-foreground">{apiTiming.pingMs} ms</span></div>
+                )}
+                {apiTiming.ttfbMs != null && (
+                  <div className="flex justify-between"><span>TTFB</span><span className="font-mono text-foreground">{apiTiming.ttfbMs} ms</span></div>
+                )}
+                {apiTiming.transferMs != null && (
+                  <div className="flex justify-between"><span>Transfer</span><span className="font-mono text-foreground">{apiTiming.transferMs} ms</span></div>
+                )}
+                {apiTiming.wasNotModified && (
+                  <div className="flex justify-between"><span>Cache</span><span className="font-mono text-emerald-600 dark:text-emerald-400">304</span></div>
+                )}
+              </div>
+            )}
+          </MetricTile>
+          <MetricTile
             label="App data size"
             value={contextLabel}
             comparison={comparisons.context}
             unit=""
             docId="contextBytes"
+            numericValue={contextData.appDataBytes}
+            icon={Database}
           />
         </div>
         {comparisons.session && (
-          <p className="mt-3 text-xs text-slate-600">
-            Session avg over {comparisons.session.sampleCount} checks · score{" "}
-            {comparisons.session.performanceScore}% · API{" "}
-            {comparisons.session.apiLatencyMs !== null ? `${comparisons.session.apiLatencyMs} ms` : "—"}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Session average ({comparisons.session.sampleCount} samples): score {comparisons.session.performanceScore}%
+            {comparisons.session.apiLatencyMs != null && ` · API ${comparisons.session.apiLatencyMs} ms`}
           </p>
         )}
       </section>
 
-      {/* Execution time */}
+      {/* Secondary timing — compact, no formula duplication */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-1.5">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5">
           <Clock className="h-3.5 w-3.5" />
-          Execution time
+          Timing breakdown
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard label="Page load" value={`${metrics.pageLoadMs} ms`} icon={Globe} docId="pageLoad" />
-          <MetricCard label="DOM ready" value={`${metrics.domReadyMs} ms`} icon={Monitor} docId="domReady" />
-          <MetricCard
-            label="API round-trip"
-            value={metrics.apiLatencyMs !== null ? `${metrics.apiLatencyMs} ms` : "—"}
-            sub={metrics.apiStatus}
-            icon={Server}
-            docId="apiLatency"
-          >
-            {(apiTiming.pingMs !== null || apiTiming.ttfbMs !== null) && (
-              <div className="mt-1 space-y-0.5">
-                {apiTiming.pingMs !== null && (
-                  <SubStat label="ping" value={`${apiTiming.pingMs} ms`} />
-                )}
-                {apiTiming.ttfbMs !== null && (
-                  <SubStat label="TTFB" value={`${apiTiming.ttfbMs} ms`} />
-                )}
-                {apiTiming.transferMs !== null && (
-                  <SubStat label="transfer" value={`${apiTiming.transferMs} ms`} />
-                )}
-              </div>
-            )}
-          </MetricCard>
-          <MetricCard label="Panel render" value={`${metrics.renderMs} ms`} icon={Cpu} docId="renderMs" />
-        </div>
-        <p className="mt-2 text-xs text-slate-600 font-mono truncate">Route: {metrics.route}</p>
-      </section>
-
-      {/* Overall performance */}
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-1.5">
-          <Activity className="h-3.5 w-3.5" />
-          Overall performance
-        </h2>
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-4 max-w-xl">
-          <p className="text-xs text-slate-500 mb-1">System Performance Score</p>
-          <ScoreBar score={metrics.performanceScore} />
-          <MetricCalculationInline docId="systemPerformanceScore" />
-          <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px]">
-            <div className="rounded-lg bg-slate-800/50 py-2">
-              <p className="text-slate-500">Next.js 16</p>
-              <p className="text-emerald-400 font-medium mt-0.5">Active</p>
-            </div>
-            <div className="rounded-lg bg-slate-800/50 py-2">
-              <p className="text-slate-500">Laravel 13</p>
-              <p className={cn("font-medium mt-0.5", metrics.apiStatus === "online" ? "text-emerald-400" : "text-rose-400")}>
-                {metrics.apiStatus === "online" ? "Online" : "Unreachable"}
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+          {[
+            { label: "DOM ready", value: `${metrics.domReadyMs} ms`, docId: "domReady" },
+            { label: "Panel render", value: `${metrics.renderMs} ms`, docId: "renderMs" },
+            { label: "Route", value: metrics.route, docId: null },
+            { label: "API status", value: metrics.apiStatus, docId: null },
+          ].map((item) => (
+            <div key={item.label} className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{item.label}</p>
+              <p className="text-sm font-mono font-medium text-foreground mt-0.5 truncate" title={item.value}>
+                {item.value}
               </p>
+              {item.docId && (
+                <FormulaReference docId={item.docId} compact className="mt-2 !p-2" />
+              )}
             </div>
-            <div className="rounded-lg bg-slate-800/50 py-2">
-              <p className="text-slate-500">Whisper / Ollama</p>
-              <p className="text-slate-400 font-medium mt-0.5">Server-side</p>
-            </div>
-            <div className="rounded-lg bg-slate-800/50 py-2">
-              <p className="text-slate-500">Vision / MediaPipe</p>
-              <p className="text-slate-400 font-medium mt-0.5">Server-side</p>
-            </div>
-            <div className="rounded-lg bg-slate-800/50 py-2">
-              <p className="text-slate-500">Reverb WS</p>
-              <p className="text-slate-400 font-medium mt-0.5">Realtime</p>
-            </div>
-            <div className="rounded-lg bg-slate-800/50 py-2">
-              <p className="text-slate-500">Queue Worker</p>
-              <p className="text-slate-400 font-medium mt-0.5">Background</p>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* API latency breakdown banner */}
-      {(apiTiming.pingMs !== null || apiTiming.ttfbMs !== null) && (
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-1.5">
-            <Signal className="h-3.5 w-3.5" />
-            API latency breakdown
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-slate-500 mb-1">
-                <Wifi className="h-3 w-3" /> Network baseline
-              </div>
-              <p className="text-base font-semibold font-mono text-slate-100">
-                {apiTiming.pingMs !== null ? `${apiTiming.pingMs} ms` : "—"}
-              </p>
-              <p className="text-[10px] text-slate-600 mt-0.5">
-                /ping · no auth · no DB
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-slate-500 mb-1">
-                <Zap className="h-3 w-3" /> TTFB
-              </div>
-              <p className="text-base font-semibold font-mono text-slate-100">
-                {apiTiming.ttfbMs !== null ? `${apiTiming.ttfbMs} ms` : "—"}
-              </p>
-              <p className="text-[10px] text-slate-600 mt-0.5">
-                Time-to-first-byte · server processing + network
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-slate-500 mb-1">
-                <Server className="h-3 w-3" /> Body transfer
-              </div>
-              <p className="text-base font-semibold font-mono text-slate-100">
-                {apiTiming.transferMs !== null ? `${apiTiming.transferMs} ms` : "—"}
-              </p>
-              <p className="text-[10px] text-slate-600 mt-0.5">
-                Response download duration
+      {/* Overall score + stack — single card */}
+      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-foreground">Overall health</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Composite score from load time, API, and reachability</p>
+        </div>
+        <ScoreBar score={metrics.performanceScore} />
+        <FormulaReference
+          docId="systemPerformanceScore"
+          currentValue={metrics.performanceScore}
+          currentUnit="%"
+          className="mt-4"
+        />
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {STACK_STATUS.map((s) => (
+            <div key={s.name} className="rounded-lg bg-muted/40 px-3 py-2 text-center">
+              <p className="text-[10px] text-muted-foreground">{s.name}</p>
+              <p
+                className={cn(
+                  "text-xs font-medium mt-0.5",
+                  s.key === "api"
+                    ? metrics.apiStatus === "online"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-rose-600 dark:text-rose-400"
+                    : s.ok === true
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-muted-foreground"
+                )}
+              >
+                {s.key === "api" ? (metrics.apiStatus === "online" ? "Online" : "Offline") : s.status}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-slate-500 mb-1">
-                <Activity className="h-3 w-3" /> Cache state
-              </div>
-              <p className={cn(
-                "text-base font-semibold font-mono",
-                apiTiming.wasNotModified ? "text-emerald-400" : "text-slate-100",
-              )}>
-                {apiTiming.wasNotModified ? "304 Hit" : "200 Full"}
-              </p>
-              <p className="text-[10px] text-slate-600 mt-0.5">
-                {apiTiming.wasNotModified
-                  ? "ETag matched — body skipped"
-                  : "Full response received"}
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
+          ))}
+        </div>
+      </section>
 
-      {/* Context data */}
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-1.5">
-          <Database className="h-3.5 w-3.5" />
-          Context data
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
-            <p className="text-xs text-slate-500">localStorage</p>
-            <p className="font-mono text-slate-200 mt-1">{formatBytes(contextData.localStorageBytes)}</p>
-            <p className="text-[10px] text-slate-600 mt-0.5">{contextData.storageItemCount} key(s)</p>
-            <MetricCalculationInline docId="contextBytes" />
+      {/* Context storage — collapsed detail */}
+      <details className="rounded-xl border border-border bg-card group">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-foreground flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <HardDrive className="h-4 w-4 text-muted-foreground" />
+            Storage breakdown
+          </span>
+          <span className="text-xs font-mono text-muted-foreground">{contextLabel} total</span>
+        </summary>
+        <div className="px-4 pb-4 grid gap-3 sm:grid-cols-3 border-t border-border pt-3">
+          <div>
+            <p className="text-xs text-muted-foreground">localStorage</p>
+            <p className="font-mono text-foreground">{formatBytes(contextData.localStorageBytes)}</p>
           </div>
-          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
-            <p className="text-xs text-slate-500">sessionStorage</p>
-            <p className="font-mono text-slate-200 mt-1">{formatBytes(contextData.sessionStorageBytes)}</p>
+          <div>
+            <p className="text-xs text-muted-foreground">sessionStorage</p>
+            <p className="font-mono text-foreground">{formatBytes(contextData.sessionStorageBytes)}</p>
           </div>
-          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
-            <p className="text-xs text-slate-500">API payload</p>
-            <p className="font-mono text-slate-200 mt-1">
-              {contextData.apiResponseBytes !== null ? formatBytes(contextData.apiResponseBytes) : "—"}
-            </p>
-            {contextData.apiResponseBytes === null && (
-              <p className="text-[10px] text-slate-600 mt-0.5">304 — body not received</p>
-            )}
-          </div>
-          {/* JS Heap — runtime memory, shown separately, not in context total */}
-          <div className="rounded-xl border border-amber-700/20 bg-amber-900/10 px-4 py-3">
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-amber-600/80 mb-1">
-              <HardDrive className="h-3 w-3" /> JS Heap (runtime)
-            </div>
-            <p className="font-mono text-slate-200">
-              {contextData.jsHeapUsedBytes !== null ? formatBytes(contextData.jsHeapUsedBytes) : "N/A (non-Chrome)"}
-            </p>
-            {contextData.jsHeapLimitBytes !== null && (
-              <p className="text-[10px] text-slate-600 mt-0.5">
-                of {formatBytes(contextData.jsHeapLimitBytes)} limit
-              </p>
-            )}
-            <p className="text-[10px] text-amber-700/80 mt-1.5">
-              Next.js runtime memory — excluded from App data size metric
+          <div>
+            <p className="text-xs text-muted-foreground">Last API payload</p>
+            <p className="font-mono text-foreground">
+              {contextData.apiResponseBytes != null ? formatBytes(contextData.apiResponseBytes) : "—"}
             </p>
           </div>
         </div>
-        <p className="mt-2 text-xs text-slate-600">
-          App data total (excl. JS heap): <span className="text-slate-400 font-mono">{contextLabel}</span>
-        </p>
-      </section>
+      </details>
 
-      <p className="text-xs text-slate-600 text-center">
+      <p className="text-xs text-muted-foreground text-center pb-2">
         Updated {metrics.lastUpdated} · auto-refresh every {refreshIntervalSeconds}s
       </p>
     </div>

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Interview;
+use App\Support\Scoring\BehaviorAggregator;
 use App\Models\InterviewAnswer;
 use App\Services\Interview\AiGatewayService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -111,7 +112,18 @@ class AnalyzeInterviewSnapshotsJob implements ShouldQueue
             return;
         }
 
-        $summary = $this->aggregateSummary($byAnswerResults, count($allPaths));
+        $summary = BehaviorAggregator::aggregate(
+            array_values($byAnswerResults),
+            count($allPaths),
+            $byAnswerResults
+        );
+        if ($summary === null) {
+            Log::warning('AnalyzeInterviewSnapshotsJob: aggregate failed', [
+                'interview_id' => $this->interview->id,
+            ]);
+
+            return;
+        }
 
         $report->update(['behavior_summary' => $summary]);
 
@@ -163,46 +175,6 @@ class AnalyzeInterviewSnapshotsJob implements ShouldQueue
             'frames_analyzed'      => $snapshotCount,
             'snapshots_count'      => $snapshotCount,
             'frame_scores'         => $frameScores,
-        ];
-    }
-
-    /** Build interview-wide averages from per-answer results. */
-    private function aggregateSummary(array $byAnswer, int $totalSnapshots): array
-    {
-        $items = array_values($byAnswer);
-        $count = count($items);
-
-        $avg = fn (string $key) => (int) round(array_sum(array_column($items, $key)) / max(1, $count));
-        $avgFloat = fn (string $key) => round(array_sum(array_column($items, $key)) / max(1, $count), 3);
-
-        $emotionKeys = [];
-        foreach ($items as $item) {
-            $emotionKeys = array_merge($emotionKeys, array_keys($item['emotion_distribution'] ?? []));
-        }
-        $emotionKeys = array_unique($emotionKeys);
-        $emotionAvg = [];
-        foreach ($emotionKeys as $label) {
-            $vals = array_map(fn ($b) => $b['emotion_distribution'][$label] ?? 0, $items);
-            $emotionAvg[$label] = round(array_sum($vals) / max(1, $count), 4);
-        }
-        arsort($emotionAvg);
-
-        $narratives = array_filter(array_column($items, 'coaching_narrative'));
-        $coaching = $narratives !== []
-            ? implode(' ', array_slice($narratives, 0, 2))
-            : '';
-
-        return [
-            'avg_confidence'       => $avg('confidence'),
-            'avg_nervousness'      => $avg('nervousness'),
-            'avg_eye_contact'      => $avgFloat('eye_contact_ratio'),
-            'avg_head_stability'   => $avgFloat('head_stability'),
-            'avg_blink_rate'       => round(array_sum(array_column($items, 'blink_rate')) / max(1, $count), 1),
-            'emotion_distribution' => $emotionAvg,
-            'coaching_narrative'   => $coaching,
-            'questions_analyzed'   => $count,
-            'snapshots_analyzed'   => $totalSnapshots,
-            'by_answer'            => $byAnswer,
         ];
     }
 

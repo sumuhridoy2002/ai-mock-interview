@@ -2,12 +2,11 @@
 
 namespace App\Services\Interview;
 
+use App\Support\Scoring\HeuristicEvaluator;
+use App\Support\Scoring\ScoringConstants;
+
 class EvaluationService
 {
-    private const TECH_TERMS = [
-        'laravel', 'php', 'mysql', 'api', 'rest', 'mvc', 'eloquent', 'database', 'javascript', 'vue', 'react',
-    ];
-
     public function __construct(
         private readonly TranscriptCleaner $transcriptCleaner,
     ) {}
@@ -24,131 +23,54 @@ class EvaluationService
         $wordCount = str_word_count($transcript);
 
         if ($wordCount === 0) {
-            return $this->emptyTranscriptResult($question, $category);
+            return $this->wrapFixedResult('empty', $question, $category);
         }
 
         if ($this->isConfusionOrOffTopic($transcript, $question)) {
-            return $this->confusionResult($question, $category);
+            return $this->wrapFixedResult('confusion', $question, $category);
         }
 
         if ($this->isRefusal($transcript)) {
-            return $this->refusalResult($question, $category);
+            return $this->wrapFixedResult('refusal', $question, $category);
         }
 
-        $textLower = mb_strtolower($transcript);
-        $words = preg_split('/\s+/u', $transcript, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        $uniqueRatio = count(array_unique(array_map('mb_strtolower', $words))) / max(count($words), 1);
-
-        $base = 48 + min($wordCount, 12);
-        $skillHits = 0;
-        foreach (array_slice($requiredSkills, 0, 10) as $skill) {
-            if ($skill !== '' && str_contains($textLower, mb_strtolower((string) $skill))) {
-                $skillHits++;
-            }
-        }
-        $base += min($skillHits * 4, 16);
-
-        $hasTechnicalTerms = false;
-        foreach (self::TECH_TERMS as $term) {
-            if (str_contains($textLower, $term)) {
-                $hasTechnicalTerms = true;
-                break;
-            }
-        }
-
-        if (in_array($category, ['technical', 'problem_solving'], true) && $hasTechnicalTerms) {
-            $base += 6;
-        }
-
-        $tooBrief = $wordCount < 15;
-        if ($tooBrief) {
-            $base -= 14;
-        }
-        if ($poorQuality) {
-            $base -= 18;
-        }
-        if ($uniqueRatio < 0.45 && $wordCount > 20) {
-            $base -= 10;
-        }
-
-        $categoryOffset = [
-            'technical' => 2,
-            'behavioral' => -1,
-            'problem_solving' => 0,
-            'scenario' => 1,
-            'communication' => -2,
-        ];
-        $base += $categoryOffset[$category] ?? 0;
-        $base = max(32, min(88, $base));
-
-        $strengths = [];
-        $weaknesses = [];
-
-        if ($wordCount >= 20 && ! $tooBrief) {
-            $strengths[] = 'Provided a substantive spoken response';
-        }
-        if ($skillHits >= 2) {
-            $strengths[] = "Mentioned {$skillHits} relevant skills from the role";
-        } elseif ($skillHits === 1) {
-            $strengths[] = 'Referenced a skill relevant to the position';
-        }
-        if (in_array($category, ['technical', 'problem_solving'], true) && $hasTechnicalTerms) {
-            $strengths[] = 'Used technical terminology appropriately';
-        }
-        if ($category === 'behavioral' && $wordCount >= 25 && preg_match('/\b(project|team|worked|delivered)\b/i', $transcript)) {
-            $strengths[] = 'Described relevant work experience';
-        }
-
-        $missingSkills = $skillHits === 0;
-        $missingTechnicalTerms = in_array($category, ['technical', 'problem_solving'], true) && ! $hasTechnicalTerms;
-        $repetitive = $uniqueRatio < 0.45 && $wordCount > 20;
-        $weakTieIn = $wordCount >= 40 && $skillHits === 0;
-
-        if ($tooBrief) {
-            $weaknesses[] = 'Answer was too brief — add a concrete example with actions and outcome';
-        }
-        if ($poorQuality) {
-            $weaknesses[] = 'Transcription quality may be poor';
-        }
-        if ($missingSkills && in_array($category, ['technical', 'problem_solving'], true)) {
-            $weaknesses[] = 'Did not mention specific tools or technologies from the job';
-        } elseif ($missingSkills) {
-            $weaknesses[] = 'Did not connect the answer to role requirements';
-        }
-        if ($missingTechnicalTerms) {
-            $weaknesses[] = 'Did not explain the technical approach or Laravel concepts asked about';
-        }
-        if ($repetitive) {
-            $weaknesses[] = 'Response had repetitive phrasing';
-        }
-        if ($weakTieIn) {
-            $weaknesses[] = 'Could tie your experience more directly to the role requirements';
-        }
-
-        $recommendations = $this->targetedRecommendations(
+        return HeuristicEvaluator::evaluate(
+            $question,
+            $transcript,
             $category,
-            $tooBrief,
-            $missingSkills,
-            $missingTechnicalTerms,
-            $repetitive,
-            $weakTieIn
+            $requiredSkills,
+            $poorQuality,
+            fn (string $q, string $cat) => $this->modelAnswerFor($q, $cat),
         );
+    }
 
-        $showModel = $base < 80 || $weaknesses !== [];
+    private function wrapFixedResult(string $type, string $question, string $category): array
+    {
+        $fixed = HeuristicEvaluator::fixedResult($type);
+        $fixed['strengths'] = $fixed['strengths'] ?? [];
+        $fixed['weaknesses'] = match ($type) {
+            'empty' => ['We could not transcribe your spoken answer'],
+            'refusal' => ['Did not attempt to answer the question'],
+            'confusion' => ['Response did not address what the interviewer asked'],
+            default => [],
+        };
+        $fixed['recommendations'] = match ($type) {
+            'empty' => [
+                'Speak clearly for at least 5 seconds after pressing Record',
+                'Ensure your microphone is allowed in the browser',
+            ],
+            'refusal' => [
+                'When unsure, share what you do know or describe a related experience instead of declining',
+            ],
+            'confusion' => [
+                'Listen to the full question, then answer it directly — ask for clarification only if truly needed',
+            ],
+            default => [],
+        };
+        $fixed['model_answer'] = $this->modelAnswerFor($question, $category);
+        $fixed['transcript_quality_poor'] = false;
 
-        return [
-            'score' => $base,
-            'relevance' => max(32, min(100, $base + ($skillHits ? 2 : -4))),
-            'technical_accuracy' => max(32, min(100, $base - ($missingTechnicalTerms ? 8 : 4))),
-            'communication' => max(32, min(100, $base - ($poorQuality ? 12 : 0))),
-            'confidence' => max(32, min(100, $base - 2)),
-            'completeness' => max(32, min(100, $base - ($tooBrief ? 10 : 0))),
-            'strengths' => $strengths,
-            'weaknesses' => $weaknesses,
-            'recommendations' => $recommendations,
-            'model_answer' => $showModel ? $this->modelAnswerFor($question, $category) : null,
-            'transcript_quality_poor' => $poorQuality,
-        ];
+        return $fixed;
     }
 
     public function applyTranscriptOverrides(array $evaluation, string $transcript, string $question, string $category): array
@@ -157,11 +79,11 @@ class EvaluationService
         $text = $cleaned['text'];
 
         if ($this->isConfusionOrOffTopic($text, $question)) {
-            return $this->confusionResult($question, $category);
+            return $this->wrapFixedResult('confusion', $question, $category);
         }
 
         if ($this->isRefusal($text)) {
-            return $this->refusalResult($question, $category);
+            return $this->wrapFixedResult('refusal', $question, $category);
         }
 
         return $evaluation;
@@ -207,7 +129,7 @@ class EvaluationService
 
     public function shouldClarifyPrevious(string $lastAnswer, ?int $lastScore, string $lastQuestion = ''): bool
     {
-        if ($lastScore === null || $lastScore >= 55) {
+        if ($lastScore === null || $lastScore >= ScoringConstants::threshold('clarifyPrevious')) {
             return false;
         }
 

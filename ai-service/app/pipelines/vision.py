@@ -221,6 +221,9 @@ _CONFIDENCE_EMOTIONS = {"happy", "neutral", "surprised"}
 _NERVOUSNESS_EMOTIONS = {"fearful", "sad", "disgusted", "angry"}
 
 
+from app.scoring.behavior import derive_scores as _derive_scores_canonical
+
+
 def _derive_scores(
     emotion_dist: dict[str, float],
     eye_contact_ratio: float,
@@ -228,52 +231,10 @@ def _derive_scores(
     blink_rate: float,
     prosody: dict[str, float],
 ) -> tuple[int, int]:
-    """
-    Map behavioural signals to confidence (0–100) and nervousness (0–100).
-
-    Tunable weights are kept in one place for easy prompt-driven adjustment.
-    """
-    # ── Emotion component (0–1) ──────────────────────────────────────────────
-    pos_emotion = sum(emotion_dist.get(e, 0) for e in _CONFIDENCE_EMOTIONS)
-    neg_emotion = sum(emotion_dist.get(e, 0) for e in _NERVOUSNESS_EMOTIONS)
-
-    # ── Eye contact component (ideal 0.55–0.85) ──────────────────────────────
-    ec_score = min(eye_contact_ratio / 0.75, 1.0)
-
-    # ── Head stability component (low deviation = stable) ───────────────────
-    hs_score = min(head_stability, 1.0)
-
-    # ── Blink rate (normal 12–20 bpm; high blink → more nervousness) ────────
-    blink_normal = max(0.0, 1.0 - abs(blink_rate - 16) / 20.0)
-
-    # ── Prosody: low pitch_variance → monotone → nervous; moderate = confident
-    pitch_var = prosody.get("pitch_variance", 30.0)
-    pitch_score = min(pitch_var / 60.0, 1.0)   # 60 Hz variance = max
-
-    pause_ratio = prosody.get("pause_ratio", 0.2)
-    pause_penalty = min(pause_ratio / 0.4, 1.0)  # high pauses reduce confidence
-
-    # ── Aggregate ─────────────────────────────────────────────────────────────
-    confidence_raw = (
-        0.30 * pos_emotion
-        + 0.25 * ec_score
-        + 0.20 * hs_score
-        + 0.15 * pitch_score
-        + 0.10 * blink_normal
-        - 0.15 * pause_penalty
+    """Delegates to canonical weights in app.scoring.behavior."""
+    return _derive_scores_canonical(
+        emotion_dist, eye_contact_ratio, head_stability, blink_rate, prosody
     )
-    confidence = int(max(0, min(100, confidence_raw * 110)))  # scale to 0–100
-
-    nervousness_raw = (
-        0.35 * neg_emotion
-        + 0.20 * (1 - ec_score)
-        + 0.15 * (1 - hs_score)
-        + 0.15 * pause_penalty
-        + 0.15 * (1 - blink_normal)
-    )
-    nervousness = int(max(0, min(100, nervousness_raw * 110)))
-
-    return confidence, nervousness
 
 
 # ---------------------------------------------------------------------------

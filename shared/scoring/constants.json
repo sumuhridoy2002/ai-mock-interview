@@ -1,0 +1,93 @@
+{
+  "thresholds": {
+    "mastery": 60,
+    "pass": 70,
+    "modelAnswer": 80,
+    "clarifyPrevious": 55,
+    "hiring": {
+      "strong_yes": 85,
+      "yes": 70,
+      "maybe": 55,
+      "no": 40
+    }
+  },
+  "heuristic": {
+    "baseStart": 48,
+    "wordCountCap": 12,
+    "skillHitBonus": 4,
+    "skillHitCap": 16,
+    "techTermBonus": 6,
+    "tooBriefPenalty": 14,
+    "tooBriefWordCount": 15,
+    "poorQualityPenalty": 18,
+    "repetitionPenalty": 10,
+    "repetitionRatio": 0.45,
+    "repetitionMinWords": 20,
+    "baseMin": 32,
+    "baseMax": 88,
+    "categoryOffsets": {
+      "technical": 2,
+      "behavioral": -1,
+      "problem_solving": 0,
+      "scenario": 1,
+      "communication": -2
+    },
+    "fixedScores": {
+      "empty": { "score": 0, "relevance": 0, "technical_accuracy": 0, "communication": 0, "confidence": 0, "completeness": 0 },
+      "refusal": { "score": 8, "relevance": 5, "technical_accuracy": 0, "communication": 10, "confidence": 5, "completeness": 0 },
+      "confusion": { "score": 18, "relevance": 12, "technical_accuracy": 8, "communication": 20, "confidence": 15, "completeness": 10 }
+    }
+  },
+  "report": {
+    "defaultOverall": 50
+  },
+  "dashboard": {
+    "gradeA": 85,
+    "gradeB": 70,
+    "gradeC": 55,
+    "scoreBands": {
+      "excellent": 85,
+      "good": 70,
+      "fair": 55
+    }
+  },
+  "behavior": {
+    "confidenceEmotions": ["happy", "neutral", "surprised"],
+    "nervousnessEmotions": ["fearful", "sad", "disgusted", "angry"],
+    "eyeContactIdeal": 0.75,
+    "blinkRateIdeal": 16,
+    "blinkRateTolerance": 20,
+    "pitchVarianceMax": 60,
+    "pauseRatioMax": 0.4,
+    "confidenceScale": 110,
+    "confidenceWeights": {
+      "positiveEmotion": 0.30,
+      "eyeContact": 0.25,
+      "headStability": 0.20,
+      "pitch": 0.15,
+      "blinkNormal": 0.10,
+      "pausePenalty": 0.15
+    },
+    "nervousnessWeights": {
+      "negativeEmotion": 0.35,
+      "lowEyeContact": 0.20,
+      "lowHeadStability": 0.15,
+      "pause": 0.15,
+      "abnormalBlink": 0.15
+    },
+    "blinkRateNormalMin": 12,
+    "blinkRateNormalMax": 20,
+    "eyeContactCoachingMin": 0.65,
+    "eyeContactCoachingMid": 0.4,
+    "confidenceCoachingHigh": 70,
+    "confidenceCoachingMid": 50,
+    "nervousnessCoachingHigh": 60
+  },
+  "systemMetrics": {
+    "performanceScore": { "good": 85, "ok": 65, "start": 100, "offlinePenalty": 30 },
+    "pageLoad": { "goodMax": 800, "okMax": 1500, "penalties": [3000, 1500, 800] },
+    "apiLatency": { "goodMax": 200, "okMax": 800, "penalties": [2000, 800, 300] },
+    "domReady": { "goodMax": 600, "okMax": 1200 },
+    "contextBytes": { "goodMax": 102400, "okMax": 512000 }
+  }
+}

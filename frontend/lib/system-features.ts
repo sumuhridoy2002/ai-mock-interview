@@ -67,11 +67,11 @@ export const SYSTEM_FEATURES: SystemFeature[] = [
     category: "Authentication & accounts",
     title: "Profile & account settings",
     description:
-      "Authenticated users can view and update their profile details. The current user is fetched once and cached client-side with an ETag to avoid redundant requests.",
+      "Authenticated users can view and update name, email, and password. Profile changes use PATCH; password changes require the current password.",
     details: ["ETag caching via mip_user_etag", "Cached user profile in localStorage"],
     status: "shipped",
     stack: ["Laravel", "Next.js"],
-    apiRoute: "GET /api/user",
+    apiRoute: "GET /api/v1/user · PATCH /api/v1/user · PUT /api/v1/user/password",
   },
   {
     id: "auth-guard",

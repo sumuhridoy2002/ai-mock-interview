@@ -20,6 +20,7 @@ import {
   List,
 } from "lucide-react";
 import { fetchUser, getStoredUser, type User as AuthUser } from "@/lib/auth";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -153,22 +154,22 @@ export function DashboardSidebar({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col border-r border-slate-800/80 bg-slate-950/98 backdrop-blur-xl transition-transform duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 lg:shrink-0",
+        "fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col border-r border-border bg-card/98 backdrop-blur-xl transition-transform duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 lg:shrink-0",
         mobileOpen ? "translate-x-0" : "-translate-x-full",
       )}
       aria-label="Main navigation"
     >
       {/* Brand */}
-      <div className="flex h-[4.25rem] items-center justify-between gap-3 border-b border-slate-800/80 px-5">
+      <div className="flex h-[4.25rem] items-center justify-between gap-3 border-b border-border px-5">
         <Link href="/dashboard" className="flex min-w-0 items-center gap-3 group">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
             <Sparkles className="h-4 w-4 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight text-white group-hover:text-indigo-200 transition-colors">
+            <p className="truncate text-sm font-semibold tracking-tight text-foreground group-hover:text-primary transition-colors">
               Mock Interview Pro
             </p>
-            <p className="truncate text-[10px] font-medium uppercase tracking-wider text-slate-500">
+            <p className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               Interview prep
             </p>
           </div>
@@ -176,7 +177,7 @@ export function DashboardSidebar({
         <button
           type="button"
           onClick={onMobileClose}
-          className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-800 hover:text-slate-300 lg:hidden"
+          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
           aria-label="Close menu"
         >
           <X className="h-5 w-5" />
@@ -198,7 +199,7 @@ export function DashboardSidebar({
       <nav className="flex-1 overflow-y-auto px-3 py-3 scrollbar-thin">
         {NAV_GROUPS.map((group) => (
           <div key={group.title} className="mb-6 last:mb-2">
-            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {group.title}
             </p>
             <ul className="space-y-0.5">
@@ -211,13 +212,13 @@ export function DashboardSidebar({
                       className={cn(
                         "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all",
                         active
-                          ? "bg-indigo-500/10 text-white shadow-sm ring-1 ring-indigo-500/20"
-                          : "text-slate-400 hover:bg-slate-900/80 hover:text-slate-100",
+                          ? "bg-primary/10 text-foreground shadow-sm ring-1 ring-primary/25"
+                          : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
                       )}
                     >
                       {active && (
                         <span
-                          className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full bg-indigo-400"
+                          className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full bg-primary"
                           aria-hidden
                         />
                       )}
@@ -225,8 +226,8 @@ export function DashboardSidebar({
                         className={cn(
                           "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
                           active
-                            ? "bg-indigo-500/20 text-indigo-300"
-                            : "bg-slate-800/80 text-slate-500 group-hover:bg-slate-800 group-hover:text-slate-300",
+                            ? "bg-primary/15 text-primary"
+                            : "bg-muted/80 text-muted-foreground group-hover:bg-muted group-hover:text-foreground",
                         )}
                       >
                         <Icon className="h-4 w-4" />
@@ -236,14 +237,14 @@ export function DashboardSidebar({
                         <span
                           className={cn(
                             "block truncate text-[11px] leading-tight mt-0.5",
-                            active ? "text-indigo-300/70" : "text-slate-600 group-hover:text-slate-500",
+                            active ? "text-primary/80" : "text-muted-foreground",
                           )}
                         >
                           {description}
                         </span>
                       </span>
                       {active && (
-                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-indigo-400/60" aria-hidden />
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-primary/50" aria-hidden />
                       )}
                     </Link>
                   </li>
@@ -255,27 +256,30 @@ export function DashboardSidebar({
       </nav>
 
       {/* User footer */}
-      <div className="border-t border-slate-800/80 p-3">
-        <div className="rounded-xl bg-slate-900/50 p-2.5 ring-1 ring-slate-800/80">
+      <div className="border-t border-border p-3 space-y-2">
+        <div className="hidden lg:flex justify-center">
+          <ThemeToggle />
+        </div>
+        <div className="rounded-xl bg-muted/40 p-2.5 ring-1 ring-border">
           <div className="flex items-center gap-2.5">
             <Link
               href="/profile"
-              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 transition-colors hover:bg-slate-800/50"
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 transition-colors hover:bg-muted/80"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-800 text-xs font-bold text-white ring-2 ring-slate-700/80">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary text-xs font-bold text-primary-foreground ring-2 ring-border">
                 {user ? getInitials(user.name) : "?"}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-200">
+                <p className="truncate text-sm font-medium text-foreground">
                   {user?.name ?? "Loading…"}
                 </p>
-                <p className="truncate text-[11px] text-slate-500">{user?.email ?? ""}</p>
+                <p className="truncate text-[11px] text-muted-foreground">{user?.email ?? ""}</p>
               </div>
             </Link>
             <button
               type="button"
               onClick={onSignOut}
-              className="shrink-0 rounded-lg p-2 text-slate-500 transition-colors hover:bg-rose-500/10 hover:text-rose-300"
+              className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400"
               title="Sign out"
               aria-label="Sign out"
             >

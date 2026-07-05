@@ -122,8 +122,11 @@ def is_substantive_answer(transcript: str, min_words: int = 12) -> bool:
     return len(text.split()) >= min_words
 
 
+from app.scoring.constants import get
+
+
 def should_clarify_previous(last_answer: str, last_score: int | None, last_question: str = "") -> bool:
-    if last_score is None or last_score >= 55:
+    if last_score is None or last_score >= int(get("thresholds.clarifyPrevious", 55)):
         return False
     return is_substantive_answer(last_answer) and not is_skip_or_non_answer(last_answer, last_question)
 

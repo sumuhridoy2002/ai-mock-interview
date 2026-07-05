@@ -3,15 +3,16 @@
 import { useState } from "react";
 import { Server } from "lucide-react";
 import { SYSTEM_COMPONENTS } from "@/lib/system-architecture";
+import { PageHeader } from "@/components/layout/page-header";
 import { RecentWorkBanner } from "@/components/system/recent-work-banner";
 
 function TechnologyBadge({ technology, category }: { technology: string; category: string }) {
   return (
     <div className="text-right shrink-0">
-      <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 text-[11px] font-medium text-indigo-300">
+      <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
         {technology}
       </span>
-      <p className="text-[10px] text-slate-600 mt-0.5">{category}</p>
+      <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">{category}</p>
     </div>
   );
 }
@@ -20,16 +21,16 @@ function ComponentRow({ component }: { component: (typeof SYSTEM_COMPONENTS)[num
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-xl border border-slate-700/40 bg-slate-900/50 px-4 py-3">
+    <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-start justify-between gap-3 text-left"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <p className="text-sm font-semibold text-slate-200">{component.name}</p>
+          <p className="text-sm font-semibold text-foreground">{component.name}</p>
           {component.isNew && (
-            <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">
+            <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
               New
             </span>
           )}
@@ -37,11 +38,11 @@ function ComponentRow({ component }: { component: (typeof SYSTEM_COMPONENTS)[num
         <TechnologyBadge technology={component.technology} category={component.category} />
       </button>
       {open && (
-        <div className="mt-3 pt-3 border-t border-slate-800 space-y-1.5 text-xs text-slate-500">
-          <p><span className="text-slate-400 font-medium">Role:</span> {component.role}</p>
-          <p><span className="text-slate-400 font-medium">Stack:</span> {component.stack}</p>
-          <p className="font-mono text-[11px] break-all">
-            <span className="text-slate-400 font-medium font-sans">Endpoint:</span> {component.endpoint}
+        <div className="mt-3 pt-3 border-t border-border space-y-1.5 text-xs text-muted-foreground">
+          <p><span className="text-foreground font-semibold">Role:</span> {component.role}</p>
+          <p><span className="text-foreground font-semibold">Stack:</span> {component.stack}</p>
+          <p className="font-mono text-[11px] break-all text-foreground">
+            <span className="font-sans font-semibold">Endpoint:</span> {component.endpoint}
           </p>
         </div>
       )}
@@ -52,15 +53,12 @@ function ComponentRow({ component }: { component: (typeof SYSTEM_COMPONENTS)[num
 export function SystemStackView() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Server className="h-6 w-6 text-indigo-400" />
-          Technology Stack
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Every layer in Mock Interview Pro — tap a row to see role, stack, and endpoint.
-        </p>
-      </div>
+      <PageHeader
+        size="md"
+        icon={Server}
+        title="Technology Stack"
+        subtitle="Every layer in Mock Interview Pro — tap a row to see role, stack, and endpoint."
+      />
 
       <RecentWorkBanner />
 

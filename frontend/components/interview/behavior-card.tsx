@@ -1,4 +1,5 @@
 import { Eye, Brain, Activity } from "lucide-react";
+import { toPercent, clampBar, sortEmotions } from "@/lib/scoring/behavior";
 
 export interface BehaviorData {
   confidence: number;
@@ -55,9 +56,7 @@ function EmotionBadge({ label, value }: { label: string; value: number }) {
 
 /** Per-answer behavior panel shown inside QuestionReviewCard */
 export function BehaviorPanel({ behavior }: { behavior: BehaviorData }) {
-  const emotions = Object.entries(behavior.emotion_distribution ?? {})
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4);
+  const emotions = sortEmotions(behavior.emotion_distribution ?? {}).slice(0, 4);
 
   return (
     <div className="rounded-md bg-slate-950/50 border border-slate-700/40 p-3 space-y-3">
@@ -86,17 +85,17 @@ export function BehaviorPanel({ behavior }: { behavior: BehaviorData }) {
         <div>
           <p className="text-slate-400 flex justify-between">
             <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Eye contact</span>
-            <span className="text-white font-semibold">{Math.round(behavior.eye_contact_ratio * 100)}%</span>
+            <span className="text-foreground font-semibold">{Math.round(toPercent(behavior.eye_contact_ratio))}%</span>
           </p>
-          <ScoreBar value={behavior.eye_contact_ratio * 100} color="bg-blue-400" />
+          <ScoreBar value={clampBar(behavior.eye_contact_ratio * 100)} color="bg-blue-400" />
         </div>
         {/* Head stability */}
         <div>
           <p className="text-slate-400 flex justify-between">
             <span>Head stability</span>
-            <span className="text-white font-semibold">{Math.round(behavior.head_stability * 100)}%</span>
+            <span className="text-foreground font-semibold">{Math.round(toPercent(behavior.head_stability))}%</span>
           </p>
-          <ScoreBar value={behavior.head_stability * 100} color="bg-indigo-400" />
+          <ScoreBar value={clampBar(behavior.head_stability * 100)} color="bg-indigo-400" />
         </div>
       </div>
 

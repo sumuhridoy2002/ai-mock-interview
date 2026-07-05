@@ -5,11 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, TrendingUp, Award, ArrowRight, Bell, BellOff, Calendar, Pencil, Trash2, X, Check, TrendingDown, Minus, Star, Target, BarChart2, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { formatScore } from "@/lib/utils";
+import { computeAverage, letterGrade, scoreBandColor, scoreBarColor, trendDelta as computeTrendDelta } from "@/lib/scoring/interview";
 
 interface InterviewRow {
   id: number;
@@ -157,12 +159,7 @@ export default function DashboardPage() {
   }, [loadScheduled]);
 
   const completed = interviews.filter((i) => i.status === "completed");
-  const avgScore =
-    completed.length > 0
-      ? Math.round(
-          completed.reduce((sum, i) => sum + (i.report?.overall_score || 0), 0) / completed.length
-        )
-      : 0;
+  const avgScore = computeAverage(completed.map((i) => i.report?.overall_score || 0).filter((s) => s > 0));
 
   // ── Progress metrics ──────────────────────────────────────────────────────
   const withScore = completed.filter((i) => i.report?.overall_score != null);
@@ -171,16 +168,7 @@ export default function DashboardPage() {
   );
   const recent8 = sortedByDate.slice(-8);
 
-  // Trend: compare first half avg vs second half avg
-  const trendDelta = (() => {
-    if (recent8.length < 2) return 0;
-    const mid = Math.floor(recent8.length / 2);
-    const firstHalf = recent8.slice(0, mid);
-    const secondHalf = recent8.slice(mid);
-    const avg = (arr: InterviewRow[]) =>
-      arr.reduce((s, i) => s + (i.report?.overall_score ?? 0), 0) / arr.length;
-    return Math.round(avg(secondHalf) - avg(firstHalf));
-  })();
+  const trendDelta = computeTrendDelta(recent8.map((i) => i.report?.overall_score ?? 0));
 
   const bestScore = withScore.length
     ? Math.max(...withScore.map((i) => i.report!.overall_score))
@@ -195,13 +183,8 @@ export default function DashboardPage() {
     return { type, count: rows.length, avg };
   });
 
-  // Grade
-  const grade = avgScore >= 85 ? "A" : avgScore >= 70 ? "B" : avgScore >= 55 ? "C" : avgScore > 0 ? "D" : "—";
-  const gradeColor =
-    grade === "A" ? "text-emerald-400" :
-    grade === "B" ? "text-indigo-400" :
-    grade === "C" ? "text-amber-400" :
-    grade === "D" ? "text-red-400" : "text-slate-500";
+  const grade = letterGrade(avgScore);
+  const gradeColor = scoreBandColor(avgScore);
 
   async function handleSaveSchedule(row: ScheduledRow, scheduledAt: string, alarmMessage: string) {
     await api(`/interviews/${row.id}/schedule`, {
@@ -241,10 +224,10 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <div className="max-w-6xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-          <p className="text-slate-400 mt-1">Track your interview progress and scores</p>
-        </div>
+        <PageHeader
+          title="Dashboard"
+          subtitle="Track your interview progress and scores"
+        />
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -254,8 +237,8 @@ export default function DashboardPage() {
                 <Mic className="h-6 w-6 text-indigo-400" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Total Interviews</p>
-                <p className="text-2xl font-bold text-white">{interviews.length}</p>
+                <p className="text-sm text-muted-foreground font-medium">Total Interviews</p>
+                <p className="text-2xl font-bold text-foreground">{interviews.length}</p>
               </div>
             </CardContent>
           </Card>
@@ -265,8 +248,8 @@ export default function DashboardPage() {
                 <TrendingUp className="h-6 w-6 text-emerald-400" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Average Score</p>
-                <p className="text-2xl font-bold text-white">{formatScore(avgScore)}</p>
+                <p className="text-sm text-muted-foreground font-medium">Average Score</p>
+                <p className="text-2xl font-bold text-foreground">{formatScore(avgScore)}</p>
               </div>
             </CardContent>
           </Card>
@@ -276,8 +259,8 @@ export default function DashboardPage() {
                 <Award className="h-6 w-6 text-amber-400" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Completed</p>
-                <p className="text-2xl font-bold text-white">{completed.length}</p>
+                <p className="text-sm text-muted-foreground font-medium">Completed</p>
+                <p className="text-2xl font-bold text-foreground">{completed.length}</p>
               </div>
             </CardContent>
           </Card>

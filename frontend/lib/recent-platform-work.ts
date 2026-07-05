@@ -18,10 +18,10 @@ export const AREA_LABELS: Record<WorkArea, string> = {
 };
 
 export const AREA_BADGE_CLASS: Record<WorkArea, string> = {
-  memory: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
-  media: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  vision: "bg-purple-500/15 text-purple-300 border-purple-500/30",
-  recording: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  memory: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30",
+  media: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+  vision: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
+  recording: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
 };
 
 export const RECENT_PLATFORM_WORK: RecentWorkItem[] = [

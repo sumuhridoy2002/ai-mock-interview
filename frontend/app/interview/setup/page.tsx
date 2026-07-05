@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,34 +116,39 @@ export default function InterviewSetupPage() {
     }
   }
 
-  const selectClass =
-    "w-full h-10 rounded-lg border border-slate-600 bg-slate-900/50 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500";
+  const fieldClass =
+    "w-full h-10 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:[color-scheme:dark]";
+
+  const labelClass = "text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1.5 block";
 
   return (
     <AppShell>
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-2">Interview Setup</h1>
-        <p className="text-slate-400 mb-8">Configure your mock interview session</p>
+        <PageHeader
+          title="Interview Setup"
+          subtitle="Configure your mock interview session"
+          className="mb-8"
+        />
 
         <Card>
           <CardHeader>
-            <CardTitle>Session Details</CardTitle>
+            <CardTitle className="text-xl text-slate-900 dark:text-white">Session Details</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-300">
+                <div className="rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 p-3 text-sm font-medium text-red-700 dark:text-red-300">
                   {error}
                 </div>
               )}
 
               {/* Resume */}
               <div>
-                <label className="text-sm text-slate-300 mb-1 block">Resume</label>
+                <label className={labelClass}>Resume</label>
                 <select
                   value={resumeId}
                   onChange={(e) => setResumeId(e.target.value)}
-                  className={selectClass}
+                  className={fieldClass}
                   required
                 >
                   {resumes.length === 0 && <option value="">Upload a resume first</option>}
@@ -156,24 +162,25 @@ export default function InterviewSetupPage() {
 
               {/* Job Title */}
               <div>
-                <label className="text-sm text-slate-300 mb-1 block">Job Title</label>
+                <label className={labelClass}>Job Title</label>
                 <Input
                   value={jobTitle}
                   onChange={(e) => setJobTitle(e.target.value)}
                   required
                   placeholder="Senior Laravel Developer"
+                  className="font-medium text-slate-900 dark:text-white"
                 />
               </div>
 
               {/* Job Description */}
               <div>
-                <label className="text-sm text-slate-300 mb-1 block">Job Description</label>
+                <label className={labelClass}>Job Description</label>
                 <textarea
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
                   required
                   rows={5}
-                  className="w-full rounded-lg border border-slate-600 bg-slate-900/50 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Paste the job description..."
                 />
               </div>
@@ -181,11 +188,11 @@ export default function InterviewSetupPage() {
               {/* Level & Type */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-slate-300 mb-1 block">Experience Level</label>
+                  <label className={labelClass}>Experience Level</label>
                   <select
                     value={experienceLevel}
                     onChange={(e) => setExperienceLevel(e.target.value)}
-                    className={selectClass}
+                    className={fieldClass}
                   >
                     <option value="junior">Junior</option>
                     <option value="mid">Mid</option>
@@ -193,11 +200,11 @@ export default function InterviewSetupPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm text-slate-300 mb-1 block">Interview Type</label>
+                  <label className={labelClass}>Interview Type</label>
                   <select
                     value={interviewType}
                     onChange={(e) => setInterviewType(e.target.value)}
-                    className={selectClass}
+                    className={fieldClass}
                   >
                     <option value="technical">Technical</option>
                     <option value="behavioral">Behavioral</option>
@@ -208,15 +215,15 @@ export default function InterviewSetupPage() {
 
               {/* Mode toggle */}
               <div>
-                <label className="text-sm text-slate-300 mb-2 block">When to start?</label>
-                <div className="flex rounded-lg border border-slate-600 overflow-hidden">
+                <label className={labelClass}>When to start?</label>
+                <div className="flex rounded-lg border border-border overflow-hidden">
                   <button
                     type="button"
                     onClick={() => setMode("now")}
-                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                    className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
                       mode === "now"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-800 text-slate-400 hover:text-white"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/50 text-slate-700 dark:text-slate-300 hover:bg-muted hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
                     Start Now
@@ -224,10 +231,10 @@ export default function InterviewSetupPage() {
                   <button
                     type="button"
                     onClick={() => setMode("schedule")}
-                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                    className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
                       mode === "schedule"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-800 text-slate-400 hover:text-white"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/50 text-slate-700 dark:text-slate-300 hover:bg-muted hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
                     Schedule for Later
@@ -237,11 +244,13 @@ export default function InterviewSetupPage() {
 
               {/* Schedule fields */}
               {mode === "schedule" && (
-                <div className="space-y-4 rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-4">
+                <div className="space-y-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
                   <div>
-                    <label className="text-sm text-slate-300 mb-1 block">
+                    <label className={labelClass}>
                       Date &amp; Time
-                      <span className="text-slate-500 ml-1">(your local timezone)</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-normal ml-1">
+                        (your local timezone)
+                      </span>
                     </label>
                     <input
                       type="datetime-local"
@@ -249,13 +258,15 @@ export default function InterviewSetupPage() {
                       min={minDatetime}
                       onChange={(e) => setScheduledAt(e.target.value)}
                       required={mode === "schedule"}
-                      className="w-full h-10 rounded-lg border border-slate-600 bg-slate-900/50 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 [color-scheme:dark]"
+                      className={fieldClass}
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-slate-300 mb-1 block">
+                    <label className={labelClass}>
                       Alarm Message
-                      <span className="text-slate-500 ml-1">(spoken aloud at alarm time)</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-normal ml-1">
+                        (spoken aloud at alarm time)
+                      </span>
                     </label>
                     <Input
                       value={alarmMessage}
@@ -265,8 +276,9 @@ export default function InterviewSetupPage() {
                       }}
                       placeholder={`Time for your ${jobTitle || "interview"}. Start now.`}
                       maxLength={500}
+                      className="font-medium text-slate-900 dark:text-white"
                     />
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 font-medium">
                       Leave blank to use default message.
                     </p>
                   </div>
@@ -275,7 +287,7 @@ export default function InterviewSetupPage() {
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full font-semibold"
                 disabled={loading || resumes.length === 0 || (mode === "schedule" && !scheduledAt)}
               >
                 {loading

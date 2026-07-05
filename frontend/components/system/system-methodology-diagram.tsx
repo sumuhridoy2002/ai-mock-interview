@@ -1,58 +1,90 @@
 "use client";
 
+import { createContext, useContext } from "react";
+import { useTheme } from "next-themes";
+
 /* ─── colours ─────────────────────────────────────────────────────────────── */
-const C = {
-  /* process rectangle */
+const DARK_COLORS = {
   procFill: "#1e1b4b",
   procStroke: "#4f46e5",
   procText: "#e0e7ff",
   procSub: "#a5b4fc",
-
-  /* decision diamond */
   diaFill: "#2e1065",
   diaStroke: "#7c3aed",
   diaText: "#ddd6fe",
-
-  /* start / end pill */
   pillFill: "#052e16",
   pillStroke: "#10b981",
   pillText: "#34d399",
   pillSub: "#6ee7b7",
-
-  /* side-note box (queued e-mail) */
   noteFill: "#0c1a2e",
   noteStroke: "#1d4ed8",
   noteText: "#93c5fd",
   noteSub: "#60a5fa",
-
-  /* browser box */
   browserFill: "#0c1a2e",
   browserStroke: "#1d4ed8",
-
-  /* AI nodes */
   aiFill: "#1a0a2e",
   aiStroke: "#9333ea",
   aiText: "#e9d5ff",
   aiSub: "#c084fc",
-
-  /* database / utility */
   dbFill: "#111827",
   dbStroke: "#374151",
   dbText: "#d1d5db",
   dbSub: "#6b7280",
-
-  /* Reverb WS */
   wsFill: "#1e0f3a",
   wsStroke: "#7c3aed",
   wsText: "#ddd6fe",
   wsSub: "#a78bfa",
-
-  /* connector lines */
   line: "#4f46e5",
   lineLabel: "#64748b",
   noteLine: "#3b82f6",
   wsLine: "#8b5cf6",
+} as const;
+
+const LIGHT_COLORS = {
+  procFill: "#eef2ff",
+  procStroke: "#6366f1",
+  procText: "#1e1b4b",
+  procSub: "#4338ca",
+  diaFill: "#f5f3ff",
+  diaStroke: "#7c3aed",
+  diaText: "#4c1d95",
+  pillFill: "#ecfdf5",
+  pillStroke: "#10b981",
+  pillText: "#065f46",
+  pillSub: "#047857",
+  noteFill: "#eff6ff",
+  noteStroke: "#2563eb",
+  noteText: "#1e40af",
+  noteSub: "#1d4ed8",
+  browserFill: "#eff6ff",
+  browserStroke: "#2563eb",
+  aiFill: "#faf5ff",
+  aiStroke: "#9333ea",
+  aiText: "#581c87",
+  aiSub: "#7e22ce",
+  dbFill: "#f9fafb",
+  dbStroke: "#6b7280",
+  dbText: "#374151",
+  dbSub: "#4b5563",
+  wsFill: "#f5f3ff",
+  wsStroke: "#7c3aed",
+  wsText: "#5b21b6",
+  wsSub: "#6d28d9",
+  line: "#6366f1",
+  lineLabel: "#475569",
+  noteLine: "#2563eb",
+  wsLine: "#7c3aed",
+} as const;
+
+type DiagramColors = {
+  [K in keyof typeof DARK_COLORS]: string;
 };
+
+const DiagramColorsContext = createContext<DiagramColors>(DARK_COLORS);
+
+function useDiagramColors() {
+  return useContext(DiagramColorsContext);
+}
 
 /* ─── shared SVG primitives ───────────────────────────────────────────────── */
 const F = "ui-sans-serif,system-ui,sans-serif";
@@ -79,22 +111,24 @@ type LineProps = {
   x1: number; y1: number; x2: number; y2: number;
   color?: string; mark?: string;
 };
-function Line({ x1, y1, x2, y2, color = C.line, mark = "url(#a)" }: LineProps) {
+function Line({ x1, y1, x2, y2, color, mark = "url(#a)" }: LineProps) {
+  const C = useDiagramColors();
   return (
     <line
       x1={x1} y1={y1} x2={x2} y2={y2}
-      stroke={color} strokeWidth={SW} strokeDasharray={D}
+      stroke={color ?? C.line} strokeWidth={SW} strokeDasharray={D}
       markerEnd={mark}
     />
   );
 }
 
 type PathProps = { d: string; color?: string; mark?: string };
-function Path({ d, color = C.line, mark }: PathProps) {
+function Path({ d, color, mark }: PathProps) {
+  const C = useDiagramColors();
   return (
     <path
       d={d} fill="none"
-      stroke={color} strokeWidth={SW} strokeDasharray={D}
+      stroke={color ?? C.line} strokeWidth={SW} strokeDasharray={D}
       strokeLinejoin="round"
       markerEnd={mark}
     />
@@ -133,20 +167,21 @@ function BoxText({
 /* process rectangle node */
 function ProcNode({
   x, y, w = 160, h = 46, rx = 7,
-  fill = C.procFill, stroke = C.procStroke,
-  label, sub, lc = C.procText, sc = C.procSub,
+  fill, stroke,
+  label, sub, lc, sc,
 }: {
   x: number; y: number; w?: number; h?: number; rx?: number;
   fill?: string; stroke?: string;
   label: string; sub?: string; lc?: string; sc?: string;
 }) {
+  const C = useDiagramColors();
   const cx = x + w / 2;
   const cy = y + h / 2;
   return (
     <>
       <rect x={x} y={y} width={w} height={h} rx={rx}
-        fill={fill} stroke={stroke} strokeWidth={SW} />
-      <BoxText x={cx} cy={cy} label={label} sub={sub} color={lc} subColor={sc} />
+        fill={fill ?? C.procFill} stroke={stroke ?? C.procStroke} strokeWidth={SW} />
+      <BoxText x={cx} cy={cy} label={label} sub={sub} color={lc ?? C.procText} subColor={sc ?? C.procSub} />
     </>
   );
 }
@@ -156,6 +191,7 @@ function PillNode({
   x, y, w = 140, h = 38,
   label, sub,
 }: { x: number; y: number; w?: number; h?: number; label: string; sub?: string }) {
+  const C = useDiagramColors();
   const cx = x + w / 2;
   const cy = y + h / 2;
   return (
@@ -173,6 +209,7 @@ function Diamond({
   cx, cy, hw, hh,
   label, label2,
 }: { cx: number; cy: number; hw: number; hh: number; label: string; label2?: string }) {
+  const C = useDiagramColors();
   const pts = `${cx},${cy - hh} ${cx + hw},${cy} ${cx},${cy + hh} ${cx - hw},${cy}`;
   return (
     <>
@@ -197,6 +234,7 @@ function EdgeLabel({ x, y, text, anchor = "start" }: {
   x: number; y: number; text: string;
   anchor?: "start" | "middle" | "end" | "inherit";
 }) {
+  const C = useDiagramColors();
   return (
     <text x={x} y={y} textAnchor={anchor} fill={C.lineLabel}
       fontSize="9.5" fontFamily={F}>{text}</text>
@@ -205,6 +243,7 @@ function EdgeLabel({ x, y, text, anchor = "start" }: {
 
 /* ─── Diagram A: User Journey ─────────────────────────────────────────────── */
 function UserJourneyDiagram() {
+  const C = useDiagramColors();
   /*
     Layout key (all x/y in SVG user units, viewBox 0 0 560 755)
     ─────────────────────────────────────────────────────────────
@@ -315,6 +354,7 @@ function UserJourneyDiagram() {
 
 /* ─── Diagram B: Runtime Architecture ────────────────────────────────────── */
 function RuntimeDiagram() {
+  const C = useDiagramColors();
   /*
     Layout (viewBox 0 0 560 490)
     ──────────────────────────────────────────
@@ -445,35 +485,38 @@ function RuntimeDiagram() {
 
 /* ─── public export ───────────────────────────────────────────────────────── */
 export function SystemMethodologyDiagram() {
-  return (
-    <div className="space-y-10">
-      {/* Diagram A */}
-      <div>
-        <div className="flex items-center gap-3 mb-5">
-          <span className="h-px flex-1 bg-slate-800" />
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
-            End-to-end user journey
-          </span>
-          <span className="h-px flex-1 bg-slate-800" />
-        </div>
-        <div className="overflow-x-auto rounded-xl border border-slate-800/70 bg-slate-950/60 py-4 px-2">
-          <UserJourneyDiagram />
-        </div>
-      </div>
+  const { resolvedTheme } = useTheme();
+  const colors = resolvedTheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
 
-      {/* Diagram B */}
-      <div>
-        <div className="flex items-center gap-3 mb-5">
-          <span className="h-px flex-1 bg-slate-800" />
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
-            Runtime architecture
-          </span>
-          <span className="h-px flex-1 bg-slate-800" />
+  return (
+    <DiagramColorsContext.Provider value={colors}>
+      <div className="space-y-10">
+        <div>
+          <div className="flex items-center gap-3 mb-5">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              End-to-end user journey
+            </span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border bg-card py-4 px-2 shadow-sm">
+            <UserJourneyDiagram />
+          </div>
         </div>
-        <div className="overflow-x-auto rounded-xl border border-slate-800/70 bg-slate-950/60 py-4 px-2">
-          <RuntimeDiagram />
+
+        <div>
+          <div className="flex items-center gap-3 mb-5">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Runtime architecture
+            </span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border bg-card py-4 px-2 shadow-sm">
+            <RuntimeDiagram />
+          </div>
         </div>
       </div>
-    </div>
+    </DiagramColorsContext.Provider>
   );
 }

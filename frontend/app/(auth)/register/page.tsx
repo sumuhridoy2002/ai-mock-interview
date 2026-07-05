@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Sparkles } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { register } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,14 +38,17 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-2.75rem)] flex items-center justify-center p-4">
+    <div className="min-h-[calc(100vh-2.75rem)] flex items-center justify-center p-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
             <Sparkles className="h-10 w-10 text-indigo-400" />
           </div>
           <CardTitle className="text-2xl">Create account</CardTitle>
-          <p className="text-slate-400 text-sm">Start practicing AI-powered mock interviews</p>
+          <p className="text-muted-foreground text-sm">Start practicing AI-powered mock interviews</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -54,26 +58,26 @@ export default function RegisterPage() {
               </div>
             )}
             <div>
-              <label className="text-sm text-slate-300 mb-1 block">Name</label>
+              <label className="text-sm text-muted-foreground mb-1 block">Name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm text-slate-300 mb-1 block">Email</label>
+              <label className="text-sm text-muted-foreground mb-1 block">Email</label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm text-slate-300 mb-1 block">Password</label>
+              <label className="text-sm text-muted-foreground mb-1 block">Password</label>
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm text-slate-300 mb-1 block">Confirm password</label>
+              <label className="text-sm text-muted-foreground mb-1 block">Confirm password</label>
               <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating..." : "Create account"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-slate-400">
+          <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link href="/login" className="text-indigo-400 hover:underline">
               Sign in

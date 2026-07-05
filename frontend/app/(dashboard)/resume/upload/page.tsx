@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Upload, FileText, CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -59,21 +60,21 @@ export default function ResumeUploadPage() {
   return (
     <AppShell>
       <div className="max-w-3xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Upload Resume</h1>
-          <p className="text-slate-400 mt-1">PDF or DOCX — max 5MB</p>
-        </div>
+        <PageHeader
+          title="Upload Resume"
+          subtitle="PDF or DOCX — max 5MB"
+        />
 
         <Card
-          className={`border-dashed border-2 transition-colors ${dragOver ? "border-indigo-500 bg-indigo-500/5" : "border-slate-600"}`}
+          className={`border-dashed border-2 transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border"}`}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
           <CardContent className="py-12 text-center">
             <Upload className="h-12 w-12 text-indigo-400 mx-auto mb-4" />
-            <p className="text-white font-medium mb-2">Drag & drop your resume here</p>
-            <p className="text-slate-400 text-sm mb-4">or click to browse</p>
+            <p className="text-slate-900 dark:text-white font-semibold mb-2">Drag & drop your resume here</p>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-4 font-medium">or click to browse</p>
             <Button
               type="button"
               disabled={uploading}
@@ -107,13 +108,13 @@ export default function ResumeUploadPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {resumes.length === 0 ? (
-              <p className="text-slate-400 text-sm">No resumes uploaded yet.</p>
+              <p className="text-muted-foreground text-sm font-medium">No resumes uploaded yet.</p>
             ) : (
               resumes.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/50">
-                  <FileText className="h-5 w-5 text-indigo-400" />
+                <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+                  <FileText className="h-5 w-5 text-primary" />
                   <div className="flex-1">
-                    <p className="text-white text-sm">{r.original_filename}</p>
+                    <p className="text-foreground text-sm font-medium">{r.original_filename}</p>
                     {r.parsed_profile?.skills && (
                       <p className="text-xs text-slate-400">{r.parsed_profile.skills.slice(0, 5).join(", ")}</p>
                     )}
@@ -123,7 +124,9 @@ export default function ResumeUploadPage() {
                   ) : r.status === "pending" ? (
                     <Loader2 className="h-5 w-5 text-amber-400 animate-spin" />
                   ) : r.status === "failed" ? (
-                    <AlertCircle className="h-5 w-5 text-red-400" title="Parsing failed — re-upload to retry" />
+                    <span title="Parsing failed — re-upload to retry">
+                      <AlertCircle className="h-5 w-5 text-red-400" />
+                    </span>
                   ) : null}
                 </div>
               ))

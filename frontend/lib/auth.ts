@@ -73,3 +73,23 @@ export async function fetchUser(): Promise<User> {
   setStoredUser(data.user);
   return data.user;
 }
+
+export async function updateProfile(payload: { name?: string; email?: string }): Promise<User> {
+  const data = await api<{ user: User }>("/user", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  setStoredUser(data.user);
+  return data.user;
+}
+
+export async function changePassword(payload: {
+  current_password: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<void> {
+  await api("/user/password", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}

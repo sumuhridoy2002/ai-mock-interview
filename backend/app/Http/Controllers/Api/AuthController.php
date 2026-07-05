@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\UpdatePasswordRequest;
+use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendWelcomeEmailJob;
 use App\Models\User;
@@ -82,5 +84,29 @@ class AuthController extends Controller
             'ETag'          => $etag,
             'Cache-Control' => 'private, no-cache',
         ]);
+    }
+
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $user->update($request->validated());
+        $user->refresh();
+
+        return response()->json(['user' => $user->only('id', 'name', 'email')]);
+    }
+
+    public function updatePassword(UpdatePasswordRequest $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if (! Hash::check($request->input('current_password'), $user->password)) {
+            return response()->json(['message' => 'Current password is incorrect.'], 422);
+        }
+
+        $user->update(['password' => $request->input('password')]);
+
+        return response()->json(['message' => 'Password updated successfully.']);
     }
 }

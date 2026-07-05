@@ -6,12 +6,14 @@ import { API_URL } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { EMPTY_CONTEXT_DATA, measureClientContext, type ContextDataMetrics } from "@/lib/context-metrics";
 import {
+  BENCHMARK_DOC_IDS,
   computeDelta,
   PERFORMANCE_BENCHMARKS,
   rateMetric,
   type MetricDelta,
   type PerformanceRating,
 } from "@/lib/performance-benchmarks";
+import { computePerformanceScore } from "@/lib/scoring/system-metrics";
 import {
   appendPerformanceSample,
   computeSessionAverages,
@@ -95,24 +97,6 @@ function measurePageLoad(): Pick<SystemMetrics, "pageLoadMs" | "domReadyMs"> {
   };
 }
 
-function computePerformanceScore(pageLoadMs: number, apiLatencyMs: number | null, apiOnline: boolean): number {
-  let score = 100;
-
-  if (pageLoadMs > 3000) score -= 25;
-  else if (pageLoadMs > 1500) score -= 12;
-  else if (pageLoadMs > 800) score -= 5;
-
-  if (apiLatencyMs !== null) {
-    if (apiLatencyMs > 2000) score -= 20;
-    else if (apiLatencyMs > 800) score -= 10;
-    else if (apiLatencyMs > 300) score -= 4;
-  }
-
-  if (!apiOnline) score -= 30;
-
-  return Math.max(0, Math.min(100, score));
-}
-
 /** Read the most recent Resource Timing entry for the given URL. */
 function readResourceTiming(url: string): { ttfbMs: number | null; transferMs: number | null } {
   if (typeof window === "undefined" || !window.performance?.getEntriesByName) {
@@ -155,9 +139,10 @@ function buildComparisons(
     avg: number | null | undefined,
     higherIsBetter = false,
   ): MetricComparison => {
+    const docId = BENCHMARK_DOC_IDS[benchmarkKey] ?? benchmarkKey;
     const benchmark = PERFORMANCE_BENCHMARKS[benchmarkKey];
     return {
-      rating: current !== null ? rateMetric(current, benchmark) : "ok",
+      rating: current !== null ? rateMetric(current, docId) : "ok",
       target: benchmark.targetLabel,
       vsPrevious: computeDelta(current, prev ?? null, higherIsBetter),
       vsSessionAvg: computeDelta(current, avg ?? null, higherIsBetter),

@@ -3,6 +3,8 @@
 namespace App\Services\Interview;
 
 use App\Models\Interview;
+use App\Support\Scoring\BehaviorAggregator;
+use App\Support\Scoring\ReportAggregator;
 use App\Models\InterviewReport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
@@ -107,7 +109,7 @@ class ReportService
 
         // Aggregate behavior across all questions
         $behaviorItems = array_filter(array_column($questionReviews, 'behavior'));
-        $aggregateBehavior = $this->aggregateBehavior($behaviorItems);
+        $aggregateBehavior = BehaviorAggregator::aggregate($behaviorItems);
 
         return [
             'interview' => [
@@ -120,7 +122,7 @@ class ReportService
             'scores'           => $scores,
             'question_reviews' => $questionReviews,
             'memory'           => $memory,
-            'behavior_summary' => $aggregateBehavior,
+            'behavior_summary' => BehaviorAggregator::aggregate($items),
         ];
     }
 
@@ -129,21 +131,8 @@ class ReportService
         $scores = $payload['scores'] ?? [];
         $memory = $payload['memory'] ?? [];
 
-        $overall = 50;
-        if (count($scores) > 0) {
-            $overall = (int) round(array_sum(array_column($scores, 'score')) / count($scores));
-        }
-
-        $categoryTotals = [];
-        foreach ($scores as $item) {
-            $cat = $item['category'] ?? 'general';
-            $categoryTotals[$cat][] = $item['score'] ?? 0;
-        }
-
-        $categoryScores = [];
-        foreach ($categoryTotals as $cat => $values) {
-            $categoryScores[$cat] = (int) round(array_sum($values) / count($values));
-        }
+        $overall = ReportAggregator::overallScore($scores);
+        $categoryScores = ReportAggregator::categoryScores($scores);
         if ($categoryScores === []) {
             $categoryScores = ['overall' => $overall];
         }
@@ -175,7 +164,7 @@ class ReportService
             'strengths' => $strengths,
             'weaknesses' => $weaknesses,
             'improvement_areas' => $improvementAreas,
-            'hiring_recommendation' => $this->hiringRecommendation($overall),
+            'hiring_recommendation' => ReportAggregator::hiringRecommendation($overall),
             'question_reviews' => $payload['question_reviews'] ?? [],
         ];
     }
@@ -203,58 +192,6 @@ class ReportService
         }
 
         return array_values(array_unique($filtered));
-    }
-
-    private function hiringRecommendation(int $score): string
-    {
-        if ($score >= 85) {
-            return 'strong_yes';
-        }
-        if ($score >= 70) {
-            return 'yes';
-        }
-        if ($score >= 55) {
-            return 'maybe';
-        }
-        if ($score >= 40) {
-            return 'no';
-        }
-
-        return 'strong_no';
-    }
-
-    private function aggregateBehavior(array $items): ?array
-    {
-        if (empty($items)) {
-            return null;
-        }
-
-        $count = count($items);
-        $avg = fn (string $key) => (int) round(array_sum(array_column($items, $key)) / $count);
-        $avgFloat = fn (string $key) => round(array_sum(array_column($items, $key)) / $count, 3);
-
-        // Merge emotion distributions (average per label)
-        $emotionKeys = [];
-        foreach ($items as $item) {
-            $emotionKeys = array_merge($emotionKeys, array_keys($item['emotion_distribution'] ?? []));
-        }
-        $emotionKeys = array_unique($emotionKeys);
-        $emotionAvg = [];
-        foreach ($emotionKeys as $label) {
-            $vals = array_map(fn ($b) => $b['emotion_distribution'][$label] ?? 0, $items);
-            $emotionAvg[$label] = round(array_sum($vals) / $count, 4);
-        }
-        arsort($emotionAvg);
-
-        return [
-            'avg_confidence'       => $avg('confidence'),
-            'avg_nervousness'      => $avg('nervousness'),
-            'avg_eye_contact'      => $avgFloat('eye_contact_ratio'),
-            'avg_head_stability'   => $avgFloat('head_stability'),
-            'avg_blink_rate'       => round(array_sum(array_column($items, 'blink_rate')) / $count, 1),
-            'emotion_distribution' => $emotionAvg,
-            'questions_analyzed'   => $count,
-        ];
     }
 
     private function storePdf(Interview $interview, array $reportData): string

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { formatScore } from "@/lib/utils";
+import { isPassed } from "@/lib/scoring/interview";
 import { Button } from "@/components/ui/button";
 import { BehaviorPanel, type BehaviorData } from "@/components/interview/behavior-card";
 
@@ -45,7 +46,7 @@ export function QuestionReviewCard({
   review: QuestionReview;
   interviewId: string | number;
 }) {
-  const passed = review.score >= 70;
+  const passed = isPassed(review.score);
   const improvements = uniqueImprovements(review);
   const dimensions = DIMENSION_LABELS.filter(
     (d) => typeof review[d.key] === "number"

@@ -19,6 +19,8 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/user', [AuthController::class, 'user']);
+        Route::patch('/user', [AuthController::class, 'updateProfile']);
+        Route::put('/user/password', [AuthController::class, 'updatePassword']);
 
         Route::get('/resumes', [ResumeController::class, 'index']);
         Route::post('/resumes', [ResumeController::class, 'store'])->middleware('throttle:60,1');
