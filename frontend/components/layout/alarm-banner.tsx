@@ -89,7 +89,7 @@ export function AlarmBanner({ alarms, onStop }: AlarmBannerProps) {
             </div>
 
             {/* Reminder that it keeps ringing */}
-            <p className="text-[11px] text-slate-500 mt-3 mb-3 flex items-center gap-1">
+            <p className="text-sm text-slate-500 mt-3 mb-3 flex items-center gap-1">
               <Bell className="h-3 w-3 inline" />
               Alarm repeats every minute until you start or dismiss.
             </p>

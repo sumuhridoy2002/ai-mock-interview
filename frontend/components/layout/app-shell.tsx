@@ -93,7 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           onMobileClose={closeMobile}
           onSignOut={handleSignOut}
         />
-        <main className="flex-1 overflow-auto pt-14 lg:pt-0 text-sm leading-relaxed">
+        <main className="flex-1 overflow-auto pt-14 lg:pt-0 text-base leading-relaxed">
           <div className="mx-auto max-w-7xl p-5 sm:p-6 lg:p-8">{children}</div>
         </main>
       </div>

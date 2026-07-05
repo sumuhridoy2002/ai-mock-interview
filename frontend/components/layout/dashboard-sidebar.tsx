@@ -159,7 +159,7 @@ export function DashboardSidebar({
             <p className="truncate text-sm font-semibold tracking-tight text-foreground group-hover:text-primary transition-colors">
               Mock Interview Pro
             </p>
-            <p className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="truncate text-sm font-medium uppercase tracking-wider text-muted-foreground">
               Interview prep
             </p>
           </div>
@@ -189,7 +189,7 @@ export function DashboardSidebar({
       <nav className="flex-1 overflow-y-auto px-3 py-3 scrollbar-thin">
         {NAV_GROUPS.map((group) => (
           <div key={group.title} className="mb-6 last:mb-2">
-            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="mb-2 px-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {group.title}
             </p>
             <ul className="space-y-0.5">
@@ -226,7 +226,7 @@ export function DashboardSidebar({
                         <span className="block text-sm font-medium leading-tight">{label}</span>
                         <span
                           className={cn(
-                            "block truncate text-[11px] leading-tight mt-0.5",
+                            "block truncate text-sm leading-tight mt-0.5",
                             active ? "text-primary/80" : "text-muted-foreground",
                           )}
                         >
@@ -260,7 +260,7 @@ export function DashboardSidebar({
                 <p className="truncate text-sm font-medium text-foreground">
                   {user?.name ?? "Loading…"}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">{user?.email ?? ""}</p>
+                <p className="truncate text-sm text-muted-foreground">{user?.email ?? ""}</p>
               </div>
             </Link>
             <button

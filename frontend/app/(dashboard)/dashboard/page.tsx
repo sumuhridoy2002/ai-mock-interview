@@ -370,7 +370,7 @@ export default function DashboardPage() {
                               className={`h-full rounded ${barColor} transition-all duration-700`}
                               style={{ width: `${score}%` }}
                             />
-                            <span className="absolute inset-0 flex items-center pl-2 text-[10px] font-medium text-white/80">
+                            <span className="absolute inset-0 flex items-center pl-2 text-xs font-medium text-white/80">
                               {score}
                             </span>
                           </div>
@@ -392,7 +392,7 @@ export default function DashboardPage() {
                           <p className={`text-lg font-bold ${avg !== null ? (avg >= 85 ? "text-emerald-400" : avg >= 70 ? "text-indigo-400" : avg >= 55 ? "text-amber-400" : "text-red-400") : "text-slate-600"}`}>
                             {avg !== null ? avg : "—"}
                           </p>
-                          <p className="text-[10px] text-slate-500">{count} session{count !== 1 ? "s" : ""}</p>
+                          <p className="text-xs text-slate-500">{count} session{count !== 1 ? "s" : ""}</p>
                         </div>
                       ))}
                     </div>

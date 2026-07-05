@@ -37,8 +37,8 @@ export function SystemStatusFooter() {
           <span className={cn("text-xs font-bold font-mono", scoreColor)}>
             {metrics.performanceScore}%
           </span>
-          <span className="hidden sm:inline text-[10px] text-slate-500">SPS</span>
-          <span className={cn("hidden sm:inline text-[10px] font-mono", ratingClass(apiRating))}>
+          <span className="hidden sm:inline text-xs text-slate-500">SPS</span>
+          <span className={cn("hidden sm:inline text-xs font-mono", ratingClass(apiRating))}>
             API {apiLabel}
           </span>
         </Link>

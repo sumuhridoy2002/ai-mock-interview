@@ -372,8 +372,8 @@ function StepLegend({
     >
       {steps.map((s) => (
         <div key={s.n} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
-          <p className="text-xs font-semibold text-primary">{s.n}. {s.title}</p>
-          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{s.desc}</p>
+          <p className="text-sm font-semibold text-primary">{s.n}. {s.title}</p>
+          <p className="text-sm text-muted-foreground mt-0.5 leading-snug">{s.desc}</p>
         </div>
       ))}
     </div>
@@ -391,7 +391,7 @@ export function SystemMethodologyDiagram() {
           <div>
             <div className="flex items-center gap-3 mb-3">
               <span className="h-px flex-1 bg-border" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+              <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                 End-to-end user journey
               </span>
               <span className="h-px flex-1 bg-border" />
@@ -409,7 +409,7 @@ export function SystemMethodologyDiagram() {
           <div>
             <div className="flex items-center gap-3 mb-3">
               <span className="h-px flex-1 bg-border" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+              <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                 Runtime architecture
               </span>
               <span className="h-px flex-1 bg-border" />

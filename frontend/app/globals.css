@@ -45,7 +45,7 @@
 body {
   background: linear-gradient(135deg, #f1f5f9 0%, #e0e7ff 50%, #f1f5f9 100%);
   color: var(--foreground);
-  font-size: 0.875rem;
+  font-size: 1rem;
   line-height: 1.5;
   min-height: 100vh;
 }

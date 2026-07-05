@@ -21,7 +21,7 @@ export function SystemCompareView() {
       <div className="w-full min-w-0">
         <FeatureComparisonTable />
       </div>
-      <p className="text-[10px] text-muted-foreground text-center font-medium">
+      <p className="text-sm text-muted-foreground text-center font-medium">
         <span className="text-emerald-700 dark:text-emerald-400 font-semibold">+</span> Has ·{" "}
         <span className="text-rose-700 dark:text-rose-400 font-semibold">−</span> Lacks
       </p>

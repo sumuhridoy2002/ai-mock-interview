@@ -27,7 +27,7 @@ export function SystemHowItWorksView() {
             <Link
               key={href}
               href={href}
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
             >
               {label}
               <ArrowRight className="h-3 w-3" />

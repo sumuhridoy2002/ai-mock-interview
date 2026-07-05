@@ -277,7 +277,7 @@ export default function InterviewResultPage() {
                 <Camera className="h-4 w-4" />
                 Snapshots
                 {totalSnaps > 0 && (
-                  <span className="ml-1 rounded-full bg-indigo-600/60 px-1.5 py-0.5 text-[10px] text-indigo-200">
+                  <span className="ml-1 rounded-full bg-indigo-600/60 px-1.5 py-0.5 text-xs text-indigo-200">
                     {totalSnaps}
                   </span>
                 )}

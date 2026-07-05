@@ -62,14 +62,14 @@ function SnapshotThumb({
       />
       {frameScore?.face_detected && frameScore.confidence != null && (
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1.5 py-1.5 pt-4">
-          <p className="text-[10px] text-emerald-300 font-semibold leading-tight">
+          <p className="text-xs text-emerald-300 font-semibold leading-tight">
             {frameScore.confidence}% confident
           </p>
-          <p className="text-[9px] text-red-300/90 leading-tight">
+          <p className="text-xs text-red-300/90 leading-tight">
             {frameScore.nervousness}% nervous
           </p>
           {frameScore.dominant_emotion && (
-            <p className="text-[9px] text-slate-400 capitalize truncate">
+            <p className="text-xs text-slate-400 capitalize truncate">
               {frameScore.dominant_emotion}
             </p>
           )}
@@ -77,7 +77,7 @@ function SnapshotThumb({
       )}
       {frameScore && !frameScore.face_detected && (
         <div className="absolute inset-x-0 bottom-0 bg-black/70 px-1 py-0.5">
-          <p className="text-[9px] text-slate-500">No face detected</p>
+          <p className="text-xs text-slate-500">No face detected</p>
         </div>
       )}
     </button>

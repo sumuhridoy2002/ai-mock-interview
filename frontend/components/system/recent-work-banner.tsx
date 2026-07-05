@@ -16,7 +16,7 @@ function WorkCard({ item }: { item: RecentWorkItem }) {
         <p className="text-sm font-semibold text-foreground">{item.title}</p>
         <span
           className={cn(
-            "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+            "shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium",
             AREA_BADGE_CLASS[item.area],
           )}
         >
@@ -29,7 +29,7 @@ function WorkCard({ item }: { item: RecentWorkItem }) {
           {item.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground font-medium"
+              className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground font-medium"
             >
               {tag}
             </span>

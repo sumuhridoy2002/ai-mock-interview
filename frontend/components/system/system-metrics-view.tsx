@@ -47,7 +47,7 @@ function DeltaText({ delta, unit }: { delta: MetricDelta | null; unit: string })
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 font-mono text-xs",
+        "inline-flex items-center gap-0.5 font-mono text-sm",
         delta.improved === true && "text-emerald-600 dark:text-emerald-400",
         delta.improved === false && "text-rose-600 dark:text-rose-400",
         delta.improved === null && "text-muted-foreground",
@@ -87,12 +87,12 @@ function MetricTile({
             <Icon className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{label}</p>
-            <p className="text-[11px] text-muted-foreground truncate">Target: {comparison.target}</p>
+            <p className="text-base font-medium text-foreground truncate">{label}</p>
+            <p className="text-sm text-muted-foreground truncate">Target: {comparison.target}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", ratingBadgeClass(comparison.rating))}>
+          <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", ratingBadgeClass(comparison.rating))}>
             {ratingLabel(comparison.rating)}
           </span>
         </div>
@@ -100,7 +100,7 @@ function MetricTile({
 
       <p className={cn("text-2xl font-bold font-mono tracking-tight", ratingClass(comparison.rating))}>{value}</p>
 
-      <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+      <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
         <span>vs last</span>
         <DeltaText delta={comparison.vsPrevious} unit={unit} />
       </div>
@@ -149,7 +149,7 @@ export function SystemMetricsView() {
 
       {/* Primary KPIs — one row, no duplicate formula blocks */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">
           Performance vs standards
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -181,7 +181,7 @@ export function SystemMetricsView() {
             icon={Server}
           >
             {(apiTiming.pingMs != null || apiTiming.ttfbMs != null) && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1 text-[11px] text-muted-foreground">
+              <div className="mt-3 pt-3 border-t border-border space-y-1 text-sm text-muted-foreground">
                 {apiTiming.pingMs != null && (
                   <div className="flex justify-between"><span>Ping</span><span className="font-mono text-foreground">{apiTiming.pingMs} ms</span></div>
                 )}
@@ -230,7 +230,7 @@ export function SystemMetricsView() {
             { label: "API status", value: metrics.apiStatus, docId: null },
           ].map((item) => (
             <div key={item.label} className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{item.label}</p>
+              <p className="text-sm uppercase tracking-wide text-muted-foreground">{item.label}</p>
               <p className="text-sm font-mono font-medium text-foreground mt-0.5 truncate" title={item.value}>
                 {item.value}
               </p>
@@ -246,7 +246,7 @@ export function SystemMetricsView() {
       <section className="rounded-xl border border-border bg-card p-5 shadow-sm h-full">
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-foreground">Overall health</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Composite score from load time, API, and reachability</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Composite score from load time, API, and reachability</p>
         </div>
         <ScoreBar score={metrics.performanceScore} />
         <FormulaReference
@@ -258,7 +258,7 @@ export function SystemMetricsView() {
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {STACK_STATUS.map((s) => (
             <div key={s.name} className="rounded-lg bg-muted/40 px-3 py-2 text-center">
-              <p className="text-[10px] text-muted-foreground">{s.name}</p>
+              <p className="text-sm text-muted-foreground">{s.name}</p>
               <p
                 className={cn(
                   "text-xs font-medium mt-0.5",
@@ -321,11 +321,11 @@ export function SystemMetricsView() {
           {getMetricsPageFormulas().map((doc) => (
             <div key={doc.id} className="px-4 py-4">
               <h3 className="text-sm font-semibold text-foreground mb-2">{doc.title}</h3>
-              <pre className="font-mono text-xs text-primary leading-relaxed whitespace-pre-wrap break-words bg-muted/40 rounded-lg p-3 border border-border">
+              <pre className="font-mono text-sm text-primary leading-relaxed whitespace-pre-wrap break-words bg-muted/40 rounded-lg p-3 border border-border">
                 {doc.formula}
               </pre>
               <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{doc.description}</p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2 text-xs">
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 text-sm">
                 <p>
                   <span className="font-semibold text-foreground">Industry standard:</span>{" "}
                   <span className="text-muted-foreground">{doc.industryStandard}</span>

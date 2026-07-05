@@ -14,7 +14,7 @@ function StatusBadge({ status }: { status: SystemFeature["status"] }) {
   return (
     <span
       className={cn(
-        "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize",
+        "shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold capitalize",
         status === "shipped"
           ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
           : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300",
@@ -70,7 +70,7 @@ function FeatureCard({ feature }: { feature: SystemFeature }) {
               {feature.stack.map((s) => (
                 <span
                   key={s}
-                  className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground font-medium"
+                  className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground font-medium"
                 >
                   {s}
                 </span>
@@ -78,7 +78,7 @@ function FeatureCard({ feature }: { feature: SystemFeature }) {
             </div>
           )}
           {feature.apiRoute && (
-            <p className="font-mono text-[10px] text-primary font-medium break-all">{feature.apiRoute}</p>
+            <p className="font-mono text-xs text-primary font-medium break-all">{feature.apiRoute}</p>
           )}
         </div>
       )}
@@ -179,7 +179,7 @@ export function SystemFeaturesView() {
             <section key={category}>
               <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {category}
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-foreground font-semibold">
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-foreground font-semibold">
                   {items.length}
                 </span>
               </h2>

@@ -48,7 +48,7 @@ function EmotionBadge({ label, value }: { label: string; value: number }) {
   };
   const cls = colors[label.toLowerCase()] ?? "bg-slate-700/40 text-slate-300";
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${cls}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-sm font-medium ${cls}`}>
       {label} {pct}%
     </span>
   );
@@ -101,7 +101,7 @@ export function BehaviorPanel({ behavior }: { behavior: BehaviorData }) {
 
       {emotions.length > 0 && (
         <div>
-          <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Detected emotions</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Detected emotions</p>
           <div className="flex flex-wrap gap-1">
             {emotions.map(([label, val]) => (
               <EmotionBadge key={label} label={label} value={val} />
@@ -112,7 +112,7 @@ export function BehaviorPanel({ behavior }: { behavior: BehaviorData }) {
 
       {behavior.coaching_narrative && (
         <div className="rounded-md bg-purple-950/30 border border-purple-500/20 p-2.5">
-          <p className="text-[10px] text-purple-300 uppercase tracking-wide mb-1 font-medium">
+          <p className="text-xs text-purple-300 uppercase tracking-wide mb-1 font-medium">
             Coaching note
           </p>
           <p className="text-xs text-slate-300 leading-relaxed">{behavior.coaching_narrative}</p>
@@ -148,7 +148,7 @@ export function AggregateBehaviorCard({ summary }: { summary: AggregateBehavior 
           { label: "Head Stability", value: Math.round(summary.avg_head_stability * 100), max: 100, color: "text-indigo-400", bar: "bg-indigo-400" },
         ].map(({ label, value, color, bar }) => (
           <div key={label} className="rounded-md bg-slate-900/50 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wide text-slate-500">{label}</p>
+            <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
             <p className={`text-xl font-bold ${color}`}>{value}</p>
             <ScoreBar value={value} color={bar} />
           </div>
@@ -175,7 +175,7 @@ export function AggregateBehaviorCard({ summary }: { summary: AggregateBehavior 
 
       {summary.coaching_narrative && (
         <div className="rounded-md bg-purple-950/30 border border-purple-500/20 p-3">
-          <p className="text-[10px] text-purple-300 uppercase tracking-wide mb-1 font-medium">
+          <p className="text-xs text-purple-300 uppercase tracking-wide mb-1 font-medium">
             Coaching summary
           </p>
           <p className="text-sm text-slate-300 leading-relaxed">{summary.coaching_narrative}</p>

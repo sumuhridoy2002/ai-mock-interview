@@ -49,7 +49,7 @@ function TimelineView({ items }: { items: VisualBreakdownItem[] }) {
       <div className="space-y-4">
         {items.map((item, i) => (
           <div key={i} className="relative">
-            <div className="absolute -left-6 top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-indigo-400 bg-slate-900 text-[10px] font-bold text-indigo-300">
+            <div className="absolute -left-6 top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-indigo-400 bg-slate-900 text-xs font-bold text-indigo-300">
               {i + 1}
             </div>
             <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 px-4 py-3">
@@ -200,7 +200,7 @@ export function AnswerVisualBreakdown({ data }: { data: VisualBreakdown }) {
       <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700/50 bg-slate-800/40">
         <TypeIcon type={data.type} />
         <p className="text-sm font-semibold text-slate-200">{data.title}</p>
-        <span className="ml-auto rounded-full bg-slate-700/60 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+        <span className="ml-auto rounded-full bg-slate-700/60 px-2 py-0.5 text-xs uppercase tracking-wide text-slate-400">
           {data.type}
         </span>
       </div>
