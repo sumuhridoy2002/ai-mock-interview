@@ -127,12 +127,13 @@ export function SystemMetricsView() {
   const contextLabel = formatBytes(contextData.appDataBytes);
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="w-full space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader
           size="md"
           title="Performance & Analytics"
           subtitle="Live scores vs industry standards with calculation formulas shown on each metric."
+          className="flex-1 min-w-0"
         />
         <button
           type="button"
@@ -149,7 +150,7 @@ export function SystemMetricsView() {
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
           Performance vs standards
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricTile
             label="System Performance Score"
             value={`${metrics.performanceScore}%`}
@@ -212,13 +213,14 @@ export function SystemMetricsView() {
         )}
       </section>
 
-      {/* Secondary timing — compact, no formula duplication */}
+      {/* Timing + overall health — side by side on wide screens */}
+      <div className="grid gap-6 lg:grid-cols-2">
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5">
           <Clock className="h-3.5 w-3.5" />
           Timing breakdown
         </h2>
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2">
           {[
             { label: "DOM ready", value: `${metrics.domReadyMs} ms`, docId: "domReady" },
             { label: "Panel render", value: `${metrics.renderMs} ms`, docId: "renderMs" },
@@ -238,8 +240,8 @@ export function SystemMetricsView() {
         </div>
       </section>
 
-      {/* Overall score + stack — single card */}
-      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      {/* Overall score + stack */}
+      <section className="rounded-xl border border-border bg-card p-5 shadow-sm h-full">
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-foreground">Overall health</h2>
           <p className="text-xs text-muted-foreground mt-0.5">Composite score from load time, API, and reachability</p>
@@ -273,6 +275,7 @@ export function SystemMetricsView() {
           ))}
         </div>
       </section>
+      </div>
 
       {/* Context storage — collapsed detail */}
       <details className="rounded-xl border border-border bg-card group">
