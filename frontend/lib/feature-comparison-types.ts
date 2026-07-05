@@ -59,11 +59,12 @@ export function supportLabel(value: FeatureSupport): string {
 export function supportBadgeClass(value: FeatureSupport): string {
   switch (value) {
     case "yes":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300";
+      return "border-emerald-600 bg-emerald-500 text-white dark:bg-emerald-600 dark:border-emerald-500";
     case "partial":
+      return "border-amber-500 bg-amber-400 text-amber-950 dark:bg-amber-500/90 dark:text-amber-950";
     case "rare":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300";
+      return "border-orange-400 bg-orange-300 text-orange-950 dark:bg-orange-500/80 dark:text-orange-950";
     default:
-      return "border-border bg-muted/50 text-muted-foreground";
+      return "border-rose-300 bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:border-rose-700 dark:text-rose-200";
   }
 }

@@ -21,10 +21,24 @@ export function SystemCompareView() {
       <div className="w-full min-w-0">
         <FeatureComparisonTable />
       </div>
-      <p className="text-sm text-muted-foreground text-center font-medium">
-        <span className="text-emerald-700 dark:text-emerald-400 font-semibold">+</span> Has ·{" "}
-        <span className="text-rose-700 dark:text-rose-400 font-semibold">−</span> Lacks
-      </p>
+      <div className="flex flex-wrap items-center justify-center gap-3 text-sm font-medium">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-600 bg-emerald-500 px-2.5 py-1 text-white font-bold shadow-sm">
+          Full
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500 bg-amber-400 px-2.5 py-1 text-amber-950 font-bold shadow-sm">
+          Partial
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-300 bg-rose-100 px-2.5 py-1 text-rose-800 font-bold shadow-sm dark:bg-rose-950/60 dark:text-rose-200">
+          None
+        </span>
+        <span className="text-muted-foreground">·</span>
+        <span>
+          <span className="font-bold text-emerald-700 dark:text-emerald-400">+</span> Has
+        </span>
+        <span>
+          <span className="font-bold text-rose-700 dark:text-rose-400">−</span> Lacks
+        </span>
+      </div>
     </div>
   );
 }
