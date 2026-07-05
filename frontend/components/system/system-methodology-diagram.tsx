@@ -44,8 +44,6 @@ const DARK_COLORS = {
   noteLine: "#3b82f6",
   wsLine: "#8b5cf6",
   memoryLine: "#65a30d",
-  avatarFill: "#6366f1",
-  avatarRing: "#a5b4fc",
 } as const;
 
 const LIGHT_COLORS = {
@@ -87,8 +85,6 @@ const LIGHT_COLORS = {
   noteLine: "#2563eb",
   wsLine: "#7c3aed",
   memoryLine: "#16a34a",
-  avatarFill: "#6366f1",
-  avatarRing: "#c7d2fe",
 } as const;
 
 type DiagramColors = { [K in keyof typeof DARK_COLORS]: string };
@@ -207,18 +203,7 @@ function EdgeLabel({ x, y, text, anchor = "start" }: {
   x: number; y: number; text: string; anchor?: "start" | "middle" | "end";
 }) {
   const C = useDiagramColors();
-  return <text x={x} y={y} textAnchor={anchor} fill={C.lineLabel} fontSize="9" fontFamily={F}>{text}</text>;
-}
-
-function UserAvatar({ cx, cy, initials = "AA" }: { cx: number; cy: number; initials?: string }) {
-  const C = useDiagramColors();
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={16} fill={C.avatarRing} opacity={0.35} />
-      <circle cx={cx} cy={cy} r={13} fill={C.avatarFill} stroke={C.avatarRing} strokeWidth={1.5} />
-      <text x={cx} y={cy + 4} textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="700" fontFamily={F}>{initials}</text>
-    </g>
-  );
+  return <text x={x} y={y} textAnchor={anchor} fill={C.lineLabel} fontSize="8" fontFamily={F}>{text}</text>;
 }
 
 function UserJourneyDiagram() {
@@ -226,7 +211,7 @@ function UserJourneyDiagram() {
   const cx = 340;
 
   return (
-    <svg viewBox="0 0 680 1020" className="w-full" aria-label="User journey flowchart">
+    <svg viewBox="0 0 680 1020" className="w-full h-auto max-h-[28rem] mx-auto block" preserveAspectRatio="xMidYMid meet" aria-label="User journey flowchart">
       <defs>
         <Arrow id="a" fill={C.line} />
         <Arrow id="ab" fill={C.noteLine} />
@@ -257,11 +242,11 @@ function UserJourneyDiagram() {
       <PillNode x={cx - 75} y={20} label="Start" sub="Open app" />
       <ProcNode x={cx - 100} y={78} w={200} label="Register · Login" sub="Sanctum token · /login · /register" />
       <ProcNode x={cx - 100} y={152} w={200} label="Dashboard" sub="History · scores · scheduled alarms" />
-      <UserAvatar cx={cx - 130} cy={178} initials="AA" />
       <ProcNode
         x={455} y={152} w={175} h={52}
         fill={C.noteFill} stroke={C.noteStroke}
-        label="Profile" sub="Avatar · name · theme · password"
+        label="Profile"
+        sub="Name · theme · password"
         lc={C.noteText} sc={C.noteSub}
       />
       <Line x1={440} y1={178} x2={453} y2={178} color={C.noteLine} mark="url(#ab)" />
@@ -302,7 +287,7 @@ function RuntimeDiagram() {
   const cx = 340;
 
   return (
-    <svg viewBox="0 0 680 620" className="w-full" aria-label="Runtime architecture flowchart">
+    <svg viewBox="0 0 680 620" className="w-full h-auto max-h-[22rem] mx-auto block" preserveAspectRatio="xMidYMid meet" aria-label="Runtime architecture flowchart">
       <defs>
         <Arrow id="ra" fill={C.line} />
         <Arrow id="rws" fill={C.wsLine} />
@@ -372,11 +357,11 @@ function RuntimeDiagram() {
 
 function StepLegend({ steps }: { steps: readonly { n: number; title: string; desc: string }[] }) {
   return (
-    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {steps.map((s) => (
         <div key={s.n} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
-          <p className="text-[10px] font-bold text-primary">{s.n}. {s.title}</p>
-          <p className="text-[10px] text-muted-foreground font-medium mt-0.5 leading-snug">{s.desc}</p>
+          <p className="text-xs font-semibold text-primary">{s.n}. {s.title}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{s.desc}</p>
         </div>
       ))}
     </div>
@@ -389,30 +374,30 @@ export function SystemMethodologyDiagram() {
 
   return (
     <DiagramColorsContext.Provider value={colors}>
-      <div className="w-full space-y-10">
+      <div className="w-full max-w-3xl mx-auto space-y-6">
         <section>
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-3">
             <span className="h-px flex-1 bg-border" />
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               End-to-end user journey
             </span>
             <span className="h-px flex-1 bg-border" />
           </div>
-          <div className="rounded-xl border border-border bg-card py-4 px-3 shadow-sm">
+          <div className="rounded-xl border border-border bg-card py-3 px-2 shadow-sm">
             <UserJourneyDiagram />
           </div>
           <StepLegend steps={JOURNEY_STEPS} />
         </section>
 
         <section>
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-3">
             <span className="h-px flex-1 bg-border" />
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Runtime architecture
             </span>
             <span className="h-px flex-1 bg-border" />
           </div>
-          <div className="rounded-xl border border-border bg-card py-4 px-3 shadow-sm">
+          <div className="rounded-xl border border-border bg-card py-3 px-2 shadow-sm">
             <RuntimeDiagram />
           </div>
           <StepLegend steps={RUNTIME_STEPS} />

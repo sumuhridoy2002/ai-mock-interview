@@ -3,7 +3,7 @@
 export const JOURNEY_STEPS = [
   { n: 1, title: "Start", desc: "Open Mock Interview Pro in the browser." },
   { n: 2, title: "Register · Login", desc: "Create an account or sign in. Laravel Sanctum issues a bearer token stored in the browser." },
-  { n: 3, title: "Dashboard · Profile", desc: "Land on the dashboard. Sidebar shows your avatar, name, email, theme toggle, and interview history." },
+  { n: 3, title: "Dashboard · Profile", desc: "Land on the dashboard. Sidebar shows your name, email, theme toggle, and interview history." },
   { n: 4, title: "Upload CV", desc: "Upload PDF/DOCX. Queue worker parses skills and experience into your profile." },
   { n: 5, title: "Interview Setup", desc: "Pick resume, job title, JD, level, and type. Choose Start Now or Schedule for Later." },
   { n: 6, title: "Schedule path", desc: "Pick date/time. Browser alarm banner fires at the slot; optional email reminder is queued." },

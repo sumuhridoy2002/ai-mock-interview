@@ -119,16 +119,6 @@ function isNavActive(pathname: string, href: string): boolean {
   return pathname.startsWith(href);
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 interface DashboardSidebarProps {
   mobileOpen: boolean;
   onMobileClose: () => void;
@@ -264,16 +254,13 @@ export function DashboardSidebar({
           <div className="flex items-center gap-2.5">
             <Link
               href="/profile"
-              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 transition-colors hover:bg-muted/80"
+              className="flex min-w-0 flex-1 items-center rounded-lg p-1 transition-colors hover:bg-muted/80"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary text-xs font-bold text-primary-foreground ring-2 ring-border">
-                {user ? getInitials(user.name) : "?"}
-              </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">
                   {user?.name ?? "Loading…"}
                 </p>
-                <p className="truncate text-[11px] text-muted-foreground">{user?.email ?? ""}</p>
+                <p className="truncate text-xs text-muted-foreground">{user?.email ?? ""}</p>
               </div>
             </Link>
             <button
