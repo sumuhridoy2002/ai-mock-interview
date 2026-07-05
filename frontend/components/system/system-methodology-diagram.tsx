@@ -211,7 +211,7 @@ function UserJourneyDiagram() {
   const cx = 340;
 
   return (
-    <svg viewBox="0 0 680 1020" className="w-full h-auto max-h-[28rem] mx-auto block" preserveAspectRatio="xMidYMid meet" aria-label="User journey flowchart">
+    <svg viewBox="0 0 680 1020" className="w-full h-auto block" preserveAspectRatio="xMidYMid meet" aria-label="User journey flowchart">
       <defs>
         <Arrow id="a" fill={C.line} />
         <Arrow id="ab" fill={C.noteLine} />
@@ -287,7 +287,7 @@ function RuntimeDiagram() {
   const cx = 340;
 
   return (
-    <svg viewBox="0 0 680 620" className="w-full h-auto max-h-[22rem] mx-auto block" preserveAspectRatio="xMidYMid meet" aria-label="Runtime architecture flowchart">
+    <svg viewBox="0 0 680 620" className="w-full h-auto block" preserveAspectRatio="xMidYMid meet" aria-label="Runtime architecture flowchart">
       <defs>
         <Arrow id="ra" fill={C.line} />
         <Arrow id="rws" fill={C.wsLine} />
@@ -355,9 +355,21 @@ function RuntimeDiagram() {
   );
 }
 
-function StepLegend({ steps }: { steps: readonly { n: number; title: string; desc: string }[] }) {
+function StepLegend({
+  steps,
+  aside = false,
+}: {
+  steps: readonly { n: number; title: string; desc: string }[];
+  aside?: boolean;
+}) {
   return (
-    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+      className={
+        aside
+          ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 content-start"
+          : "mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+      }
+    >
       {steps.map((s) => (
         <div key={s.n} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
           <p className="text-xs font-semibold text-primary">{s.n}. {s.title}</p>
@@ -374,33 +386,41 @@ export function SystemMethodologyDiagram() {
 
   return (
     <DiagramColorsContext.Provider value={colors}>
-      <div className="w-full max-w-3xl mx-auto space-y-6">
-        <section>
-          <div className="flex items-center gap-3 mb-3">
-            <span className="h-px flex-1 bg-border" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              End-to-end user journey
-            </span>
-            <span className="h-px flex-1 bg-border" />
+      <div className="w-full space-y-6">
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-6 lg:items-start">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                End-to-end user journey
+              </span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+            <div className="rounded-xl border border-border bg-card py-3 px-2 shadow-sm">
+              <UserJourneyDiagram />
+            </div>
           </div>
-          <div className="rounded-xl border border-border bg-card py-3 px-2 shadow-sm">
-            <UserJourneyDiagram />
+          <div className="lg:pt-9">
+            <StepLegend steps={JOURNEY_STEPS} aside />
           </div>
-          <StepLegend steps={JOURNEY_STEPS} />
         </section>
 
-        <section>
-          <div className="flex items-center gap-3 mb-3">
-            <span className="h-px flex-1 bg-border" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Runtime architecture
-            </span>
-            <span className="h-px flex-1 bg-border" />
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-6 lg:items-start">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                Runtime architecture
+              </span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+            <div className="rounded-xl border border-border bg-card py-3 px-2 shadow-sm">
+              <RuntimeDiagram />
+            </div>
           </div>
-          <div className="rounded-xl border border-border bg-card py-3 px-2 shadow-sm">
-            <RuntimeDiagram />
+          <div className="lg:pt-9">
+            <StepLegend steps={RUNTIME_STEPS} aside />
           </div>
-          <StepLegend steps={RUNTIME_STEPS} />
         </section>
       </div>
     </DiagramColorsContext.Provider>

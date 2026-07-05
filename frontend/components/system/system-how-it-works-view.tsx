@@ -14,7 +14,7 @@ const RELATED_LINKS = [
 
 export function SystemHowItWorksView() {
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-5">
       <div>
         <PageHeader
           size="md"
