@@ -60,22 +60,22 @@ export default function QuestionDetailPage() {
               <ArrowLeft className="h-4 w-4" /> Back to results
             </Button>
           </Link>
-          <h1 className="text-xl font-semibold text-white">Model answer breakdown</h1>
+          <h1 className="text-xl font-semibold text-foreground">Model answer breakdown</h1>
         </div>
 
         {loading ? (
           <Card>
-            <CardContent className="py-16 flex flex-col items-center gap-3 text-slate-400">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+            <CardContent className="py-16 flex flex-col items-center gap-3 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p>Preparing a full model answer for this question...</p>
             </CardContent>
           </Card>
         ) : error ? (
           <Card>
-            <CardContent className="py-12 text-center text-red-400">{error}</CardContent>
+            <CardContent className="py-12 text-center text-red-600 dark:text-red-400">{error}</CardContent>
           </Card>
         ) : data ? (
-          <Card className="border-slate-700/50">
+          <Card>
             <CardContent className="pt-6">
               <QuestionDetailChat data={data} />
             </CardContent>

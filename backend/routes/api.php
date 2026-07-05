@@ -25,6 +25,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/resumes', [ResumeController::class, 'index']);
         Route::post('/resumes', [ResumeController::class, 'store'])->middleware('throttle:60,1');
         Route::get('/resumes/{resume}', [ResumeController::class, 'show']);
+        Route::get('/resumes/{resume}/file', [ResumeController::class, 'streamFile']);
         Route::post('/resumes/{resume}/reparse', [ResumeController::class, 'reparse']);
 
         Route::get('/interviews', [InterviewController::class, 'index']);

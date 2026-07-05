@@ -9,6 +9,7 @@ use App\Models\Resume;
 use App\Services\Interview\ResumeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ResumeController extends Controller
 {
@@ -19,7 +20,7 @@ class ResumeController extends Controller
         $resumes = $request->user()
             ->resumes()
             ->latest()
-            ->get(['id', 'original_filename', 'status', 'parsed_profile', 'created_at']);
+            ->get(['id', 'original_filename', 'status', 'parsed_profile', 'mime_type', 'created_at']);
 
         return response()->json(['data' => $resumes]);
     }
@@ -44,7 +45,30 @@ class ResumeController extends Controller
             'status' => $resume->status,
             'parsed_profile' => $resume->parsed_profile,
             'original_filename' => $resume->original_filename,
+            'mime_type' => $resume->mime_type,
         ]);
+    }
+
+    public function streamFile(Request $request, Resume $resume): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\JsonResponse
+    {
+        $this->authorize('view', $resume);
+
+        $path = $resume->storage_path;
+
+        if (! $path || ! Storage::disk('local')->exists($path)) {
+            return response()->json(['message' => 'Resume file not found.'], 404);
+        }
+
+        $mime = $resume->mime_type ?: Storage::disk('local')->mimeType($path) ?: 'application/octet-stream';
+
+        return Storage::disk('local')->response(
+            $path,
+            $resume->original_filename,
+            [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; filename="'.addslashes($resume->original_filename).'"',
+            ],
+        );
     }
 
     public function reparse(Request $request, Resume $resume): JsonResponse

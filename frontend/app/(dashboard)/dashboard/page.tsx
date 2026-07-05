@@ -395,7 +395,7 @@ export default function DashboardPage() {
                     className={`rounded-lg border p-4 transition-colors ${
                       st === "due"
                         ? "border-amber-500/40 bg-amber-500/5"
-                        : "border-slate-700/50"
+                        : "border-border"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -405,8 +405,8 @@ export default function DashboardPage() {
                           <span
                             className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
                               st === "due"
-                                ? "bg-amber-500/20 text-amber-300"
-                                : "bg-indigo-500/20 text-indigo-300"
+                                ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                                : "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300"
                             }`}
                           >
                             <Calendar className="h-3 w-3" />
@@ -440,7 +440,7 @@ export default function DashboardPage() {
                         )}
                         <button
                           onClick={() => setEditingId(editing ? null : row.id)}
-                          className="p-1.5 rounded text-muted-foreground hover:text-white hover:bg-slate-700 transition-colors"
+                          className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                           title="Edit schedule"
                         >
                           <Pencil className="h-4 w-4" />
@@ -488,11 +488,11 @@ export default function DashboardPage() {
                   const inner = (
                     <>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-white">{interview.job_title}</p>
+                        <p className="font-medium text-foreground">{interview.job_title}</p>
                         <p className="text-sm text-muted-foreground capitalize flex items-center gap-2 flex-wrap">
                           {interview.experience_level} · {interview.interview_type}
                           {isActive && (
-                            <span className="inline-flex items-center gap-1 text-amber-400 text-xs font-medium">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
                               In progress
                             </span>
@@ -507,12 +507,12 @@ export default function DashboardPage() {
                       </div>
                       <div className="shrink-0 flex items-center gap-3">
                         {interview.report && (
-                          <span className="text-emerald-400 font-semibold">
+                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                             {formatScore(interview.report.overall_score)}
                           </span>
                         )}
                         {isActive && (
-                          <span className="text-xs font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded-full px-2.5 py-0.5">
+                          <span className="text-xs font-semibold text-amber-800 bg-amber-500/15 border border-amber-500/30 rounded-full px-2.5 py-0.5 dark:text-amber-300">
                             {isResuming ? "Resuming…" : "Resume →"}
                           </span>
                         )}
@@ -540,7 +540,7 @@ export default function DashboardPage() {
                     <Link
                       key={interview.id}
                       href={isCompleted ? `/interview/result/${interview.id}` : `/interview/setup`}
-                      className="flex items-center justify-between p-4 rounded-lg border border-slate-700/50 hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                     >
                       {inner}
                     </Link>

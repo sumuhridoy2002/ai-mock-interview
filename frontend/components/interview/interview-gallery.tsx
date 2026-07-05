@@ -52,7 +52,7 @@ function SnapshotThumb({
     <button
       type="button"
       onClick={onClick}
-      className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      className="relative aspect-square rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-sm"
     >
       <img
         src={item.data_url}
@@ -61,15 +61,15 @@ function SnapshotThumb({
         loading="lazy"
       />
       {frameScore?.face_detected && frameScore.confidence != null && (
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1.5 py-1.5 pt-4">
-          <p className="text-xs text-emerald-300 font-semibold leading-tight">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-1.5 py-1.5 pt-4">
+          <p className="text-xs text-emerald-200 font-semibold leading-tight">
             {frameScore.confidence}% confident
           </p>
-          <p className="text-xs text-red-300/90 leading-tight">
+          <p className="text-xs text-red-200/90 leading-tight">
             {frameScore.nervousness}% nervous
           </p>
           {frameScore.dominant_emotion && (
-            <p className="text-xs text-slate-400 capitalize truncate">
+            <p className="text-xs text-slate-300 capitalize truncate">
               {frameScore.dominant_emotion}
             </p>
           )}
@@ -77,7 +77,7 @@ function SnapshotThumb({
       )}
       {frameScore && !frameScore.face_detected && (
         <div className="absolute inset-x-0 bottom-0 bg-black/70 px-1 py-0.5">
-          <p className="text-xs text-slate-500">No face detected</p>
+          <p className="text-xs text-slate-300">No face detected</p>
         </div>
       )}
     </button>
@@ -153,35 +153,35 @@ function QuestionSnapGroup({ interviewId, q }: { interviewId: string | number; q
   const frameScores = q.snapshotBehavior?.frame_scores ?? [];
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/30 p-4">
+    <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
       <div>
-        <p className="text-xs uppercase tracking-wide text-slate-500 mb-0.5">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">
           Question {q.sequence}
         </p>
-        <p className="text-sm text-slate-300">{q.question}</p>
+        <p className="text-sm text-foreground">{q.question}</p>
       </div>
 
       {behaviorForPanel ? (
         <BehaviorPanel behavior={behaviorForPanel} />
       ) : q.snapshotCount > 0 && !loading ? (
-        <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
           <Brain className="h-3.5 w-3.5 animate-pulse" />
           Behaviour analysis pending — refresh the page in a moment
         </div>
       ) : null}
 
       {q.snapshotCount === 0 ? (
-        <div className="flex items-center gap-2 text-xs text-slate-600 py-2">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
           <ImageOff className="h-4 w-4" />
           No snapshots captured for this answer
         </div>
       ) : loading ? (
-        <div className="flex items-center gap-2 text-xs text-slate-500 py-3">
-          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-600 border-t-indigo-400" />
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-primary" />
           Loading {q.snapshotCount} snapshot{q.snapshotCount !== 1 ? "s" : ""}…
         </div>
       ) : error ? (
-        <p className="text-xs text-amber-500/90 py-2">{error}</p>
+        <p className="text-xs text-amber-600 dark:text-amber-400 py-2">{error}</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {snapshots.map((item, i) => (
@@ -224,7 +224,7 @@ export function InterviewGallery({ interviewId, questions, overallBehavior }: Pr
 
   if (questions.length === 0) {
     return (
-      <div className="py-12 text-center text-slate-500 text-sm">
+      <div className="py-12 text-center text-muted-foreground text-sm">
         No questions found in this interview.
       </div>
     );
@@ -236,7 +236,7 @@ export function InterviewGallery({ interviewId, questions, overallBehavior }: Pr
         <AggregateBehaviorCard summary={overallBehavior} />
       )}
 
-      <div className="flex items-center gap-2 text-slate-400 text-sm">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm">
         <Camera className="h-4 w-4" />
         {totalSnaps > 0
           ? `${totalSnaps} snapshot${totalSnaps !== 1 ? "s" : ""} · scores shown on each image`

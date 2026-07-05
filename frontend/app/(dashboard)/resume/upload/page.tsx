@@ -1,28 +1,23 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Upload, FileText, CheckCircle, Loader2, AlertCircle } from "lucide-react";
+import { Upload, FileText, CheckCircle, Loader2, AlertCircle, Eye } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHero, SectionPanel } from "@/components/ui/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-
-interface Resume {
-  id: number;
-  original_filename: string;
-  status: string;
-  parsed_profile?: { skills?: string[] };
-}
+import { ResumeListItem, ResumeViewer } from "@/components/resume/resume-viewer";
 
 export default function ResumeUploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [viewingResume, setViewingResume] = useState<ResumeListItem | null>(null);
 
   const loadResumes = useCallback(async () => {
-    const res = await api<{ data: Resume[] }>("/resumes");
+    const res = await api<{ data: ResumeListItem[] }>("/resumes");
     setResumes(res.data);
   }, []);
 
@@ -104,34 +99,45 @@ export default function ResumeUploadPage() {
           </CardContent>
         </Card>
 
-        <SectionPanel title="Your Resumes" description="Parsed resumes are available in Interview Setup.">
+        <SectionPanel title="Your Resumes" description="Click a resume to view it. Parsed resumes are available in Interview Setup.">
           <div className="space-y-3">
             {resumes.length === 0 ? (
               <p className="text-muted-foreground text-sm font-medium">No resumes uploaded yet.</p>
             ) : (
               resumes.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border shadow-sm">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <div className="flex-1">
-                    <p className="text-foreground text-sm font-medium">{r.original_filename}</p>
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setViewingResume(r)}
+                  className="flex w-full items-center gap-3 rounded-xl border border-border bg-muted/40 p-3 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/70"
+                >
+                  <FileText className="h-5 w-5 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{r.original_filename}</p>
                     {r.parsed_profile?.skills && (
-                      <p className="text-xs text-slate-400">{r.parsed_profile.skills.slice(0, 5).join(", ")}</p>
+                      <p className="truncate text-xs text-muted-foreground">{r.parsed_profile.skills.slice(0, 5).join(", ")}</p>
                     )}
                   </div>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+                    <Eye className="h-4 w-4" />
+                    View
+                  </span>
                   {r.status === "parsed" ? (
-                    <CheckCircle className="h-5 w-5 text-emerald-400" />
+                    <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   ) : r.status === "pending" ? (
-                    <Loader2 className="h-5 w-5 text-amber-400 animate-spin" />
+                    <Loader2 className="h-5 w-5 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
                   ) : r.status === "failed" ? (
                     <span title="Parsing failed — re-upload to retry">
-                      <AlertCircle className="h-5 w-5 text-red-400" />
+                      <AlertCircle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
                     </span>
                   ) : null}
-                </div>
+                </button>
               ))
             )}
           </div>
         </SectionPanel>
+
+        <ResumeViewer resume={viewingResume} onClose={() => setViewingResume(null)} />
       </div>
     </AppShell>
   );

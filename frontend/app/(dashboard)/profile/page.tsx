@@ -75,7 +75,7 @@ export default function ProfilePage() {
 
   return (
     <AppShell>
-      <div className="max-w-xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         <PageHero
           icon={UserIcon}
           title="Profile"
@@ -83,7 +83,8 @@ export default function ProfilePage() {
           accent="violet"
         />
 
-        <SectionPanel title="Account Information">
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+          <SectionPanel title="Account Information">
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               {profileMsg && (
                 <div
@@ -108,9 +109,9 @@ export default function ProfilePage() {
                 {profileSaving ? "Saving…" : "Save changes"}
               </Button>
             </form>
-        </SectionPanel>
+          </SectionPanel>
 
-        <SectionPanel title="Change Password">
+          <SectionPanel title="Change Password">
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               {passwordMsg && (
                 <div
@@ -155,7 +156,8 @@ export default function ProfilePage() {
                 {passwordSaving ? "Updating…" : "Update password"}
               </Button>
             </form>
-        </SectionPanel>
+          </SectionPanel>
+        </div>
       </div>
     </AppShell>
   );

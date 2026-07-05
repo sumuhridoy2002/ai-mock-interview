@@ -28,10 +28,10 @@ export interface VisualBreakdown {
 }
 
 const STAR_COLORS = [
-  "border-violet-500/40 bg-violet-950/40",
-  "border-blue-500/40 bg-blue-950/40",
-  "border-emerald-500/40 bg-emerald-950/40",
-  "border-amber-500/40 bg-amber-950/40",
+  "border-violet-200 bg-violet-50 dark:border-violet-500/40 dark:bg-violet-950/40",
+  "border-blue-200 bg-blue-50 dark:border-blue-500/40 dark:bg-blue-950/40",
+  "border-emerald-200 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-950/40",
+  "border-amber-200 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-950/40",
 ];
 
 function TypeIcon({ type }: { type: VisualBreakdown["type"] }) {
@@ -45,18 +45,18 @@ function TypeIcon({ type }: { type: VisualBreakdown["type"] }) {
 function TimelineView({ items }: { items: VisualBreakdownItem[] }) {
   return (
     <div className="relative pl-6">
-      <div className="absolute left-2 top-2 bottom-2 w-px bg-indigo-500/40" />
+      <div className="absolute left-2 top-2 bottom-2 w-px bg-primary/30" />
       <div className="space-y-4">
         {items.map((item, i) => (
           <div key={i} className="relative">
-            <div className="absolute -left-6 top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-indigo-400 bg-slate-900 text-xs font-bold text-indigo-300">
+            <div className="absolute -left-6 top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-primary bg-card text-xs font-bold text-primary">
               {i + 1}
             </div>
-            <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 px-4 py-3">
-              <p className="text-sm font-semibold text-indigo-200">{item.label}</p>
-              <p className="mt-1 text-sm leading-relaxed text-slate-300">{item.description}</p>
+            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+              <p className="text-sm font-semibold text-primary">{item.label}</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
               {item.highlight && (
-                <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs text-indigo-300">
+                <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                   <CheckCircle2 className="h-3 w-3" />
                   {item.highlight}
                 </p>
@@ -77,8 +77,8 @@ function StarView({ items }: { items: VisualBreakdownItem[] }) {
           key={i}
           className={`rounded-lg border px-4 py-3 ${STAR_COLORS[i % STAR_COLORS.length]}`}
         >
-          <p className="text-sm font-bold text-slate-100">{item.label}</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-slate-300">{item.description}</p>
+          <p className="text-sm font-bold text-foreground">{item.label}</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
         </div>
       ))}
     </div>
@@ -90,12 +90,12 @@ function FlowView({ items }: { items: VisualBreakdownItem[] }) {
     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
       {items.map((item, i) => (
         <div key={i} className="flex items-center gap-2 sm:flex-1 sm:min-w-[140px]">
-          <div className="flex-1 rounded-lg border border-cyan-500/30 bg-cyan-950/30 px-3 py-3 text-center sm:text-left">
-            <p className="text-xs font-bold uppercase tracking-wide text-cyan-300">{item.label}</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-300 sm:text-sm">{item.description}</p>
+          <div className="flex-1 rounded-lg border border-cyan-200 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-950/30 px-3 py-3 text-center sm:text-left">
+            <p className="text-xs font-bold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">{item.label}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">{item.description}</p>
           </div>
           {i < items.length - 1 && (
-            <ArrowRight className="hidden h-4 w-4 shrink-0 text-slate-500 sm:block" />
+            <ArrowRight className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
           )}
         </div>
       ))}
@@ -109,14 +109,14 @@ function StepsView({ items }: { items: VisualBreakdownItem[] }) {
       {items.map((item, i) => (
         <div
           key={i}
-          className="flex gap-3 rounded-lg border border-slate-700/50 bg-slate-900/40 px-4 py-3"
+          className="flex gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3"
         >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-slate-200">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
             {i + 1}
           </span>
           <div>
-            <p className="text-sm font-semibold text-slate-100">{item.label}</p>
-            <p className="mt-0.5 text-sm leading-relaxed text-slate-400">{item.description}</p>
+            <p className="text-sm font-semibold text-foreground">{item.label}</p>
+            <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
           </div>
         </div>
       ))}
@@ -131,31 +131,34 @@ function ComparisonView({
 }) {
   return (
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
-      <div className="rounded-lg border border-rose-500/25 bg-rose-950/20 px-4 py-3">
-        <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-rose-300">
+      <div className="rounded-lg border border-rose-200 dark:border-rose-500/25 bg-rose-50 dark:bg-rose-950/20 px-4 py-3">
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-rose-700 dark:text-rose-300">
           <User className="h-3.5 w-3.5" />
           What you said
         </div>
-        <p className="text-sm italic leading-relaxed text-slate-300">
+        <p className="text-sm italic leading-relaxed text-muted-foreground">
           &ldquo;{comparison.your_answer}&rdquo;
         </p>
       </div>
-      <div className="rounded-lg border border-emerald-500/25 bg-emerald-950/20 px-4 py-3">
-        <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-emerald-300">
+      <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/25 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3">
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
           <Lightbulb className="h-3.5 w-3.5" />
           What to include
         </div>
-        <p className="text-sm leading-relaxed text-slate-200">{comparison.should_include}</p>
+        <p className="text-sm leading-relaxed text-foreground">{comparison.should_include}</p>
       </div>
     </div>
   );
 }
 
 function TextDiagram({ type, items }: { type: VisualBreakdown["type"]; items: VisualBreakdownItem[] }) {
+  const preClass =
+    "mt-3 overflow-x-auto rounded-md border border-border bg-muted/50 px-4 py-3 text-xs leading-relaxed font-mono whitespace-pre-wrap";
+
   if (type === "flow") {
     const line = items.map((item) => item.label).join("  →  ");
     return (
-      <pre className="mt-3 overflow-x-auto rounded-md border border-slate-700/50 bg-slate-950/80 px-4 py-3 text-xs leading-relaxed text-cyan-200/90 font-mono">
+      <pre className={`${preClass} text-cyan-800 dark:text-cyan-200/90`}>
         {line}
       </pre>
     );
@@ -164,7 +167,7 @@ function TextDiagram({ type, items }: { type: VisualBreakdown["type"]; items: Vi
   if (type === "star") {
     const lines = items.map((item) => `┌─ ${item.label}\n│  ${item.description}`).join("\n└────────\n");
     return (
-      <pre className="mt-3 overflow-x-auto rounded-md border border-slate-700/50 bg-slate-950/80 px-4 py-3 text-xs leading-relaxed text-violet-200/90 font-mono whitespace-pre-wrap">
+      <pre className={`${preClass} text-violet-800 dark:text-violet-200/90`}>
         {lines}
       </pre>
     );
@@ -178,7 +181,7 @@ function TextDiagram({ type, items }: { type: VisualBreakdown["type"]; items: Vi
       })
       .join("");
     return (
-      <pre className="mt-3 overflow-x-auto rounded-md border border-slate-700/50 bg-slate-950/80 px-4 py-3 text-xs leading-relaxed text-indigo-200/90 font-mono whitespace-pre-wrap">
+      <pre className={`${preClass} text-indigo-800 dark:text-indigo-200/90`}>
         {lines}
       </pre>
     );
@@ -186,7 +189,7 @@ function TextDiagram({ type, items }: { type: VisualBreakdown["type"]; items: Vi
 
   const lines = items.map((item, i) => `${i + 1}. ${item.label} — ${item.description}`).join("\n");
   return (
-    <pre className="mt-3 overflow-x-auto rounded-md border border-slate-700/50 bg-slate-950/80 px-4 py-3 text-xs leading-relaxed text-slate-300 font-mono whitespace-pre-wrap">
+    <pre className={`${preClass} text-muted-foreground`}>
       {lines}
     </pre>
   );
@@ -196,11 +199,11 @@ export function AnswerVisualBreakdown({ data }: { data: VisualBreakdown }) {
   if (!data?.items?.length) return null;
 
   return (
-    <div className="rounded-xl border border-slate-600/40 bg-slate-900/50 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700/50 bg-slate-800/40">
+    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/40">
         <TypeIcon type={data.type} />
-        <p className="text-sm font-semibold text-slate-200">{data.title}</p>
-        <span className="ml-auto rounded-full bg-slate-700/60 px-2 py-0.5 text-xs uppercase tracking-wide text-slate-400">
+        <p className="text-sm font-semibold text-foreground">{data.title}</p>
+        <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs uppercase tracking-wide text-muted-foreground">
           {data.type}
         </span>
       </div>

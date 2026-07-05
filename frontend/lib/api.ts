@@ -43,3 +43,24 @@ export async function api<T>(
 
   return data as T;
 }
+
+/** Fetch a binary file from the API with the stored auth token. */
+export async function apiBlob(path: string): Promise<Blob> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new ApiError(
+      (data as { message?: string }).message || "Request failed",
+      response.status,
+      data,
+    );
+  }
+
+  return response.blob();
+}

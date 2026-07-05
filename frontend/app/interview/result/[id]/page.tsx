@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Download, ArrowLeft, Award, Video, Camera, FileText } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageHero } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuestionReviewCard } from "@/components/interview/question-review-card";
@@ -210,15 +211,14 @@ export default function InterviewResultPage() {
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-white">Interview Results</h1>
         </div>
 
         {loading ? (
-          <Card><CardContent className="py-12 text-center text-slate-400">Generating your full score summary…</CardContent></Card>
+          <Card><CardContent className="py-12 text-center text-muted-foreground">Generating your full score summary…</CardContent></Card>
         ) : !report ? (
           <Card>
             <CardContent className="py-12 text-center space-y-4">
-              <p className="text-slate-400">Report not available yet. It may still be generating.</p>
+              <p className="text-muted-foreground">Report not available yet. It may still be generating.</p>
               <Button
                 variant="outline"
                 onClick={async () => {
@@ -239,28 +239,29 @@ export default function InterviewResultPage() {
           </Card>
         ) : (
           <>
-            {/* Score summary — always visible */}
-            <Card className="border-emerald-500/30">
-              <CardContent className="pt-6 text-center">
-                <Award className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
-                <p className="text-5xl font-bold text-white mb-2">{formatScore(report.overall_score)}</p>
-                <p className="text-slate-400 capitalize">
-                  Overall · Recommendation: {report.hiring_recommendation.replace(/_/g, " ")}
-                </p>
-                <Button onClick={downloadPdf} className="mt-4 gap-2" variant="outline">
+            <PageHero
+              icon={Award}
+              title="Interview Results"
+              subtitle={`Recommendation: ${report.hiring_recommendation.replace(/_/g, " ")}`}
+              accent="emerald"
+            >
+              <div className="text-center sm:text-right">
+                <p className="text-4xl sm:text-5xl font-bold">{formatScore(report.overall_score)}</p>
+                <p className="text-sm text-white/80 mt-1">Overall score</p>
+                <Button onClick={downloadPdf} className="mt-3 gap-2 bg-white/15 hover:bg-white/25 text-white border border-white/25" size="sm">
                   <Download className="h-4 w-4" /> Download PDF
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </PageHero>
 
             {/* Tab bar */}
-            <div className="flex gap-1 rounded-xl bg-slate-900/60 p-1 border border-slate-800">
+            <div className="flex gap-1 rounded-xl bg-muted p-1 border border-border">
               <button
                 onClick={() => setActiveTab("report")}
                 className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                   activeTab === "report"
-                    ? "bg-slate-700 text-white shadow"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <FileText className="h-4 w-4" />
@@ -270,14 +271,14 @@ export default function InterviewResultPage() {
                 onClick={() => setActiveTab("gallery")}
                 className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                   activeTab === "gallery"
-                    ? "bg-slate-700 text-white shadow"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Camera className="h-4 w-4" />
                 Snapshots
                 {totalSnaps > 0 && (
-                  <span className="ml-1 rounded-full bg-indigo-600/60 px-1.5 py-0.5 text-xs text-indigo-200">
+                  <span className="ml-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs text-primary">
                     {totalSnaps}
                   </span>
                 )}
@@ -291,7 +292,7 @@ export default function InterviewResultPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Video className="h-5 w-5 text-indigo-400" />
+                        <Video className="h-5 w-5 text-primary" />
                         Full Interview Recording
                       </CardTitle>
                     </CardHeader>
@@ -305,9 +306,9 @@ export default function InterviewResultPage() {
                           style={{ maxHeight: "480px" }}
                         />
                       ) : (
-                        <div className="aspect-video rounded-lg bg-slate-900 flex items-center justify-center">
-                          <span className="text-sm text-slate-500 flex items-center gap-2">
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-indigo-400" />
+                        <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
+                          <span className="text-sm text-muted-foreground flex items-center gap-2">
+                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-primary" />
                             Loading recording…
                           </span>
                         </div>
@@ -338,9 +339,9 @@ export default function InterviewResultPage() {
                     <CardHeader><CardTitle>Category Scores</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-2 gap-3">
                       {Object.entries(report.report.category_scores).map(([cat, score]) => (
-                        <div key={cat} className="p-3 rounded-lg bg-slate-900/50">
-                          <p className="text-sm text-slate-400 capitalize">{cat.replace(/_/g, " ")}</p>
-                          <p className="text-xl font-bold text-white">{formatScore(score)}</p>
+                        <div key={cat} className="p-3 rounded-lg bg-muted/40 border border-border">
+                          <p className="text-sm text-muted-foreground capitalize">{cat.replace(/_/g, " ")}</p>
+                          <p className="text-xl font-bold text-foreground">{formatScore(score)}</p>
                         </div>
                       ))}
                     </CardContent>
@@ -348,18 +349,18 @@ export default function InterviewResultPage() {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader><CardTitle className="text-emerald-400">Overall Strengths</CardTitle></CardHeader>
+                  <Card className="border-emerald-200 dark:border-emerald-500/30">
+                    <CardHeader><CardTitle className="text-emerald-700 dark:text-emerald-400">Overall Strengths</CardTitle></CardHeader>
                     <CardContent>
-                      <ul className="text-sm text-slate-300 space-y-1 list-disc pl-4">
+                      <ul className="text-sm text-muted-foreground space-y-1 list-disc pl-4">
                         {(report.report.strengths || []).map((s, i) => <li key={i}>{s}</li>)}
                       </ul>
                     </CardContent>
                   </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-amber-400">Areas to Improve</CardTitle></CardHeader>
+                  <Card className="border-amber-200 dark:border-amber-500/30">
+                    <CardHeader><CardTitle className="text-amber-700 dark:text-amber-400">Areas to Improve</CardTitle></CardHeader>
                     <CardContent>
-                      <ul className="text-sm text-slate-300 space-y-1 list-disc pl-4">
+                      <ul className="text-sm text-muted-foreground space-y-1 list-disc pl-4">
                         {(report.report.improvement_areas || report.report.weaknesses || []).map((s, i) => (
                           <li key={i}>{s}</li>
                         ))}
@@ -375,7 +376,7 @@ export default function InterviewResultPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Camera className="h-5 w-5 text-indigo-400" />
+                    <Camera className="h-5 w-5 text-primary" />
                     Captured Snapshots
                   </CardTitle>
                 </CardHeader>

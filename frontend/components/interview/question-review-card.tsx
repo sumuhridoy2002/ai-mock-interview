@@ -53,15 +53,15 @@ export function QuestionReviewCard({
   );
 
   return (
-    <div className="rounded-lg border border-slate-700/60 bg-slate-900/40 p-4 space-y-3">
+    <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-wide text-slate-500">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Question {review.sequence} · {review.category.replace(/_/g, " ")}
           </p>
-          <p className="text-white font-medium mt-1">{review.question}</p>
+          <p className="text-foreground font-medium mt-1">{review.question}</p>
         </div>
-        <div className={`text-xl font-bold shrink-0 ${passed ? "text-emerald-400" : "text-amber-400"}`}>
+        <div className={`text-xl font-bold shrink-0 ${passed ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
           {formatScore(review.score)}
         </div>
       </div>
@@ -69,9 +69,9 @@ export function QuestionReviewCard({
       {dimensions.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {dimensions.map(({ key, label }) => (
-            <div key={key} className="rounded-md bg-slate-950/50 px-2 py-1.5">
-              <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-              <p className="text-sm font-semibold text-slate-200">
+            <div key={key} className="rounded-md bg-card border border-border px-2 py-1.5">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+              <p className="text-sm font-semibold text-foreground">
                 {formatScore(review[key] as number)}
               </p>
             </div>
@@ -80,23 +80,23 @@ export function QuestionReviewCard({
       )}
 
       <div>
-        <p className="text-xs text-slate-500 mb-1">Your answer</p>
+        <p className="text-xs text-muted-foreground mb-1">Your answer</p>
         {review.transcript_quality_poor && (
-          <p className="text-xs text-amber-500/80 mb-1 italic">
+          <p className="text-xs text-amber-600 dark:text-amber-400 mb-1 italic">
             Captured via speech-to-text — some words may be inaccurate.
           </p>
         )}
         {review.your_answer ? (
-          <p className="text-sm text-slate-300 italic">&ldquo;{review.your_answer}&rdquo;</p>
+          <p className="text-sm text-muted-foreground italic">&ldquo;{review.your_answer}&rdquo;</p>
         ) : (
-          <p className="text-sm text-slate-600 italic">No transcript recorded for this answer.</p>
+          <p className="text-sm text-muted-foreground/70 italic">No transcript recorded for this answer.</p>
         )}
       </div>
 
       {review.strengths?.length > 0 && (
         <div>
-          <p className="text-xs text-emerald-400 mb-1">What went well</p>
-          <ul className="text-sm text-slate-300 list-disc pl-4 space-y-1">
+          <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1 font-medium">What went well</p>
+          <ul className="text-sm text-muted-foreground list-disc pl-4 space-y-1">
             {review.strengths.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
@@ -106,8 +106,8 @@ export function QuestionReviewCard({
 
       {improvements.length > 0 && (
         <div>
-          <p className="text-xs text-amber-400 mb-1">Improvements</p>
-          <ul className="text-sm text-slate-300 list-disc pl-4 space-y-1">
+          <p className="text-xs text-amber-600 dark:text-amber-400 mb-1 font-medium">Improvements</p>
+          <ul className="text-sm text-muted-foreground list-disc pl-4 space-y-1">
             {improvements.map((item, i) => (
               <li key={i}>{item}</li>
             ))}
@@ -116,9 +116,9 @@ export function QuestionReviewCard({
       )}
 
       {review.model_answer && review.needs_improvement && (
-        <div className="rounded-md bg-indigo-950/40 border border-indigo-500/30 p-3">
-          <p className="text-xs text-indigo-300 mb-1 font-medium">Suggested strong answer</p>
-          <p className="text-sm text-slate-200">{review.model_answer}</p>
+        <div className="rounded-md bg-indigo-500/10 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/30 p-3">
+          <p className="text-xs text-indigo-700 dark:text-indigo-300 mb-1 font-medium">Suggested strong answer</p>
+          <p className="text-sm text-foreground">{review.model_answer}</p>
         </div>
       )}
 
@@ -128,7 +128,7 @@ export function QuestionReviewCard({
 
       <div className="pt-1">
         <Link href={`/interview/result/${interviewId}/question/${review.sequence}`}>
-          <Button variant="outline" size="sm" className="gap-2 text-indigo-300 border-indigo-500/40 hover:bg-indigo-950/40">
+          <Button variant="outline" size="sm" className="gap-2">
             <MessageCircle className="h-4 w-4" />
             Go to detailed answer
           </Button>
