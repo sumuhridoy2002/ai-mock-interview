@@ -28,17 +28,22 @@ function FormulaPanel({
   compact?: boolean;
 }) {
   return (
-    <div className={cn("space-y-1.5 text-left", !compact && "space-y-2")}>
-      <p
-        className={cn(
-          "font-mono text-primary leading-snug",
-          compact ? "text-[10px]" : "text-xs"
-        )}
-      >
-        {doc.formula}
-      </p>
+    <div className={cn("space-y-2 text-left", !compact && "space-y-2.5")}>
+      <div>
+        <p className={cn("font-semibold text-foreground mb-1", compact ? "text-[10px]" : "text-xs")}>
+          Formula
+        </p>
+        <pre
+          className={cn(
+            "font-mono text-primary leading-relaxed whitespace-pre-wrap break-words",
+            compact ? "text-[10px]" : "text-xs",
+          )}
+        >
+          {doc.formula}
+        </pre>
+      </div>
       <p className={cn("text-foreground", compact ? "text-[10px]" : "text-xs")}>
-        <span className="font-semibold text-slate-800 dark:text-slate-100">Standard:</span>{" "}
+        <span className="font-semibold text-slate-800 dark:text-slate-100">Industry standard:</span>{" "}
         <span className="font-medium">{doc.industryStandard}</span>
       </p>
       {currentValue != null && meets !== null && (
@@ -54,26 +59,31 @@ function FormulaPanel({
         </p>
       )}
       {!compact && (
-        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-          {doc.ratingBands}
+        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+          <span className="font-semibold text-slate-800 dark:text-slate-200">Rating bands:</span> {doc.ratingBands}
         </p>
       )}
       {doc.references.length > 0 && (
-        <ul className={cn("space-y-1", !compact && "pt-1 border-t border-border")}>
-          {doc.references.map((ref) => (
-            <li key={ref.url}>
-              <a
-                href={ref.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-              >
-                {ref.label}
-                <ExternalLink className="h-3 w-3 shrink-0" />
-              </a>
-            </li>
-          ))}
-        </ul>
+        <div className={cn(!compact && "pt-2 border-t border-border")}>
+          <p className={cn("font-semibold text-foreground mb-1", compact ? "text-[10px]" : "text-xs")}>
+            References
+          </p>
+          <ul className="space-y-1">
+            {doc.references.map((ref) => (
+              <li key={ref.url}>
+                <a
+                  href={ref.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  {ref.label}
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

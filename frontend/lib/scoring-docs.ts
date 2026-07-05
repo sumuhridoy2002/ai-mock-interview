@@ -23,68 +23,111 @@ export interface FormulaDoc {
   references: FormulaReference[];
 }
 
+const SM = SCORING_CONSTANTS.systemMetrics;
+const PAGE_P = SM.pageLoad.penalties;
+const API_P = SM.apiLatency.penalties;
+
+/** Metrics shown on /system/metrics — used for the formula reference table. */
+export const METRICS_PAGE_FORMULA_IDS = [
+  "systemPerformanceScore",
+  "pageLoad",
+  "apiLatency",
+  "contextBytes",
+  "domReady",
+  "renderMs",
+] as const;
+
 export const FORMULA_DOCS: FormulaDoc[] = [
   {
     id: "apiLatency",
     title: "API round-trip",
-    formula: "TTFB + server processing + body transfer (Resource Timing API)",
+    formula: [
+      "apiLatencyMs = round(t_end − t_start)",
+      "t_start = performance.now() immediately before fetch(GET /api/v1/user)",
+      "t_end = performance.now() immediately after response headers arrive",
+      "TTFB = entry.responseStart − entry.startTime  (Resource Timing)",
+      "transferMs = entry.responseEnd − entry.responseStart",
+    ].join("\n"),
     description:
-      "Authenticated probe to GET /user. Uses Resource Timing to split network overhead, time-to-first-byte, and body transfer.",
-    industryStandard: "< 200 ms is the standard good API response time",
+      "Authenticated probe to GET /user with Bearer token. Optional If-None-Match ETag for 304 responses. Ping (GET /ping) is measured separately and is not included in this score.",
+    industryStandard: "< 200 ms is the standard good API response time (W3C / web.dev TTFB guidance)",
     ratingBands: "Good < 200 ms · OK < 800 ms · Slow ≥ 800 ms",
     benchmarks: { goodMax: 200, okMax: 800, unit: "ms" },
     references: [
-      { label: "W3C — Resource Timing", url: "https://www.w3.org/TR/resource-timing/" },
-      { label: "web.dev — Time to First Byte", url: "https://web.dev/articles/ttfb" },
+      { label: "W3C — Resource Timing Level 2", url: "https://www.w3.org/TR/resource-timing-2/" },
+      { label: "web.dev — Time to First Byte (TTFB)", url: "https://web.dev/articles/ttfb" },
+      { label: "MDN — PerformanceResourceTiming", url: "https://developer.mozilla.org/en-US/docs/Web/API/PerformanceResourceTiming" },
     ],
   },
   {
     id: "pageLoad",
     title: "Page load",
-    formula: "loadEventEnd − navigationStart",
-    description: "Full page load using the Navigation Timing API.",
-    industryStandard: "< 800 ms good · < 2.5 s LCP target (Core Web Vitals)",
+    formula: [
+      "pageLoadMs = timing.loadEventEnd − timing.navigationStart",
+      "Uses window.performance.timing (Navigation Timing API)",
+    ].join("\n"),
+    description: "Full document load from navigation start until the load event completes.",
+    industryStandard: "< 800 ms good · < 2.5 s LCP target (Google Core Web Vitals)",
     ratingBands: "Good < 800 ms · OK < 1500 ms · Slow ≥ 1500 ms",
     benchmarks: { goodMax: 800, okMax: 1500, unit: "ms" },
     references: [
       { label: "web.dev — Core Web Vitals", url: "https://web.dev/articles/vitals" },
-      { label: "MDN — Navigation Timing", url: "https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Navigation_timing" },
+      { label: "MDN — Navigation Timing API", url: "https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Navigation_timing" },
+      { label: "W3C — Navigation Timing", url: "https://www.w3.org/TR/navigation-timing/" },
     ],
   },
   {
     id: "domReady",
     title: "DOM ready",
-    formula: "domContentLoadedEventEnd − navigationStart",
-    description: "Time until HTML is parsed and DOM is ready.",
-    industryStandard: "< 600 ms for interactive shell",
+    formula: [
+      "domReadyMs = timing.domContentLoadedEventEnd − timing.navigationStart",
+      "Fires when HTML is parsed and DOM is ready (before images/stylesheets finish)",
+    ].join("\n"),
+    description: "Time until the DOM is interactive enough to bind UI.",
+    industryStandard: "< 600 ms for an interactive application shell",
     ratingBands: "Good < 600 ms · OK < 1200 ms · Slow ≥ 1200 ms",
     benchmarks: { goodMax: 600, okMax: 1200, unit: "ms" },
     references: [
       { label: "MDN — DOMContentLoaded", url: "https://developer.mozilla.org/en-US/docs/Web/API/Document/DOMContentLoaded_event" },
+      { label: "MDN — domContentLoadedEventEnd", url: "https://developer.mozilla.org/en-US/docs/Web/API/PerformanceTiming/domContentLoadedEventEnd" },
     ],
   },
   {
     id: "systemPerformanceScore",
     title: "System Performance Score",
-    formula: "100 − page-load penalties − API penalties − 30 if API offline",
-    description: "Composite health score from page load, API latency, and reachability.",
-    industryStandard: "≥ 85% indicates a healthy composite score",
-    ratingBands: "Good ≥ 85% · OK ≥ 65% · Slow < 65%",
+    formula: [
+      "score = clamp(100 − P_page − P_api − P_offline, 0, 100)",
+      `P_page = pageLoadMs > ${PAGE_P[0]} ? 25 : pageLoadMs > ${PAGE_P[1]} ? 12 : pageLoadMs > ${PAGE_P[2]} ? 5 : 0`,
+      `P_api = apiLatencyMs > ${API_P[0]} ? 20 : apiLatencyMs > ${API_P[1]} ? 10 : apiLatencyMs > ${API_P[2]} ? 4 : 0  (0 if apiLatencyMs is null)`,
+      `P_offline = apiStatus ≠ "online" ? ${SM.performanceScore.offlinePenalty} : 0`,
+      "clamp(x, 0, 100) = min(100, max(0, x))",
+    ].join("\n"),
+    description:
+      "Composite 0–100 health score from Navigation Timing page load, authenticated /user round-trip, and API reachability. Implemented in computePerformanceScore().",
+    industryStandard: `≥ ${SM.performanceScore.good}% indicates a healthy composite score`,
+    ratingBands: `Good ≥ ${SM.performanceScore.good}% · OK ≥ ${SM.performanceScore.ok}% · Slow < ${SM.performanceScore.ok}%`,
     benchmarks: { goodMax: 85, okMax: 65, unit: "%", higherIsBetter: true },
     references: [
-      { label: "web.dev — Core Web Vitals", url: "https://web.dev/articles/vitals" },
+      { label: "web.dev — Core Web Vitals (load targets)", url: "https://web.dev/articles/vitals" },
+      { label: "web.dev — Time to First Byte (API targets)", url: "https://web.dev/articles/ttfb" },
     ],
   },
   {
     id: "contextBytes",
     title: "App data size",
-    formula: "localStorage + sessionStorage + last /user API payload",
-    description: "Meaningful application-stored data only (auth token, cached user, metrics history).",
-    industryStandard: "< 100 KB is standard for client-side app data",
+    formula: [
+      "appDataBytes = localStorageBytes + sessionStorageBytes + apiResponseBytes",
+      "storageBytes(S) = Σᵢ new Blob([keyᵢ, valueᵢ]).size  for each item in S",
+      "apiResponseBytes = byte length of last full GET /user JSON body (304 → 0 added)",
+    ].join("\n"),
+    description:
+      "Meaningful application-stored data only (auth token, cached user, metrics history). JS heap is excluded — it is runtime memory, not persisted app data.",
+    industryStandard: "< 100 KB is standard for client-side application data",
     ratingBands: "Good < 100 KB · OK < 500 KB · Slow ≥ 500 KB",
     benchmarks: { goodMax: 102400, okMax: 512000, unit: "bytes" },
     references: [
       { label: "MDN — Storage API", url: "https://developer.mozilla.org/en-US/docs/Web/API/Storage" },
+      { label: "MDN — Blob size", url: "https://developer.mozilla.org/en-US/docs/Web/API/Blob/size" },
     ],
   },
   {
@@ -176,16 +219,27 @@ export const FORMULA_DOCS: FormulaDoc[] = [
   {
     id: "renderMs",
     title: "Panel render",
-    formula: "performance.now() after refresh − refresh start",
-    description: "Time for one monitor refresh cycle.",
-    industryStandard: "Informational only — not scored",
+    formula: [
+      "renderMs = round(performance.now() − renderStart)",
+      "renderStart = performance.now() at the start of each metrics refresh cycle",
+    ].join("\n"),
+    description: "Client-side time to run one monitor refresh (fetch probes + React state update). Not included in System Performance Score.",
+    industryStandard: "Informational only — not scored against industry bands",
     ratingBands: "Not rated",
-    references: [],
+    references: [
+      { label: "MDN — performance.now()", url: "https://developer.mozilla.org/en-US/docs/Web/API/Performance/now" },
+    ],
   },
 ];
 
 export function getFormulaDoc(id: string): FormulaDoc | undefined {
   return FORMULA_DOCS.find((doc) => doc.id === id);
+}
+
+export function getMetricsPageFormulas(): FormulaDoc[] {
+  return METRICS_PAGE_FORMULA_IDS.map((id) => getFormulaDoc(id)).filter(
+    (doc): doc is FormulaDoc => doc != null,
+  );
 }
 
 export function getBenchmarkForDoc(id: string): FormulaBenchmark | undefined {

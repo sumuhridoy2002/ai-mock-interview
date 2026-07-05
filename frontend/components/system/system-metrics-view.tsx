@@ -3,6 +3,7 @@
 import { type ComponentType } from "react";
 import {
   Activity,
+  BookOpen,
   Clock,
   Database,
   Globe,
@@ -15,6 +16,7 @@ import {
 import { useSystemMetrics, type MetricComparison } from "@/hooks/useSystemMetrics";
 import { PageHeader } from "@/components/layout/page-header";
 import { FormulaReference } from "@/components/scoring/formula-reference";
+import { getMetricsPageFormulas } from "@/lib/scoring-docs";
 import {
   ratingBadgeClass,
   ratingClass,
@@ -303,6 +305,56 @@ export function SystemMetricsView() {
           </div>
         </div>
       </details>
+
+      {/* Full formula reference — exact math + industry sources */}
+      <section className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-primary shrink-0" />
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Exact formulas &amp; references</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Same calculations used by the live metrics above — thresholds from shared scoring constants.
+            </p>
+          </div>
+        </div>
+        <div className="divide-y divide-border">
+          {getMetricsPageFormulas().map((doc) => (
+            <div key={doc.id} className="px-4 py-4">
+              <h3 className="text-sm font-semibold text-foreground mb-2">{doc.title}</h3>
+              <pre className="font-mono text-xs text-primary leading-relaxed whitespace-pre-wrap break-words bg-muted/40 rounded-lg p-3 border border-border">
+                {doc.formula}
+              </pre>
+              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{doc.description}</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 text-xs">
+                <p>
+                  <span className="font-semibold text-foreground">Industry standard:</span>{" "}
+                  <span className="text-muted-foreground">{doc.industryStandard}</span>
+                </p>
+                <p>
+                  <span className="font-semibold text-foreground">Rating bands:</span>{" "}
+                  <span className="text-muted-foreground">{doc.ratingBands}</span>
+                </p>
+              </div>
+              {doc.references.length > 0 && (
+                <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                  {doc.references.map((ref) => (
+                    <li key={ref.url}>
+                      <a
+                        href={ref.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      >
+                        {ref.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
 
       <p className="text-xs text-muted-foreground text-center pb-2">
         Updated {metrics.lastUpdated} · auto-refresh every {refreshIntervalSeconds}s
