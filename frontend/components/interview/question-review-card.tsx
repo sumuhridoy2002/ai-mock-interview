@@ -3,7 +3,6 @@ import { MessageCircle } from "lucide-react";
 import { formatScore } from "@/lib/utils";
 import { isPassed } from "@/lib/scoring/interview";
 import { Button } from "@/components/ui/button";
-import { BehaviorPanel, type BehaviorData } from "@/components/interview/behavior-card";
 
 interface QuestionReview {
   sequence: number;
@@ -22,7 +21,6 @@ interface QuestionReview {
   model_answer?: string | null;
   needs_improvement?: boolean;
   transcript_quality_poor?: boolean;
-  behavior?: BehaviorData | null;
   answer_id?: number;
   snapshot_count?: number;
 }
@@ -120,10 +118,6 @@ export function QuestionReviewCard({
           <p className="text-xs text-indigo-700 dark:text-indigo-300 mb-1 font-medium">Suggested strong answer</p>
           <p className="text-sm text-foreground">{review.model_answer}</p>
         </div>
-      )}
-
-      {review.behavior && (
-        <BehaviorPanel behavior={review.behavior} />
       )}
 
       <div className="pt-1">

@@ -19,6 +19,7 @@ export interface AggregateBehavior {
   avg_blink_rate: number;
   emotion_distribution?: Record<string, number>;
   coaching_narrative?: string;
+  suggestions?: string[];
   questions_analyzed: number;
   snapshots_analyzed?: number;
   frames_analyzed?: number;
@@ -168,15 +169,6 @@ export function AggregateBehaviorCard({ summary }: { summary: AggregateBehavior 
           <p>Frames analysed: <span className="text-foreground font-medium">{summary.frames_analyzed}</span></p>
         ) : null}
       </div>
-
-      {summary.coaching_narrative && (
-        <div className="rounded-md bg-purple-500/10 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-500/20 p-3">
-          <p className="text-xs text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-1 font-medium">
-            Coaching summary
-          </p>
-          <p className="text-sm text-muted-foreground leading-relaxed">{summary.coaching_narrative}</p>
-        </div>
-      )}
     </div>
   );
 }

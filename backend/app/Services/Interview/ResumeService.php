@@ -15,9 +15,13 @@ class ResumeService
         private readonly AiGatewayService $aiGateway,
     ) {}
 
-    public function upload(User $user, UploadedFile $file): Resume
+    /**
+     * @return array{resume: Resume, replaced: bool}
+     */
+    public function upload(User $user, UploadedFile $file): array
     {
         $hash = hash_file('sha256', $file->getRealPath());
+        $filename = $file->getClientOriginalName();
         $path = $file->store('resumes/'.$user->id, 'local');
 
         $existing = Resume::query()
@@ -25,25 +29,33 @@ class ResumeService
             ->where('file_hash', $hash)
             ->first();
 
+        if (! $existing) {
+            $existing = Resume::query()
+                ->where('user_id', $user->id)
+                ->whereRaw('LOWER(original_filename) = ?', [strtolower($filename)])
+                ->first();
+        }
+
         if ($existing) {
             Storage::disk('local')->delete($existing->storage_path);
 
             $existing->update([
-                'original_filename' => $file->getClientOriginalName(),
+                'original_filename' => $filename,
                 'storage_path' => $path,
                 'mime_type' => $file->getMimeType() ?? 'application/octet-stream',
+                'file_hash' => $hash,
                 'parsed_profile' => null,
                 'status' => 'pending',
             ]);
 
             ParseResumeJob::dispatch($existing);
 
-            return $existing->fresh();
+            return ['resume' => $existing->fresh(), 'replaced' => true];
         }
 
         $resume = Resume::create([
             'user_id' => $user->id,
-            'original_filename' => $file->getClientOriginalName(),
+            'original_filename' => $filename,
             'storage_path' => $path,
             'mime_type' => $file->getMimeType() ?? 'application/octet-stream',
             'file_hash' => $hash,
@@ -52,7 +64,31 @@ class ResumeService
 
         ParseResumeJob::dispatch($resume);
 
-        return $resume;
+        return ['resume' => $resume, 'replaced' => false];
+    }
+
+    /**
+     * @return array<int>|null blocking interview IDs, or null on success
+     */
+    public function delete(Resume $resume): ?array
+    {
+        $blockingIds = $resume->interviews()
+            ->whereIn('status', ['setup', 'active'])
+            ->pluck('id')
+            ->all();
+
+        if ($blockingIds !== []) {
+            return $blockingIds;
+        }
+
+        if ($resume->storage_path) {
+            Storage::disk('local')->delete($resume->storage_path);
+        }
+
+        Cache::forget($this->cacheKey($resume));
+        $resume->delete();
+
+        return null;
     }
 
     public function getCachedProfile(Resume $resume): ?array

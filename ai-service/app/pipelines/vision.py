@@ -2,9 +2,9 @@
 Vision analysis pipeline.
 
 Given a video file (bytes), samples frames at ~3 fps, applies:
-  1. MediaPipe FaceMesh for gaze direction, head pose, blink rate (Eye Aspect Ratio)
+  1. MediaPipe Face Landmarker for gaze direction, head pose, blink rate (Eye Aspect Ratio)
   2. A HuggingFace emotion model for per-frame facial emotion probabilities
-     (defaults to 'trpakov/vit-face-expression' — a ViT trained on AffectNet, free & accurate)
+     (defaults to EMOTION_MODEL env — 'dima806/facial_emotions_image_detection')
   3. librosa for audio prosody (pitch variance, speech rate, pause ratio)
 
 Aggregates everything into scalar scores suitable for storage:
@@ -30,12 +30,20 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 USE_MOCK = os.getenv("AI_USE_MOCK", "false").lower() == "true"
+EMOTION_MODEL = os.getenv(
+    "EMOTION_MODEL", "dima806/facial_emotions_image_detection"
+)
+
+FRAME_OK_CONFIDENCE = 60
+FRAME_OK_NERVOUSNESS = 45
+FRAME_OK_EYE_CONTACT = 0.5
 
 # ---------------------------------------------------------------------------
 # Lazy model cache — loaded once, reused across requests
 # ---------------------------------------------------------------------------
 _emotion_pipe = None
 _mp_face_mesh = None
+_face_landmarker = None
 
 
 def _get_emotion_pipeline():
@@ -45,14 +53,108 @@ def _get_emotion_pipeline():
         import torch
 
         device = 0 if torch.cuda.is_available() else -1
-        logger.info("Loading emotion model on device=%s", "GPU" if device == 0 else "CPU")
+        logger.info("Loading emotion model %s on device=%s", EMOTION_MODEL, "GPU" if device == 0 else "CPU")
         _emotion_pipe = hf_pipeline(
             "image-classification",
-            model="trpakov/vit-face-expression",
+            model=EMOTION_MODEL,
             device=device,
             top_k=7,
         )
     return _emotion_pipe
+
+
+def _normalize_emotion_label(label: str) -> str:
+    key = label.lower()
+    aliases = {
+        "disgust": "disgusted",
+        "fear": "fearful",
+        "surprise": "surprised",
+        "anger": "angry",
+    }
+    return aliases.get(key, key)
+
+
+def _frame_status(
+    face_detected: bool,
+    confidence: int,
+    nervousness: int,
+    eye_contact: float,
+) -> str:
+    if not face_detected:
+        return "issue"
+    if (
+        confidence >= FRAME_OK_CONFIDENCE
+        and nervousness <= FRAME_OK_NERVOUSNESS
+        and eye_contact >= FRAME_OK_EYE_CONTACT
+    ):
+        return "ok"
+    return "issue"
+
+
+def _landmarker_model_path() -> str:
+    cache_dir = os.path.join(os.path.dirname(__file__), "..", "..", "models")
+    os.makedirs(cache_dir, exist_ok=True)
+    path = os.path.join(cache_dir, "face_landmarker.task")
+    if not os.path.exists(path):
+        import urllib.request
+
+        url = (
+            "https://storage.googleapis.com/mediapipe-models/face_landmarker/"
+            "face_landmarker/float16/1/face_landmarker.task"
+        )
+        logger.info("Downloading Face Landmarker model to %s", path)
+        urllib.request.urlretrieve(url, path)
+    return path
+
+
+def _get_face_landmarker():
+    global _face_landmarker
+    if _face_landmarker is None:
+        from mediapipe.tasks import python
+        from mediapipe.tasks.python import vision
+
+        options = vision.FaceLandmarkerOptions(
+            base_options=python.BaseOptions(model_asset_path=_landmarker_model_path()),
+            running_mode=vision.RunningMode.IMAGE,
+            num_faces=1,
+            min_face_detection_confidence=0.5,
+            min_face_presence_confidence=0.5,
+            min_tracking_confidence=0.5,
+        )
+        _face_landmarker = vision.FaceLandmarker.create_from_options(options)
+        logger.info("Face Landmarker loaded")
+    return _face_landmarker
+
+
+def _detect_landmarks(rgb_arr: np.ndarray):
+    """Return face landmark list or None using Face Landmarker (fallback: FaceMesh)."""
+    try:
+        from mediapipe import Image as MPImage
+        from mediapipe import ImageFormat
+
+        landmarker = _get_face_landmarker()
+        mp_image = MPImage(image_format=ImageFormat.SRGB, data=rgb_arr)
+        result = landmarker.detect(mp_image)
+        if result.face_landmarks:
+            return result.face_landmarks[0]
+    except Exception as e:
+        logger.debug("Face Landmarker failed, falling back to FaceMesh: %s", e)
+
+    import mediapipe as mp
+
+    face_mesh = mp.solutions.face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.5,
+    )
+    try:
+        results = face_mesh.process(rgb_arr)
+        if results.multi_face_landmarks:
+            return results.multi_face_landmarks[0].landmark
+    finally:
+        face_mesh.close()
+    return None
 
 
 def _get_face_mesh():
@@ -209,7 +311,9 @@ def _score_frame_emotion(frame_bgr, emotion_pipe) -> dict[str, float] | None:
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb)
         preds = emotion_pipe(pil_img)
-        return {p["label"].lower(): round(p["score"], 4) for p in preds}
+        return {
+            _normalize_emotion_label(p["label"]): round(p["score"], 4) for p in preds
+        }
     except Exception:
         return None
 
@@ -255,16 +359,9 @@ async def analyze_images(
         return _mock_result(question)
 
     try:
-        import mediapipe as mp
         import numpy as np
         from PIL import Image as PILImage
 
-        face_mesh = mp.solutions.face_mesh.FaceMesh(
-            static_image_mode=True,
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-        )
         emotion_pipe = _get_emotion_pipeline()
 
         ear_values: list[float] = []
@@ -275,18 +372,17 @@ async def analyze_images(
         frame_scores: list[dict[str, Any]] = []
 
         for img_bytes in images:
-            frame_entry: dict[str, Any] = {"face_detected": False}
+            frame_entry: dict[str, Any] = {"face_detected": False, "frame_status": "issue"}
             try:
                 pil_img = PILImage.open(io.BytesIO(img_bytes)).convert("RGB")
                 rgb_arr = np.array(pil_img)
                 h, w = rgb_arr.shape[:2]
 
-                results = face_mesh.process(rgb_arr)
-                if not results.multi_face_landmarks:
+                lms = _detect_landmarks(rgb_arr)
+                if not lms:
                     frame_scores.append(frame_entry)
                     continue
 
-                lms = results.multi_face_landmarks[0].landmark
                 ear_val = _ear(lms, w, h)
                 yaw, pitch = _head_pose(lms, w, h)
                 ear_values.append(ear_val)
@@ -297,7 +393,7 @@ async def analyze_images(
                 frame_emotions: dict[str, float] = {}
                 if preds:
                     for p in preds:
-                        label = p["label"].lower()
+                        label = _normalize_emotion_label(p["label"])
                         score = round(p["score"], 4)
                         frame_emotions[label] = score
                         emotion_accumulator.setdefault(label, []).append(score)
@@ -311,6 +407,7 @@ async def analyze_images(
                     "nervousness": f_nerv,
                     "dominant_emotion": dominant,
                     "eye_contact": round(eye_contact, 2),
+                    "frame_status": _frame_status(True, f_conf, f_nerv, eye_contact),
                 }
                 frame_scores.append(frame_entry)
                 frames_analyzed += 1
@@ -318,8 +415,6 @@ async def analyze_images(
                 logger.debug("Snapshot analysis error: %s", e)
                 frame_scores.append(frame_entry)
                 continue
-
-        face_mesh.close()
 
         if frames_analyzed == 0:
             logger.warning("No faces detected in snapshots — returning mock")

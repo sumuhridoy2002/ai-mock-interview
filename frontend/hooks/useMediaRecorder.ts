@@ -503,6 +503,80 @@ export function useFullSessionRecorder(stream: MediaStream | null): FullSessionR
   return { startSession, stopSession };
 }
 
+// ---------------------------------------------------------------------------
+// Tab / screen capture for full-session replay (merged with mic from webcam)
+// ---------------------------------------------------------------------------
+
+export interface TabScreenCaptureControls {
+  stream: MediaStream | null;
+  error: string | null;
+  startCapture: (micStream: MediaStream | null) => Promise<MediaStream | null>;
+  stopCapture: () => void;
+}
+
+export function useTabScreenRecorder(): TabScreenCaptureControls {
+  const displayStreamRef = useRef<MediaStream | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const stopCapture = useCallback(() => {
+    displayStreamRef.current?.getTracks().forEach((t) => t.stop());
+    displayStreamRef.current = null;
+    setStream(null);
+  }, []);
+
+  const startCapture = useCallback(async (micStream: MediaStream | null) => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
+      setError("Screen recording is not supported in this browser.");
+      return null;
+    }
+
+    try {
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1280, max: 1280 },
+          height: { ideal: 720, max: 720 },
+          frameRate: { ideal: 15, max: 15 },
+        },
+        audio: false,
+        // Chrome: prefer sharing the current tab
+        preferCurrentTab: true,
+        selfBrowserSurface: "include",
+      } as DisplayMediaStreamOptions);
+
+      const tracks: MediaStreamTrack[] = [...displayStream.getVideoTracks()];
+      if (micStream) {
+        for (const track of micStream.getAudioTracks()) {
+          tracks.push(track.clone());
+        }
+      }
+
+      const combined = new MediaStream(tracks);
+      displayStreamRef.current = displayStream;
+
+      const videoTrack = displayStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.addEventListener("ended", () => {
+          stopCapture();
+        });
+      }
+
+      setStream(combined);
+      setError(null);
+      return combined;
+    } catch {
+      setError(
+        "Screen recording was not enabled — the interview will continue without a full replay video."
+      );
+      return null;
+    }
+  }, [stopCapture]);
+
+  useEffect(() => () => stopCapture(), [stopCapture]);
+
+  return { stream, error, startCapture, stopCapture };
+}
+
 function captureFrame(video: HTMLVideoElement): Blob | null {
   if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
     return null;

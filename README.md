@@ -123,6 +123,7 @@ Open [http://localhost:3000](http://localhost:3000)
 | `AI_TRANSCRIBE_TIMEOUT`       | backend/.env        | Seconds to wait for transcription (default 300). Increase for `medium`/`large` on CPU.                                        |
 | `OLLAMA_URL` / `OLLAMA_MODEL` | ai-service env      | Ollama endpoint and model for questions, scoring, and reports                                                                 |
 | `AI_USE_MOCK`                 | ai-service env      | Set `true` only to skip Ollama calls entirely                                                                                 |
+| `EMOTION_MODEL`               | ai-service env      | HuggingFace model for snapshot emotion detection (default `dima806/facial_emotions_image_detection`)                          |
 | `WHISPER_MODEL`               | ai-service env      | Whisper model size. `small` (default) is the best CPU/accuracy tradeoff. Use `medium` on a GPU-enabled VPS.                   |
 | `WHISPER_LANGUAGE`            | ai-service env      | Language code for transcription (default `en`). Set explicitly to skip auto-detect.                                           |
 | `WHISPER_INITIAL_PROMPT`      | ai-service env      | Optional global vocabulary hint (e.g. `"Laravel, Eloquent, Sanctum, REST API"`). Per-interview context is sent automatically. |
@@ -149,27 +150,13 @@ See [docs/architecture.md](docs/architecture.md) and [docs/api.md](docs/api.md).
 
 ### Reset database and uploads
 
+Wipes all tables, clears uploaded resumes, and clears cache:
+
 ```powershell
 .\scripts\fresh-db.ps1
 ```
 
-### Demo data (20 completed interviews)
-
-Seed realistic completed interviews for the test user — scores, PDF reports, behavior summaries, snapshot galleries, and a playable full-session MP4 (no live recording required):
-
-```powershell
-cd backend
-php artisan db:seed
-php artisan interviews:seed-demo --count=20 --email=test@example.com
-```
-
-Options:
-
-- `--fresh` — delete existing interviews for that user first
-- `--no-pdf` — skip PDF generation (faster)
-- `--count=20` — number of interviews (max 100)
-
-Log in as `test@example.com` / `password`, then open the dashboard and any result page.
+Register a new account after reset — no demo data is seeded automatically.
 
 ### Full browser journey (Playwright)
 

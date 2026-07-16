@@ -9,7 +9,7 @@ import { PageHero } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuestionReviewCard } from "@/components/interview/question-review-card";
-import { AggregateBehaviorCard, type AggregateBehavior } from "@/components/interview/behavior-card";
+import { type AggregateBehavior } from "@/components/interview/behavior-card";
 import { InterviewGallery } from "@/components/interview/interview-gallery";
 import { api, API_URL } from "@/lib/api";
 import { getToken } from "@/lib/auth";
@@ -149,45 +149,6 @@ export default function InterviewResultPage() {
     };
   }, [recordingBlobUrl]);
 
-  function reportHasSnapshotBehavior(data: ReportData): boolean {
-    const reviews = data.report?.question_reviews ?? [];
-    const withSnaps = reviews.filter((r) => (r.snapshot_count ?? 0) > 0);
-    if (withSnaps.length === 0) {
-      return true;
-    }
-    return withSnaps.every((r) => Boolean(r.snapshot_behavior));
-  }
-
-  // Poll until per-question snapshot behaviour is attached to the report payload
-  useEffect(() => {
-    if (!interviewId || !report) return;
-    if (reportHasSnapshotBehavior(report)) return;
-
-    let cancelled = false;
-    let attempts = 0;
-
-    const poll = async () => {
-      if (cancelled || attempts >= 20) return;
-      attempts += 1;
-      try {
-        const data = await api<ReportData>(`/interviews/${interviewId}/report`);
-        if (!cancelled && reportHasSnapshotBehavior(data)) {
-          setReport(data);
-          return;
-        }
-      } catch {
-        // keep polling
-      }
-      if (!cancelled) setTimeout(poll, 4000);
-    };
-
-    const timer = setTimeout(poll, 4000);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [interviewId, report]);
-
   const questionReviews = report?.report?.question_reviews ?? [];
 
   const galleryQuestions = questionReviews
@@ -293,7 +254,7 @@ export default function InterviewResultPage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Video className="h-5 w-5 text-primary" />
-                        Full Interview Recording
+                        Interview Screen Recording
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -315,10 +276,6 @@ export default function InterviewResultPage() {
                       )}
                     </CardContent>
                   </Card>
-                )}
-
-                {report.behavior_summary && (
-                  <AggregateBehaviorCard summary={report.behavior_summary} />
                 )}
 
                 {questionReviews.length > 0 && (

@@ -12,6 +12,7 @@ import {
   useMediaStream,
   useMediaRecorder,
   useFullSessionRecorder,
+  useTabScreenRecorder,
   useSnapshotCapture,
   useSpeechSynthesis,
 } from "@/hooks/useMediaRecorder";
@@ -31,9 +32,12 @@ export default function LiveInterviewPage() {
   const [mediaReady, setMediaReady] = useState(false);
   const [maxQuestions, setMaxQuestions] = useState(10);
   const lastQuestionIdRef = useRef<number | null>(null);
+  const fullRecordingStartedRef = useRef(false);
+  const [sessionRecordingStream, setSessionRecordingStream] = useState<MediaStream | null>(null);
 
   // ── Media stream (with auto-start when consent was already granted) ──────
   const { stream, error: mediaError, start: startMedia, autoStarted } = useMediaStream();
+  const { error: screenCaptureError, startCapture, stopCapture } = useTabScreenRecorder();
 
   // When auto-start fires, mark media ready immediately
   useEffect(() => {
@@ -70,21 +74,41 @@ export default function LiveInterviewPage() {
     }
   }, [stream, mediaReady]);
 
-  // ── Full-session recorder ─────────────────────────────────────────────────
+  // ── Full-session recorder (tab/screen + mic, fallback: webcam) ──────────
   const { startSession: startFullRecording, stopSession: stopFullRecording } =
-    useFullSessionRecorder(stream);
+    useFullSessionRecorder(sessionRecordingStream);
 
-  // ── Per-answer snapshot capture (every 15s, no cv2 needed) ──────────────
+  // ── Per-answer snapshot capture (every 10s from webcam) ───────────────────
   const [isRecordingActive, setIsRecordingActive] = useState(false);
   const { getAndClear: getSnapshots } = useSnapshotCapture(videoRef, isRecordingActive, 10);
 
-  // Start full-session recording as soon as media is ready
+  // Request tab/screen share when webcam is ready, then start full-session recording
   useEffect(() => {
-    if (mediaReady && stream) {
-      startFullRecording();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaReady]);
+    if (!mediaReady || !stream) return;
+
+    let cancelled = false;
+
+    void startCapture(stream).then((captured) => {
+      if (cancelled) return;
+      setSessionRecordingStream(captured ?? stream);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mediaReady, stream, startCapture]);
+
+  useEffect(() => {
+    if (!mediaReady || !sessionRecordingStream || fullRecordingStartedRef.current) return;
+    fullRecordingStartedRef.current = true;
+    startFullRecording();
+  }, [mediaReady, sessionRecordingStream, startFullRecording]);
+
+  useEffect(() => {
+    return () => {
+      stopCapture();
+    };
+  }, [stopCapture]);
 
   // Upload the full-session video blob to the backend
   const uploadFullRecording = useCallback(
@@ -320,6 +344,9 @@ export default function LiveInterviewPage() {
             )}
             {submitError && <p className="text-sm text-red-400">{submitError}</p>}
             {recorderError && <p className="text-sm text-red-400">{recorderError}</p>}
+            {screenCaptureError && (
+              <p className="text-sm text-amber-500">{screenCaptureError}</p>
+            )}
           </CardContent>
         </Card>
 

@@ -27,13 +27,15 @@ class ResumeController extends Controller
 
     public function store(StoreResumeRequest $request): JsonResponse
     {
-        $resume = $this->resumeService->upload($request->user(), $request->file('file'));
+        $result = $this->resumeService->upload($request->user(), $request->file('file'));
+        $resume = $result['resume'];
 
         return response()->json([
             'id' => $resume->id,
             'status' => $resume->status,
             'original_filename' => $resume->original_filename,
-        ], 201);
+            'replaced' => $result['replaced'],
+        ], $result['replaced'] ? 200 : 201);
     }
 
     public function show(Request $request, Resume $resume): JsonResponse
@@ -83,5 +85,21 @@ class ResumeController extends Controller
             'status' => $resume->fresh()->status,
             'parsed_profile' => $resume->fresh()->parsed_profile,
         ]);
+    }
+
+    public function destroy(Request $request, Resume $resume): JsonResponse
+    {
+        $this->authorize('delete', $resume);
+
+        $blockingIds = $this->resumeService->delete($resume);
+
+        if ($blockingIds !== null) {
+            return response()->json([
+                'message' => 'This resume is linked to an interview that is not finished yet. Complete or cancel those interviews first.',
+                'blocking_interview_ids' => $blockingIds,
+            ], 422);
+        }
+
+        return response()->json(['message' => 'Resume deleted.']);
     }
 }

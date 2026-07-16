@@ -27,6 +27,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/resumes/{resume}', [ResumeController::class, 'show']);
         Route::get('/resumes/{resume}/file', [ResumeController::class, 'streamFile']);
         Route::post('/resumes/{resume}/reparse', [ResumeController::class, 'reparse']);
+        Route::delete('/resumes/{resume}', [ResumeController::class, 'destroy']);
 
         Route::get('/interviews', [InterviewController::class, 'index']);
         Route::get('/interviews/scheduled', [InterviewController::class, 'scheduled']);

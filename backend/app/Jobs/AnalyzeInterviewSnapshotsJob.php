@@ -162,6 +162,7 @@ class AnalyzeInterviewSnapshotsJob implements ShouldQueue
             'nervousness'      => 35,
             'dominant_emotion' => 'neutral',
             'eye_contact'      => 0.7,
+            'frame_status'     => 'ok',
         ]);
 
         return [
