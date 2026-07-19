@@ -433,3 +433,87 @@ export function filterTables(query: string, groupId: ErdGroupId | "all"): ErdTab
       ),
   );
 }
+
+/** Visual diagram layout (x/y px on canvas). */
+export const ERD_ENTITY_WIDTH = 232;
+export const ERD_ROW_HEIGHT = 24;
+export const ERD_HEADER_HEIGHT = 42;
+
+export function erdEntityHeight(table: ErdTable): number {
+  return ERD_HEADER_HEIGHT + table.columns.length * ERD_ROW_HEIGHT + 6;
+}
+
+export type ErdDiagramSection = "core" | "framework";
+
+export const ERD_DIAGRAM_LAYOUT: Record<string, { x: number; y: number; section: ErdDiagramSection }> = {
+  users: { x: 48, y: 48, section: "core" },
+  personal_access_tokens: { x: 48, y: 340, section: "core" },
+  sessions: { x: 48, y: 560, section: "core" },
+  password_reset_tokens: { x: 48, y: 720, section: "core" },
+  user_memory_profiles: { x: 48, y: 880, section: "core" },
+  expert_chat_messages: { x: 48, y: 1080, section: "core" },
+  public_share_links: { x: 48, y: 1280, section: "core" },
+
+  resumes: { x: 340, y: 48, section: "core" },
+  user_question_mastery: { x: 340, y: 880, section: "core" },
+
+  interviews: { x: 632, y: 48, section: "core" },
+  interview_reports: { x: 632, y: 400, section: "core" },
+
+  interview_sessions: { x: 924, y: 48, section: "core" },
+  agent_memories: { x: 924, y: 280, section: "core" },
+
+  interview_questions: { x: 924, y: 480, section: "core" },
+  interview_answers: { x: 924, y: 780, section: "core" },
+
+  interview_scores: { x: 1216, y: 780, section: "core" },
+  answer_behaviors: { x: 1216, y: 980, section: "core" },
+
+  cache: { x: 48, y: 48, section: "framework" },
+  cache_locks: { x: 340, y: 48, section: "framework" },
+  jobs: { x: 632, y: 48, section: "framework" },
+  job_batches: { x: 924, y: 48, section: "framework" },
+  failed_jobs: { x: 1216, y: 48, section: "framework" },
+};
+
+export const ERD_DIAGRAM_CANVAS = {
+  core: { width: 1520, height: 1520 },
+  framework: { width: 1520, height: 320 },
+};
+
+export interface ErdDiagramEdge {
+  from: string;
+  to: string;
+  fromCard: "one" | "many";
+  toCard: "one" | "many";
+  section: ErdDiagramSection;
+}
+
+export function buildDiagramEdges(section: ErdDiagramSection): ErdDiagramEdge[] {
+  const layoutKeys = new Set(
+    Object.entries(ERD_DIAGRAM_LAYOUT)
+      .filter(([, pos]) => pos.section === section)
+      .map(([name]) => name),
+  );
+
+  return ERD_RELATIONS.filter(
+    (rel) => layoutKeys.has(rel.from) && layoutKeys.has(rel.to),
+  ).map((rel) => {
+    const parts = rel.cardinality.split("—").map((p) => p.trim());
+    const card = (s: string): "one" | "many" => (s === "1" ? "one" : "many");
+    return {
+      from: rel.from,
+      to: rel.to,
+      fromCard: card(parts[0] ?? "1"),
+      toCard: card(parts[1] ?? "*"),
+      section,
+    };
+  });
+}
+
+export function getDiagramTables(section: ErdDiagramSection): ErdTable[] {
+  const names = Object.entries(ERD_DIAGRAM_LAYOUT)
+    .filter(([, pos]) => pos.section === section)
+    .map(([name]) => name);
+  return ERD_TABLES.filter((table) => names.includes(table.name));
+}
