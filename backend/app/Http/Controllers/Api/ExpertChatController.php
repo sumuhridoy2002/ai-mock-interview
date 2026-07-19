@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ExpertChatMessage;
+use App\Models\User;
 use App\Services\Interview\AiGatewayService;
 use App\Services\Interview\PromptSanitizer;
 use App\Support\Scoring\ScoringConstants;
@@ -75,7 +76,7 @@ class ExpertChatController extends Controller
             $result = $this->aiGateway->expertChat([
                 'message' => $message,
                 'history' => array_slice($history, 0, -1),
-                'context' => $this->buildKnowledgeBase(),
+                'context' => $this->buildKnowledgeBase($user),
             ]);
         } catch (\Throwable $e) {
             Log::warning('Expert chat AI request failed, using fallback reply', [
@@ -83,15 +84,7 @@ class ExpertChatController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            $result = [
-                'reply' => 'I could not reach the AI service right now. Please try again in a moment — the platform '
-                    .'scores every answer across five dimensions (relevance, technical accuracy, communication, '
-                    .'confidence, completeness) using a local Llama 3 model, with a heuristic fallback if that model is offline.',
-                'suggested_followups' => [
-                    'What scoring dimensions do you use?',
-                    'How does behavior analysis affect my score?',
-                ],
-            ];
+            $result = $this->buildOfflineExpertReply($message);
         }
 
         $reply = (string) ($result['reply'] ?? 'Sorry, I could not generate a response.');
@@ -112,31 +105,76 @@ class ExpertChatController extends Controller
     }
 
     /** Server-side facts the AI may draw on — the user cannot inject or override these. */
-    private function buildKnowledgeBase(): array
+    private function buildKnowledgeBase(User $user): array
     {
+        $completed = $user->interviews()
+            ->where('status', 'completed')
+            ->with('report:id,interview_id,overall_score')
+            ->get();
+
+        $scores = $completed->map(fn ($i) => $i->report?->overall_score)->filter()->values();
+        $avgScore = $scores->isNotEmpty() ? (int) round($scores->avg()) : null;
+
         return [
             'platform' => 'Mock Interview Pro — AI-powered mock interview practice and coaching',
             'dimensions' => ['relevance', 'technical accuracy', 'communication', 'confidence', 'completeness'],
+            'dimension_details' => [
+                'relevance' => 'Did you address the question asked? Off-topic or evasive answers score low.',
+                'technical_accuracy' => 'Are your facts, tools, and approach correct for the role? Names specific technologies.',
+                'communication' => 'Is your answer structured and easy to follow? STAR for behavioral, step-by-step for technical.',
+                'confidence' => 'Do you speak decisively without excessive hedging or filler words?',
+                'completeness' => 'Did you cover the full scope — context, actions, and outcome?',
+            ],
             'pass_threshold' => ScoringConstants::threshold('pass'),
             'mastery_threshold' => ScoringConstants::threshold('mastery'),
             'model_answer_threshold' => ScoringConstants::threshold('modelAnswer'),
             'hiring_recommendation_tiers' => ScoringConstants::get('thresholds.hiring'),
             'grade_bands' => ScoringConstants::get('dashboard.scoreBands'),
-            'evaluation_flow' => 'A local Llama 3 model (via Ollama) reads the question and your transcript and '
-                .'scores it like a hiring manager would across the five dimensions above, producing an overall '
-                .'score 0-100. If the AI model is offline, a rule-based heuristic evaluator scores the answer '
-                .'instead so you always get feedback.',
-            'model_answer_policy' => 'When your overall score is below the model-answer threshold, we generate a '
-                .'concise ideal answer so you can see what a stronger response looks like.',
-            'behavior_analysis' => 'For video interviews, we analyze eye contact, facial emotion, head stability, '
-                .'blink rate, and voice prosody (pitch variance, pause ratio) to produce confidence and '
-                .'nervousness scores. These appear alongside — not instead of — your answer scores.',
-            'mastery_memory' => 'Questions you already pass (score at or above the mastery threshold) are recorded '
-                .'per user, so future interviews can skip questions you have already mastered.',
-            'star_method' => 'For behavioral questions, we coach candidates to use the STAR method: Situation, '
-                .'Task, Action, Result.',
-            'report' => 'After an interview completes, scores are aggregated into a final report with an overall '
-                .'score, category breakdown, strengths, weaknesses, and a hiring recommendation, downloadable as a PDF.',
+            'behavior_weights' => ScoringConstants::get('behavior'),
+            'user_completed_interviews' => $completed->count(),
+            'user_average_score' => $avgScore,
+            'ai_stack' => [
+                'llm' => 'Llama 3 8B (Ollama, model: '.(env('OLLAMA_MODEL', 'llama3')).')',
+                'stt' => 'OpenAI Whisper (local, model: small)',
+                'vision' => 'MediaPipe face mesh + emotion classifier + audio prosody analysis',
+                'ai_service' => 'FastAPI Python service (port 8001)',
+                'backend' => 'Laravel 11 API + queue workers + Reverb WebSocket',
+                'frontend' => 'Next.js 16 React app',
+            ],
+            'evaluation_flow' => 'Whisper transcribes speech → Llama 3 scores five dimensions as JSON → '
+                .'post-processing clamps and applies transcript overrides → heuristic fallback if Ollama offline → '
+                .'behavior pipeline runs in parallel for video → report aggregated at session end.',
+            'model_answer_policy' => 'When overall score is below '.ScoringConstants::threshold('modelAnswer').', '
+                .'a concise ideal answer is generated so you can see what a stronger response looks like.',
+            'behavior_analysis' => 'Video snapshots analyzed for eye contact, emotion distribution, head stability, '
+                .'blink rate, and voice prosody. Produces confidence and nervousness scores alongside answer scores.',
+            'mastery_memory' => 'Questions passed at or above mastery threshold ('.ScoringConstants::threshold('mastery').') '
+                .'are recorded per user; future interviews skip mastered topics.',
+            'star_method' => 'Behavioral answers coached via STAR: Situation, Task, Action, Result.',
+            'report' => 'Final report includes overall score, category breakdown, strengths, weaknesses, '
+                .'hiring recommendation, behavior summary, and downloadable PDF.',
+        ];
+    }
+
+    /** Minimal reply when AI service is completely unreachable. */
+    private function buildOfflineExpertReply(string $message): array
+    {
+        $lower = strtolower($message);
+
+        if (str_contains($lower, 'model') || str_contains($lower, 'ollama') || str_contains($lower, 'llama')) {
+            return [
+                'reply' => 'Mock Interview Pro uses Llama 3 8B via Ollama for answer scoring, Whisper for speech-to-text, '
+                    .'and MediaPipe for video behavior analysis — all running locally on your machine. '
+                    .'The AI service appears offline right now, but the knowledge-based expert can still answer your questions.',
+                'suggested_followups' => ['What scoring dimensions do you use?', 'How do you evaluate our answers?'],
+            ];
+        }
+
+        return [
+            'reply' => 'The AI service is temporarily unreachable. Please try again in a moment. '
+                .'In the meantime: every answer is scored on relevance, technical accuracy, communication, '
+                .'confidence, and completeness (0–100 each) using Llama 3, with a heuristic fallback when offline.',
+            'suggested_followups' => ['What scoring dimensions do you use?', 'Which AI models power the scoring?'],
         ];
     }
 }

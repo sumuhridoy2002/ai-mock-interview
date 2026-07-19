@@ -26,8 +26,8 @@ const SESSION_STORAGE_KEY = "mip_expert_chat_session";
 const SUGGESTED_PROMPTS = [
   "How do you evaluate our interview questions and our answers?",
   "What scoring dimensions do you use?",
+  "Which AI models power the scoring?",
   "How does behavior analysis affect my score?",
-  "What makes a strong behavioral answer?",
 ];
 
 export function ExpertChatPanel() {
