@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Activity, Download, RefreshCw } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSystemMetrics, SYSTEM_FOOTER_REFRESH_SECONDS } from "@/hooks/useSystemMetrics";
 import { getStoredUser, getToken, isAdmin } from "@/lib/auth";
 import { exportPageToPng, pageExportFilename } from "@/lib/export-page-png";
@@ -147,6 +147,16 @@ function PageDownloadPill() {
 
 export function FloatingToolbar() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
   const user = getStoredUser();
   const showDownload = shouldShowDownload(pathname);
   const showMetrics = isAdmin(user) && shouldShowAdminMetrics(pathname);
