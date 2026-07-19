@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@teispace/next-themes";
 import { JOURNEY_STEPS, RUNTIME_STEPS } from "@/lib/methodology-copy";
 
 /* ─── colours ─────────────────────────────────────────────────────────────── */

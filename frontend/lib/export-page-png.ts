@@ -47,6 +47,9 @@ export async function exportPageToPng(element: HTMLElement, filename: string): P
     width,
     height,
     filter: (node) => {
+      if (node instanceof HTMLScriptElement || node instanceof HTMLIFrameElement) {
+        return false;
+      }
       if (!(node instanceof HTMLElement)) return true;
       return node.dataset.pageExportIgnore === undefined;
     },

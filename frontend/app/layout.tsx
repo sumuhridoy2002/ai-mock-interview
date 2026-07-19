@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "@teispace/next-themes";
+import { getTheme } from "@teispace/next-themes/server";
 import { FloatingToolbar } from "@/components/layout/floating-toolbar";
-import { ThemeProvider } from "@/components/theme/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,11 +20,13 @@ export const metadata: Metadata = {
   description: "AI-powered mock interviews with real-time feedback",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialTheme = await getTheme();
+
   return (
     <html
       lang="en"
@@ -31,7 +34,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full">
-        <ThemeProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+          initialTheme={initialTheme ?? undefined}
+        >
           {children}
           <FloatingToolbar />
         </ThemeProvider>
