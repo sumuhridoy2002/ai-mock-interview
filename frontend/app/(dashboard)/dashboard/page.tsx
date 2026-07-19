@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, TrendingUp, Award, ArrowRight, Bell, BellOff, Calendar, Pencil, Trash2, X, Check, TrendingDown, Minus, Star, Target, BarChart2, ChevronRight, Activity } from "lucide-react";
+import { Mic, TrendingUp, Award, ArrowRight, Bell, BellOff, Calendar, Pencil, Trash2, X, Check, TrendingDown, Minus, Star, Target, BarChart2, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHero, StatTile, CategoryHeading } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PerformanceTrendChart } from "@/components/system/performance-trend-chart";
+import { SystemHealthPanel } from "@/components/system/system-health-panel";
 import { useSystemMetrics } from "@/hooks/useSystemMetrics";
 import { api } from "@/lib/api";
 import { formatScore } from "@/lib/utils";
@@ -247,32 +247,7 @@ export default function DashboardPage() {
         </div>
 
         {/* System Health */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Activity className="h-4 w-4 text-emerald-500" />
-              System Health
-            </CardTitle>
-            <Link href="/system/metrics" className="text-xs text-primary hover:underline flex items-center gap-1">
-              Full report <ChevronRight className="h-3 w-3" />
-            </Link>
-          </CardHeader>
-          <CardContent className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="flex items-center gap-3 shrink-0">
-              <p className={`text-3xl font-bold ${scoreBandColor(systemMetrics.performanceScore)}`}>
-                {systemMetrics.performanceScore}
-                <span className="text-sm text-muted-foreground font-normal">/100</span>
-              </p>
-              <div className="text-xs text-muted-foreground">
-                <p>Performance score</p>
-                <p>API {systemMetrics.apiLatencyMs != null ? `${systemMetrics.apiLatencyMs} ms` : "—"}</p>
-              </div>
-            </div>
-            <div className="flex-1 w-full min-w-0">
-              <PerformanceTrendChart samples={systemMetrics.performanceHistory} compact />
-            </div>
-          </CardContent>
-        </Card>
+        <SystemHealthPanel metrics={systemMetrics} variant="dashboard" />
 
         {/* Progress Overview */}
         {completed.length > 0 && (

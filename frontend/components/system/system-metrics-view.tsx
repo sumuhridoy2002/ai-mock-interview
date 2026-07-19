@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { PerformanceSamplesDialog } from "@/components/system/performance-samples-dialog";
 import { PerformanceTrendChart } from "@/components/system/performance-trend-chart";
+import { SystemPerformanceGauge } from "@/components/system/system-performance-gauge";
 import { useSystemMetrics, type MetricComparison } from "@/hooks/useSystemMetrics";
 import { getMetricsPageFormulas } from "@/lib/scoring-docs";
 import {
@@ -174,8 +175,6 @@ export function SystemMetricsView() {
   const [samplesOpen, setSamplesOpen] = useState(false);
 
   const scoreRating = comparisons.systemPerformanceScore.rating;
-  const scoreRingColor =
-    scoreRating === "good" ? "#10b981" : scoreRating === "ok" ? "#f59e0b" : "#f43f5e";
 
   return (
     <div className="w-full space-y-6">
@@ -186,17 +185,12 @@ export function SystemMetricsView() {
 
         <div className="relative flex flex-wrap items-center justify-between gap-6">
           <div className="flex items-center gap-5 min-w-0">
-            <div
-              className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full"
-              style={{
-                background: `conic-gradient(${scoreRingColor} ${metrics.performanceScore}%, rgba(255,255,255,0.2) 0)`,
-              }}
-            >
-              <div className="flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center rounded-full bg-indigo-900/60 backdrop-blur-sm">
-                <span className="text-2xl font-bold font-mono leading-none">{metrics.performanceScore}</span>
-                <span className="text-xs font-medium opacity-80">/ 100</span>
-              </div>
-            </div>
+            <SystemPerformanceGauge
+              score={metrics.performanceScore}
+              rating={scoreRating}
+              size="lg"
+              onDark
+            />
             <div>
               <div className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-amber-300" />
@@ -294,16 +288,16 @@ export function SystemMetricsView() {
         />
       </div>
 
-      {/* Performance over time */}
+      {/* Response times trend */}
       <section className="rounded-2xl border border-border bg-card p-5 shadow-md">
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
-            <Activity className="h-4 w-4" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+            <Globe className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-foreground">Performance over time</h2>
+            <h2 className="text-base font-bold text-foreground">Response times over time</h2>
             <p className="text-sm text-muted-foreground">
-              Score, API latency, and page load across your last {metrics.performanceHistory.length} samples
+              API latency and page load across your last {metrics.performanceHistory.length} samples (milliseconds)
             </p>
           </div>
         </div>
