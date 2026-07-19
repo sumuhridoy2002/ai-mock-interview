@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { INTERVIEW_RECORDING } from "@/lib/interview-recording-config";
 
 const CONSENT_KEY = "mi_media_consent";
 
@@ -27,11 +28,7 @@ export function useMediaStream() {
   const start = useCallback(async () => {
     try {
       const media = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: "user",
-        },
+        video: INTERVIEW_RECORDING.videoConstraints,
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -338,29 +335,31 @@ export function useMediaRecorder(
       sessionsRef.current = [];
       clearTimer();
 
-      const videoStream = stream;
-      const audioTracks = stream.getAudioTracks();
-      const audioStream =
-        audioTracks.length > 0
-          ? new MediaStream(audioTracks.map((track) => track.clone()))
-          : null;
+      if (INTERVIEW_RECORDING.enableAnswerMediaRecorder) {
+        const videoStream = stream;
+        const audioTracks = stream.getAudioTracks();
+        const audioStream =
+          audioTracks.length > 0
+            ? new MediaStream(audioTracks.map((track) => track.clone()))
+            : null;
 
-      const videoSession = createRecorderSession(videoStream, "video");
-      if (!videoSession) {
-        throw new Error("Video recording is not supported in this browser.");
-      }
-
-      sessionsRef.current.push(videoSession);
-
-      if (audioStream) {
-        const audioSession = createRecorderSession(audioStream, "audio");
-        if (audioSession) {
-          sessionsRef.current.push(audioSession);
+        const videoSession = createRecorderSession(videoStream, "video");
+        if (!videoSession) {
+          throw new Error("Video recording is not supported in this browser.");
         }
-      }
 
-      for (const session of sessionsRef.current) {
-        session.recorder.start();
+        sessionsRef.current.push(videoSession);
+
+        if (audioStream) {
+          const audioSession = createRecorderSession(audioStream, "audio");
+          if (audioSession) {
+            sessionsRef.current.push(audioSession);
+          }
+        }
+
+        for (const session of sessionsRef.current) {
+          session.recorder.start();
+        }
       }
 
       browserTranscription.start();
@@ -395,6 +394,11 @@ export function useMediaRecorder(
     setError(null);
     browserTranscription.abort();
 
+    if (!INTERVIEW_RECORDING.enableAnswerMediaRecorder) {
+      sessionsRef.current = [];
+      return;
+    }
+
     for (const session of sessionsRef.current) {
       try {
         if (session.recorder.state !== "inactive") {
@@ -409,7 +413,7 @@ export function useMediaRecorder(
 
   const stopRecording = useCallback(async () => {
     const sessions = sessionsRef.current;
-    if (!sessions.length || !recording) {
+    if (!recording) {
       return;
     }
 
@@ -421,9 +425,38 @@ export function useMediaRecorder(
       Math.round((Date.now() - startedAtRef.current) / 1000)
     );
 
-    const blobs = await Promise.all(sessions.map((session) => stopRecorderSession(session)));
     const finalTranscript =
       browserTranscription.stop() || browserTranscription.liveTranscript.trim();
+
+    if (!INTERVIEW_RECORDING.enableAnswerMediaRecorder) {
+      sessionsRef.current = [];
+
+      if (elapsedSeconds < 3) {
+        setError("Answer too short. Please record at least 3 seconds.");
+        return;
+      }
+
+      if (!finalTranscript) {
+        setError("No speech detected. Speak clearly toward your microphone and try again.");
+        return;
+      }
+
+      onAnswerReadyRef.current({
+        videoBlob: new Blob([], { type: "video/webm" }),
+        audioBlob: new Blob([], { type: "audio/webm" }),
+        videoFilename: "answer.webm",
+        audioFilename: "audio.webm",
+        durationSeconds: elapsedSeconds,
+        transcript: finalTranscript,
+      });
+      return;
+    }
+
+    if (!sessions.length) {
+      return;
+    }
+
+    const blobs = await Promise.all(sessions.map((session) => stopRecorderSession(session)));
     sessionsRef.current = [];
 
     const videoIndex = sessions.findIndex((session) => session.kind === "video");

@@ -2,6 +2,7 @@
 
 return [
     'max_questions' => (int) env('INTERVIEW_MAX_QUESTIONS', 10),
+    'snapshot_interval_sec' => (int) env('SNAPSHOT_INTERVAL_SEC', 10),
 
     /*
     |--------------------------------------------------------------------------

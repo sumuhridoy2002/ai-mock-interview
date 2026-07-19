@@ -11,11 +11,10 @@ import { useInterviewSession } from "@/hooks/useInterviewSession";
 import {
   useMediaStream,
   useMediaRecorder,
-  useFullSessionRecorder,
-  useTabScreenRecorder,
   useSnapshotCapture,
   useSpeechSynthesis,
 } from "@/hooks/useMediaRecorder";
+import { INTERVIEW_RECORDING } from "@/lib/interview-recording-config";
 import { api, API_URL } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { uuid } from "@/lib/utils";
@@ -32,14 +31,9 @@ export default function LiveInterviewPage() {
   const [mediaReady, setMediaReady] = useState(false);
   const [maxQuestions, setMaxQuestions] = useState(10);
   const lastQuestionIdRef = useRef<number | null>(null);
-  const fullRecordingStartedRef = useRef(false);
-  const [sessionRecordingStream, setSessionRecordingStream] = useState<MediaStream | null>(null);
 
-  // ── Media stream (with auto-start when consent was already granted) ──────
   const { stream, error: mediaError, start: startMedia, autoStarted } = useMediaStream();
-  const { error: screenCaptureError, startCapture, stopCapture } = useTabScreenRecorder();
 
-  // When auto-start fires, mark media ready immediately
   useEffect(() => {
     if (autoStarted && stream) {
       setMediaReady(true);
@@ -74,62 +68,13 @@ export default function LiveInterviewPage() {
     }
   }, [stream, mediaReady]);
 
-  // ── Full-session recorder (tab/screen + mic, fallback: webcam) ──────────
-  const { startSession: startFullRecording, stopSession: stopFullRecording } =
-    useFullSessionRecorder(sessionRecordingStream);
-
-  // ── Per-answer snapshot capture (every 10s from webcam) ───────────────────
   const [isRecordingActive, setIsRecordingActive] = useState(false);
-  const { getAndClear: getSnapshots } = useSnapshotCapture(videoRef, isRecordingActive, 10);
-
-  // Request tab/screen share when webcam is ready, then start full-session recording
-  useEffect(() => {
-    if (!mediaReady || !stream) return;
-
-    let cancelled = false;
-
-    void startCapture(stream).then((captured) => {
-      if (cancelled) return;
-      setSessionRecordingStream(captured ?? stream);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [mediaReady, stream, startCapture]);
-
-  useEffect(() => {
-    if (!mediaReady || !sessionRecordingStream || fullRecordingStartedRef.current) return;
-    fullRecordingStartedRef.current = true;
-    startFullRecording();
-  }, [mediaReady, sessionRecordingStream, startFullRecording]);
-
-  useEffect(() => {
-    return () => {
-      stopCapture();
-    };
-  }, [stopCapture]);
-
-  // Upload the full-session video blob to the backend
-  const uploadFullRecording = useCallback(
-    async (blob: Blob) => {
-      if (!blob.size || !interviewId) return;
-      try {
-        const form = new FormData();
-        form.append("recording", blob, `session.webm`);
-        await fetch(`${API_URL}/interviews/${interviewId}/recording`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${getToken()}`, Accept: "application/json" },
-          body: form,
-        });
-      } catch {
-        // Non-critical — silently fail
-      }
-    },
-    [interviewId]
+  const { getAndClear: getSnapshots } = useSnapshotCapture(
+    videoRef,
+    isRecordingActive,
+    INTERVIEW_RECORDING.snapshotIntervalSec,
   );
 
-  // ── Interview complete handler ────────────────────────────────────────────
   function handleInterviewComplete() {
     router.push(`/interview/result/${interviewId}`);
   }
@@ -153,7 +98,6 @@ export default function LiveInterviewPage() {
       form.append("question_id", String(question.question_id));
       form.append("idempotency_key", uuid());
       form.append("duration_seconds", String(durationSeconds));
-      // Transcript comes from real-time browser STT — no audio upload needed
       if (transcript.trim()) {
         form.append("transcript", transcript.trim());
       }
@@ -172,7 +116,6 @@ export default function LiveInterviewPage() {
         const answerData = await response.json();
         const answerId = answerData?.answer_id as number | undefined;
 
-        // Upload snapshots captured during this answer
         const snapshots = getSnapshots();
         if (answerId && snapshots.length > 0) {
           const snapForm = new FormData();
@@ -189,7 +132,7 @@ export default function LiveInterviewPage() {
               }
             );
           } catch {
-            // non-critical — gallery may be missing this answer's photos
+            // non-critical
           }
         }
 
@@ -213,7 +156,6 @@ export default function LiveInterviewPage() {
     error: recorderError,
   } = useMediaRecorder(stream, submitAnswer);
 
-  // Keep snapshot capture in sync with recording state
   useEffect(() => {
     setIsRecordingActive(recording);
   }, [recording]);
@@ -226,11 +168,6 @@ export default function LiveInterviewPage() {
   async function handleComplete() {
     if (recording) {
       await stopRecording();
-    }
-    // Stop full-session recording and upload
-    const fullBlob = await stopFullRecording();
-    if (fullBlob) {
-      void uploadFullRecording(fullBlob);
     }
     await api(`/interviews/${interviewId}/complete`, { method: "POST" });
     router.push(`/interview/result/${interviewId}`);
@@ -273,7 +210,6 @@ export default function LiveInterviewPage() {
               />
             )}
             <div className="flex flex-col gap-2">
-              {/* Primary action row */}
               <div className="flex gap-2">
                 {!recording ? (
                   <Button
@@ -312,7 +248,6 @@ export default function LiveInterviewPage() {
                   </>
                 )}
               </div>
-              {/* Secondary action row */}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => question && speak(question.question)} className="gap-2 flex-1">
                   <Volume2 className="h-4 w-4" /> Repeat Question
@@ -335,6 +270,11 @@ export default function LiveInterviewPage() {
                   : "Listening... speak clearly toward your microphone."}
               </p>
             )}
+            {!recording && mediaReady && (
+              <p className="text-xs text-muted-foreground">
+                Lightweight mode: webcam snapshots for behavior analysis only — no screen or video file recording.
+              </p>
+            )}
             {submitting && <p className="text-sm text-amber-400">Saving your answer...</p>}
             {awaitingNextQuestion && !submitting && (
               <p className="text-sm text-emerald-400 flex items-center gap-2">
@@ -344,9 +284,6 @@ export default function LiveInterviewPage() {
             )}
             {submitError && <p className="text-sm text-red-400">{submitError}</p>}
             {recorderError && <p className="text-sm text-red-400">{recorderError}</p>}
-            {screenCaptureError && (
-              <p className="text-sm text-amber-500">{screenCaptureError}</p>
-            )}
           </CardContent>
         </Card>
 

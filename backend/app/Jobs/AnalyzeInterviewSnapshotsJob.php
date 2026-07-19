@@ -87,7 +87,12 @@ class AnalyzeInterviewSnapshotsJob implements ShouldQueue
             }
 
             try {
-                $result = $aiGateway->analyzeSnapshots($paths, $questionText, $audioPath);
+                $result = $aiGateway->analyzeSnapshots(
+                    $paths,
+                    $questionText,
+                    $audioPath,
+                    (int) config('interview.snapshot_interval_sec', 10),
+                );
                 $normalized = $this->normalizePerAnswer($result, count($paths));
                 $byAnswerResults[(string) $answerId] = $normalized;
                 $this->persistAnswerBehavior((int) $answerId, $result, $normalized);
