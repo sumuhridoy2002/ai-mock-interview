@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { SystemStatusFooter } from "@/components/layout/system-status-footer";
+import { FloatingToolbar } from "@/components/layout/floating-toolbar";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import "./globals.css";
 
@@ -33,7 +33,7 @@ export default function RootLayout({
       <body className="min-h-full">
         <ThemeProvider>
           {children}
-          <SystemStatusFooter />
+          <FloatingToolbar />
         </ThemeProvider>
       </body>
     </html>
