@@ -60,6 +60,21 @@ class PublicProfileTest extends TestCase
             ->assertOk()
             ->assertJsonPath('profile.name', 'Public Candidate')
             ->assertJsonPath('profile.headline', 'Backend developer')
+            ->assertJsonStructure([
+                'profile' => [
+                    'name',
+                    'slug',
+                    'headline',
+                    'member_since',
+                    'average_score',
+                    'completed_count',
+                    'interview_count',
+                    'skills',
+                    'cv',
+                    'interviews',
+                    'performance' => ['best_score', 'by_type', 'top_strengths', 'improvement_areas'],
+                ],
+            ])
             ->assertJsonMissing(['email' => 'secret@example.com']);
     }
 
