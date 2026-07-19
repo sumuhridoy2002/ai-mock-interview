@@ -33,9 +33,39 @@ class ExpertChatController extends Controller
             ->where('user_id', $request->user()->id)
             ->where('session_id', $sessionId)
             ->orderBy('created_at')
-            ->get(['role', 'content', 'created_at']);
+            ->get(['id', 'role', 'content', 'created_at']);
 
         return response()->json(['messages' => $messages, 'session_id' => $sessionId]);
+    }
+
+    public function destroySession(Request $request): JsonResponse
+    {
+        $sessionId = (string) $request->query('session_id', '');
+
+        if (! $sessionId || ! Str::isUuid($sessionId)) {
+            return response()->json(['message' => 'Invalid session.'], 422);
+        }
+
+        ExpertChatMessage::query()
+            ->where('user_id', $request->user()->id)
+            ->where('session_id', $sessionId)
+            ->delete();
+
+        return response()->json([
+            'message' => 'Chat cleared.',
+            'session_id' => (string) Str::uuid(),
+        ]);
+    }
+
+    public function destroyMessage(Request $request, ExpertChatMessage $expertChatMessage): JsonResponse
+    {
+        if ($expertChatMessage->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $expertChatMessage->delete();
+
+        return response()->json(['message' => 'Message deleted.']);
     }
 
     public function store(Request $request): JsonResponse
@@ -57,7 +87,7 @@ class ExpertChatController extends Controller
             return response()->json(['message' => 'Message cannot be empty.'], 422);
         }
 
-        ExpertChatMessage::create([
+        $userMessage = ExpertChatMessage::create([
             'user_id' => $user->id,
             'session_id' => $sessionId,
             'role' => 'user',
@@ -90,7 +120,7 @@ class ExpertChatController extends Controller
         $reply = (string) ($result['reply'] ?? 'Sorry, I could not generate a response.');
         $followups = is_array($result['suggested_followups'] ?? null) ? $result['suggested_followups'] : [];
 
-        ExpertChatMessage::create([
+        $assistantMessage = ExpertChatMessage::create([
             'user_id' => $user->id,
             'session_id' => $sessionId,
             'role' => 'assistant',
@@ -101,6 +131,8 @@ class ExpertChatController extends Controller
             'reply' => $reply,
             'suggested_followups' => $followups,
             'session_id' => $sessionId,
+            'user_message_id' => $userMessage->id,
+            'assistant_message_id' => $assistantMessage->id,
         ]);
     }
 

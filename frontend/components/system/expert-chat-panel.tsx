@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bot, Loader2, Send, Sparkles, User as UserIcon } from "lucide-react";
+import { Bot, Loader2, Send, Sparkles, Trash2, User as UserIcon } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
+  id?: number;
   role: "user" | "assistant";
   content: string;
 }
@@ -18,6 +19,12 @@ interface ChatHistoryResponse {
 interface ChatReplyResponse {
   reply: string;
   suggested_followups: string[];
+  session_id: string;
+  user_message_id: number;
+  assistant_message_id: number;
+}
+
+interface ClearChatResponse {
   session_id: string;
 }
 
@@ -36,6 +43,8 @@ export function ExpertChatPanel() {
   const [followups, setFollowups] = useState<string[]>(SUGGESTED_PROMPTS);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -72,7 +81,17 @@ export function ExpertChatPanel() {
         });
         setSessionId(res.session_id);
         sessionStorage.setItem(SESSION_STORAGE_KEY, res.session_id);
-        setMessages((prev) => [...prev, { role: "assistant", content: res.reply }]);
+        setMessages((prev) => {
+          const next = [...prev];
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (next[i].role === "user" && next[i].id == null) {
+              next[i] = { ...next[i], id: res.user_message_id };
+              break;
+            }
+          }
+          next.push({ role: "assistant", content: res.reply, id: res.assistant_message_id });
+          return next;
+        });
         if (res.suggested_followups?.length) {
           setFollowups(res.suggested_followups);
         }
@@ -88,8 +107,61 @@ export function ExpertChatPanel() {
     [sessionId, loading],
   );
 
+  const clearAllMessages = useCallback(async () => {
+    if (!sessionId || clearing || loading) return;
+    if (!window.confirm("Clear this entire conversation? This cannot be undone.")) return;
+
+    setClearing(true);
+    try {
+      const res = await api<ClearChatResponse>(`/expert/chat?session_id=${sessionId}`, {
+        method: "DELETE",
+      });
+      setSessionId(res.session_id);
+      sessionStorage.setItem(SESSION_STORAGE_KEY, res.session_id);
+      setMessages([]);
+      setFollowups(SUGGESTED_PROMPTS);
+    } catch {
+      // keep current state on failure
+    } finally {
+      setClearing(false);
+    }
+  }, [sessionId, clearing, loading]);
+
+  const deleteMessage = useCallback(
+    async (messageId: number) => {
+      if (deletingId != null || loading) return;
+
+      setDeletingId(messageId);
+      try {
+        await api(`/expert/chat/${messageId}`, { method: "DELETE" });
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      } catch {
+        // keep message on failure
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [deletingId, loading],
+  );
+
   return (
     <div className="rounded-2xl border border-border bg-card shadow-md flex flex-col h-[calc(100vh-16rem)] min-h-[460px]">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <p className="text-sm font-medium text-foreground">Conversation</p>
+        {messages.length > 0 && (
+          <button
+            type="button"
+            onClick={() => void clearAllMessages()}
+            disabled={clearing || loading}
+            title="Clear all messages"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50"
+          >
+            {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            Clear chat
+          </button>
+        )}
+      </div>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4">
         {historyLoaded && messages.length === 0 && (
@@ -104,22 +176,39 @@ export function ExpertChatPanel() {
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div key={i} className={cn("flex gap-3", m.role === "user" && "justify-end")}>
+        {messages.map((m) => (
+          <div key={m.id ?? `${m.role}-${m.content.slice(0, 24)}`} className={cn("group flex gap-3", m.role === "user" && "justify-end")}>
             {m.role === "assistant" && (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-300">
                 <Bot className="h-4 w-4" />
               </div>
             )}
-            <div
-              className={cn(
-                "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-                m.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-border bg-muted/40 text-foreground",
+            <div className={cn("flex max-w-[80%] items-start gap-1.5", m.role === "user" && "flex-row-reverse")}>
+              <div
+                className={cn(
+                  "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                  m.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border bg-muted/40 text-foreground",
+                )}
+              >
+                {m.content}
+              </div>
+              {m.id != null && (
+                <button
+                  type="button"
+                  onClick={() => void deleteMessage(m.id!)}
+                  disabled={deletingId === m.id || loading}
+                  title={m.role === "user" ? "Remove your message" : "Remove AI reply"}
+                  className="mt-1 shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50"
+                >
+                  {deletingId === m.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </button>
               )}
-            >
-              {m.content}
             </div>
             {m.role === "user" && (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">

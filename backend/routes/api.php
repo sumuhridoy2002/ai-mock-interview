@@ -53,5 +53,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/expert/chat', [ExpertChatController::class, 'index']);
         Route::post('/expert/chat', [ExpertChatController::class, 'store'])->middleware('throttle:20,1');
+        Route::delete('/expert/chat', [ExpertChatController::class, 'destroySession']);
+        Route::delete('/expert/chat/{expertChatMessage}', [ExpertChatController::class, 'destroyMessage']);
     });
 });
