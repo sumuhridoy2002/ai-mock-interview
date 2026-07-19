@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { login } from "@/lib/auth";
+import { login, getStoredUser, isAdmin } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +23,8 @@ export default function LoginPage() {
     setError("");
     try {
       await login(email, password);
-      router.push("/dashboard");
+      const stored = getStoredUser();
+      router.push(isAdmin(stored) ? "/admin/users" : "/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

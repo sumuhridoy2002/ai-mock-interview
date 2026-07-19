@@ -127,7 +127,7 @@ export default function AdminUserDetailPage() {
   if (loading) {
     return (
       <AppShell>
-        <p className="text-muted-foreground">Loading dossier…</p>
+        <p className="text-muted-foreground">Loading user profile…</p>
       </AppShell>
     );
   }

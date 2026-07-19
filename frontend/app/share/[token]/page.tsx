@@ -32,14 +32,14 @@ export default function SharePage() {
           </Link>
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-indigo-500" />
-            <span className="font-semibold text-sm">Shared candidate dossier</span>
+            <span className="font-semibold text-sm">Shared candidate profile</span>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-5 py-10 space-y-6">
         {loading ? (
-          <p className="text-muted-foreground">Loading dossier…</p>
+          <p className="text-muted-foreground">Loading profile…</p>
         ) : error || !share ? (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
@@ -49,7 +49,7 @@ export default function SharePage() {
         ) : (
           <>
             <div>
-              <p className="text-sm text-muted-foreground">{share.label || "Candidate dossier"}</p>
+              <p className="text-sm text-muted-foreground">{share.label || "Shared profile"}</p>
               <h1 className="text-3xl font-bold mt-1">{share.candidate.name}</h1>
               {share.candidate.headline && (
                 <p className="mt-2 text-muted-foreground">{share.candidate.headline}</p>

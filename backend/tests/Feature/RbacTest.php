@@ -45,9 +45,50 @@ class RbacTest extends TestCase
         Sanctum::actingAs(User::factory()->admin()->create());
         User::factory()->count(2)->create();
 
-        $this->getJson('/api/v1/admin/users')
+        $response = $this->getJson('/api/v1/admin/users')
             ->assertOk()
             ->assertJsonStructure(['data']);
+
+        foreach ($response->json('data') as $row) {
+            $this->assertSame('candidate', $row['role']);
+        }
+    }
+
+    public function test_admin_cannot_create_interview(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Sanctum::actingAs($admin);
+
+        $this->postJson('/api/v1/interviews', [
+            'resume_id' => 1,
+            'job_title' => 'Test',
+            'job_description' => 'Test',
+            'experience_level' => 'mid',
+            'interview_type' => 'technical',
+        ])->assertForbidden();
+    }
+
+    public function test_admin_users_excluded_from_leaderboard(): void
+    {
+        $admin = User::factory()->admin()->create([
+            'is_profile_public' => true,
+            'show_on_leaderboard' => true,
+            'public_slug' => 'admin-user',
+        ]);
+
+        $candidate = User::factory()->create([
+            'is_profile_public' => true,
+            'show_on_leaderboard' => true,
+            'public_slug' => 'candidate-user',
+        ]);
+        $this->createCompletedInterview($candidate, 80);
+
+        $response = $this->getJson('/api/v1/public/leaderboard');
+
+        $response->assertOk();
+        $slugs = collect($response->json('data'))->pluck('slug')->all();
+        $this->assertContains('candidate-user', $slugs);
+        $this->assertNotContains('admin-user', $slugs);
     }
 
     public function test_admin_can_view_other_users_interview_via_policy(): void
@@ -108,5 +149,23 @@ class RbacTest extends TestCase
             'interview_type' => 'technical',
             'status' => 'completed',
         ]);
+    }
+
+    private function createCompletedInterview(User $user, int $score): Interview
+    {
+        $interview = $this->createInterviewFor($user);
+
+        InterviewReport::create([
+            'interview_id' => $interview->id,
+            'overall_score' => $score,
+            'category_scores' => [],
+            'strengths' => [],
+            'weaknesses' => [],
+            'improvement_areas' => [],
+            'hiring_recommendation' => 'yes',
+            'report_json' => [],
+        ]);
+
+        return $interview;
     }
 }

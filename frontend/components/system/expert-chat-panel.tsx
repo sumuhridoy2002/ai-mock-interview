@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Loader2, Send, Sparkles, Trash2, User as UserIcon } from "lucide-react";
 import { api } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, uuid } from "@/lib/utils";
 
 interface ChatMessage {
   id?: number;
+  clientId?: string;
   role: "user" | "assistant";
   content: string;
 }
@@ -55,7 +56,7 @@ export function ExpertChatPanel() {
       .then((res) => {
         setSessionId(res.session_id);
         sessionStorage.setItem(SESSION_STORAGE_KEY, res.session_id);
-        setMessages(res.messages || []);
+        setMessages((res.messages || []).map((m) => ({ ...m, clientId: `hist-${m.id}` })));
       })
       .catch(() => {})
       .finally(() => setHistoryLoaded(true));
@@ -70,7 +71,7 @@ export function ExpertChatPanel() {
       const trimmed = text.trim();
       if (!trimmed || loading) return;
 
-      setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
+      setMessages((prev) => [...prev, { role: "user", content: trimmed, clientId: uuid() }]);
       setInput("");
       setLoading(true);
 
@@ -89,7 +90,7 @@ export function ExpertChatPanel() {
               break;
             }
           }
-          next.push({ role: "assistant", content: res.reply, id: res.assistant_message_id });
+          next.push({ role: "assistant", content: res.reply, id: res.assistant_message_id, clientId: uuid() });
           return next;
         });
         if (res.suggested_followups?.length) {
@@ -98,7 +99,11 @@ export function ExpertChatPanel() {
       } catch {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: "Sorry, something went wrong reaching the AI service. Please try again." },
+          {
+            role: "assistant",
+            content: "Sorry, something went wrong reaching the AI service. Please try again.",
+            clientId: uuid(),
+          },
         ]);
       } finally {
         setLoading(false);
@@ -177,7 +182,10 @@ export function ExpertChatPanel() {
         )}
 
         {messages.map((m) => (
-          <div key={m.id ?? `${m.role}-${m.content.slice(0, 24)}`} className={cn("group flex gap-3", m.role === "user" && "justify-end")}>
+          <div
+            key={m.clientId ?? (m.id != null ? `msg-${m.id}` : `msg-${m.role}-${m.content.length}`)}
+            className={cn("group flex gap-3", m.role === "user" && "justify-end")}
+          >
             {m.role === "assistant" && (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-300">
                 <Bot className="h-4 w-4" />
@@ -233,9 +241,9 @@ export function ExpertChatPanel() {
 
       {/* Suggested prompts */}
       <div className="flex flex-wrap gap-2 px-5 pb-3">
-        {followups.map((q) => (
+        {followups.map((q, index) => (
           <button
-            key={q}
+            key={`followup-${index}-${q}`}
             type="button"
             onClick={() => void sendMessage(q)}
             disabled={loading}

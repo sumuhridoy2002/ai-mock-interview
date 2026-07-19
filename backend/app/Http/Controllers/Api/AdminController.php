@@ -25,6 +25,7 @@ class AdminController extends Controller
         $search = $request->string('search')->trim()->toString();
 
         $users = User::query()
+            ->where('role', 'candidate')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -59,6 +60,10 @@ class AdminController extends Controller
 
     public function show(User $user): JsonResponse
     {
+        if ($user->isAdmin()) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
         $stats = $this->profileService->userStats($user);
 
         $interviews = $user->interviews()
@@ -96,6 +101,10 @@ class AdminController extends Controller
 
     public function update(Request $request, User $user): JsonResponse
     {
+        if ($user->isAdmin()) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
         $validated = $request->validate([
             'role' => ['sometimes', Rule::in(['admin', 'candidate'])],
             'public_slug' => [

@@ -9,8 +9,16 @@ import { AlarmBanner } from "@/components/layout/alarm-banner";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
-function isRestrictedPath(pathname: string): boolean {
+function isAdminOnlyPath(pathname: string): boolean {
+  if (pathname === "/system/expert" || pathname.startsWith("/system/expert/")) {
+    return false;
+  }
   return pathname.startsWith("/system/") || pathname.startsWith("/admin/");
+}
+
+function isCandidateOnlyPath(pathname: string): boolean {
+  return pathname.startsWith("/system/") === false
+    && (pathname.startsWith("/interview/") || pathname.startsWith("/resume/"));
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -29,15 +37,27 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
 
     const stored = getStoredUser();
-    if (isRestrictedPath(pathname) && stored && !isAdmin(stored)) {
+    if (isAdminOnlyPath(pathname) && stored && !isAdmin(stored)) {
       router.replace("/dashboard");
+      return;
+    }
+    if (isCandidateOnlyPath(pathname) && stored && isAdmin(stored)) {
+      router.replace("/admin/users");
       return;
     }
 
     fetchUser()
       .then((user) => {
-        if (isRestrictedPath(pathname) && !isAdmin(user)) {
+        if (isAdminOnlyPath(pathname) && !isAdmin(user)) {
           router.replace("/dashboard");
+          return;
+        }
+        if (isCandidateOnlyPath(pathname) && isAdmin(user)) {
+          router.replace("/admin/users");
+          return;
+        }
+        if (pathname === "/dashboard" && isAdmin(user)) {
+          router.replace("/admin/users");
           return;
         }
         setReady(true);
@@ -79,7 +99,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <AlarmBanner alarms={firedAlarms} onStop={stopRinging} />
+      {!isAdmin(getStoredUser()) && (
+        <AlarmBanner alarms={firedAlarms} onStop={stopRinging} />
+      )}
 
       <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur-xl lg:hidden">
         <button

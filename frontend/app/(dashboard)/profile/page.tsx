@@ -7,7 +7,7 @@ import { PageHero, SectionPanel } from "@/components/ui/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { User as UserIcon, ExternalLink } from "lucide-react";
-import { changePassword, fetchUser, getStoredUser, updateProfile, User } from "@/lib/auth";
+import { changePassword, fetchUser, getStoredUser, isAdmin, updateProfile, User } from "@/lib/auth";
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(getStoredUser());
@@ -111,7 +111,11 @@ export default function ProfilePage() {
         <PageHero
           icon={UserIcon}
           title="Profile"
-          subtitle="Update your account, password, and public visibility preferences."
+          subtitle={
+            isAdmin(user)
+              ? "Update your admin account name, email, and password."
+              : "Update your account, password, and public visibility preferences."
+          }
           accent="violet"
         />
 
@@ -191,6 +195,7 @@ export default function ProfilePage() {
           </SectionPanel>
         </div>
 
+        {!isAdmin(user) && (
         <SectionPanel title="Public visibility">
           <div className="space-y-4 max-w-lg">
             <p className="text-sm text-muted-foreground">
@@ -250,6 +255,7 @@ export default function ProfilePage() {
             )}
           </div>
         </SectionPanel>
+        )}
       </div>
     </AppShell>
   );

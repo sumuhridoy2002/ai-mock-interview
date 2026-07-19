@@ -98,6 +98,10 @@ class AuthController extends Controller
         $user = $request->user();
         $validated = $request->validated();
 
+        if ($user->isAdmin()) {
+            unset($validated['public_headline'], $validated['is_profile_public'], $validated['show_on_leaderboard']);
+        }
+
         if (($validated['show_on_leaderboard'] ?? false) && ! ($validated['is_profile_public'] ?? $user->is_profile_public)) {
             return response()->json(['message' => 'Public profile must be enabled before joining the leaderboard.'], 422);
         }

@@ -37,6 +37,7 @@ interface NavGroup {
   title: string;
   items: NavItem[];
   adminOnly?: boolean;
+  candidateOnly?: boolean;
 }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -53,6 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: "Preparation",
+    candidateOnly: true,
     items: [
       {
         href: "/resume/upload",
@@ -69,13 +71,24 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    title: "AI Coach",
+    items: [
+      {
+        href: "/system/expert",
+        label: "AI Expert",
+        description: "Ask about scoring & strategy",
+        icon: MessageCircleQuestion,
+      },
+    ],
+  },
+  {
     title: "Admin",
     adminOnly: true,
     items: [
       {
         href: "/admin/users",
         label: "Users",
-        description: "Candidates & dossiers",
+        description: "Manage candidates",
         icon: Users,
         adminOnly: true,
       },
@@ -118,13 +131,6 @@ const NAV_GROUPS: NavGroup[] = [
         label: "How it works",
         description: "Architecture & flow",
         icon: Workflow,
-        adminOnly: true,
-      },
-      {
-        href: "/system/expert",
-        label: "AI Expert",
-        description: "Ask about scoring & strategy",
-        icon: MessageCircleQuestion,
         adminOnly: true,
       },
     ],
@@ -174,10 +180,29 @@ export function DashboardSidebar({
 
   const visibleGroups = useMemo(() => {
     const admin = isAdmin(user);
-    return NAV_GROUPS.filter((group) => !group.adminOnly || admin).map((group) => ({
-      ...group,
-      items: group.items.filter((item) => !item.adminOnly || admin),
-    }));
+    return NAV_GROUPS.filter((group) => {
+      if (group.adminOnly && !admin) return false;
+      if (group.candidateOnly && admin) return false;
+      return true;
+    }).map((group) => {
+      if (admin && group.title === "Overview") {
+        return {
+          ...group,
+          items: [
+            {
+              href: "/admin/users",
+              label: "User Management",
+              description: "Candidates & performance",
+              icon: Users,
+            },
+          ],
+        };
+      }
+      return {
+        ...group,
+        items: group.items.filter((item) => !item.adminOnly || admin),
+      };
+    });
   }, [user]);
 
   return (
@@ -213,16 +238,18 @@ export function DashboardSidebar({
         </button>
       </div>
 
-      {/* Primary CTA */}
-      <div className="px-4 pt-5 pb-2">
-        <Link
-          href="/interview/setup"
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 ring-1 ring-white/10 transition-all hover:from-indigo-500 hover:to-violet-500 hover:shadow-indigo-500/30 active:scale-[0.98]"
-        >
-          <Plus className="h-4 w-4" />
-          New Interview
-        </Link>
-      </div>
+      {/* Primary CTA — candidates only */}
+      {!isAdmin(user) && (
+        <div className="px-4 pt-5 pb-2">
+          <Link
+            href="/interview/setup"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 ring-1 ring-white/10 transition-all hover:from-indigo-500 hover:to-violet-500 hover:shadow-indigo-500/30 active:scale-[0.98]"
+          >
+            <Plus className="h-4 w-4" />
+            New Interview
+          </Link>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-3 scrollbar-thin">

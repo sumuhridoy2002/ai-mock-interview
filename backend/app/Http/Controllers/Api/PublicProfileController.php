@@ -22,6 +22,7 @@ class PublicProfileController extends Controller
         $limit = min((int) $request->query('limit', 100), 100);
 
         $entries = User::query()
+            ->where('role', 'candidate')
             ->where('show_on_leaderboard', true)
             ->where('is_profile_public', true)
             ->whereNotNull('public_slug')
@@ -55,6 +56,7 @@ class PublicProfileController extends Controller
     {
         $user = User::query()
             ->where('public_slug', $slug)
+            ->where('role', 'candidate')
             ->where('is_profile_public', true)
             ->first();
 
