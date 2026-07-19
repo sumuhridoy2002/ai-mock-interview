@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\AnswerBehavior;
 use App\Models\Interview;
 use App\Support\Scoring\BehaviorAggregator;
 use App\Models\InterviewAnswer;
@@ -80,10 +81,16 @@ class AnalyzeInterviewSnapshotsJob implements ShouldQueue
             sort($paths);
             $answer = InterviewAnswer::with('question')->find($answerId);
             $questionText = $answer?->question?->question_text ?? '';
+            $audioPath = $answer?->audio_path;
+            if ($audioPath && ! Storage::disk('local')->exists($audioPath)) {
+                $audioPath = null;
+            }
 
             try {
-                $result = $aiGateway->analyzeSnapshots($paths, $questionText);
-                $byAnswerResults[(string) $answerId] = $this->normalizePerAnswer($result, count($paths));
+                $result = $aiGateway->analyzeSnapshots($paths, $questionText, $audioPath);
+                $normalized = $this->normalizePerAnswer($result, count($paths));
+                $byAnswerResults[(string) $answerId] = $normalized;
+                $this->persistAnswerBehavior((int) $answerId, $result, $normalized);
             } catch (\Throwable $e) {
                 Log::warning('AnalyzeInterviewSnapshotsJob: per-answer failed, using fallback', [
                     'interview_id' => $this->interview->id,
@@ -133,6 +140,24 @@ class AnalyzeInterviewSnapshotsJob implements ShouldQueue
             'snapshots'     => count($allPaths),
             'avg_confidence' => $summary['avg_confidence'] ?? null,
         ]);
+    }
+
+    private function persistAnswerBehavior(int $answerId, array $result, array $normalized): void
+    {
+        AnswerBehavior::updateOrCreate(
+            ['interview_answer_id' => $answerId],
+            [
+                'confidence'           => (int) ($result['confidence'] ?? $normalized['confidence']),
+                'nervousness'          => (int) ($result['nervousness'] ?? $normalized['nervousness']),
+                'eye_contact_ratio'    => (float) ($result['eye_contact_ratio'] ?? $normalized['eye_contact_ratio']),
+                'head_stability'       => (float) ($result['head_stability'] ?? $normalized['head_stability']),
+                'blink_rate'           => (float) ($result['blink_rate'] ?? $normalized['blink_rate']),
+                'emotion_distribution' => $result['emotion_distribution'] ?? $normalized['emotion_distribution'],
+                'prosody'              => $result['prosody'] ?? [],
+                'raw'                  => $result,
+                'coaching_narrative'   => $result['coaching_narrative'] ?? $normalized['coaching_narrative'],
+            ],
+        );
     }
 
     private function normalizePerAnswer(array $result, int $snapshotCount): array

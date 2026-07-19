@@ -1,20 +1,15 @@
 """
 Vision analysis pipeline.
 
-Given a video file (bytes), samples frames at ~3 fps, applies:
-  1. MediaPipe Face Landmarker for gaze direction, head pose, blink rate (Eye Aspect Ratio)
-  2. A HuggingFace emotion model for per-frame facial emotion probabilities
-     (defaults to EMOTION_MODEL env — 'dima806/facial_emotions_image_detection')
-  3. librosa for audio prosody (pitch variance, speech rate, pause ratio)
+Snapshot path (preferred):
+  1. MediaPipe Face Landmarker — iris gaze, EAR blinks, head pose
+  2. Batched HuggingFace emotion model (EMOTION_MODEL env)
+  3. Optional answer audio → librosa prosody (pitch, pauses, speech rate)
 
-Aggregates everything into scalar scores suitable for storage:
-  confidence (0-100), nervousness (0-100), eye_contact_ratio,
-  head_stability, blink_rate, emotion_distribution, prosody.
+Video path (fallback):
+  OpenCV ~3 fps sampling + same models + prosody from video audio track.
 
-Set AI_USE_MOCK=true to skip all heavy computation and return deterministic
-mock metrics (useful for dev without GPU / model downloads).
-
-GPU: if torch.cuda.is_available() the emotion model runs on GPU automatically.
+Set AI_USE_MOCK=true to skip ML and return deterministic mock metrics.
 """
 
 from __future__ import annotations
@@ -33,6 +28,9 @@ USE_MOCK = os.getenv("AI_USE_MOCK", "false").lower() == "true"
 EMOTION_MODEL = os.getenv(
     "EMOTION_MODEL", "dima806/facial_emotions_image_detection"
 )
+EMOTION_BATCH_SIZE = int(os.getenv("EMOTION_BATCH_SIZE", "8"))
+SNAPSHOT_INTERVAL_SEC = float(os.getenv("SNAPSHOT_INTERVAL_SEC", "10"))
+MAX_EMOTION_FRAMES = int(os.getenv("MAX_EMOTION_FRAMES", "12"))
 
 FRAME_OK_CONFIDENCE = 60
 FRAME_OK_NERVOUSNESS = 45
@@ -252,6 +250,71 @@ def _head_pose(landmarks, w: int, h: int) -> tuple[float, float]:
     return yaw, max(0.0, pitch)
 
 
+# Iris indices (FaceMesh / Face Landmarker with refinement)
+_LEFT_EYE_INNER = 133
+_LEFT_EYE_OUTER = 33
+_LEFT_IRIS = 468
+_RIGHT_EYE_INNER = 362
+_RIGHT_EYE_OUTER = 263
+_RIGHT_IRIS = 473
+
+
+def _iris_eye_contact(lms, yaw: float) -> float:
+    """
+    Estimate gaze toward camera using iris position within each eye socket.
+    Falls back to head-yaw heuristic when iris landmarks are unavailable.
+    """
+    try:
+        if len(lms) <= _RIGHT_IRIS:
+            return 1.0 if yaw < 0.08 else 0.0
+
+        def one_eye(inner_idx: int, outer_idx: int, iris_idx: int) -> float:
+            inner, outer, iris = lms[inner_idx], lms[outer_idx], lms[iris_idx]
+            width = abs(outer.x - inner.x)
+            if width < 0.01:
+                return 0.5
+            center = (inner.x + outer.x) / 2.0
+            offset = abs(iris.x - center) / (width / 2.0)
+            return max(0.0, 1.0 - min(offset, 1.0))
+
+        left = one_eye(_LEFT_EYE_INNER, _LEFT_EYE_OUTER, _LEFT_IRIS)
+        right = one_eye(_RIGHT_EYE_INNER, _RIGHT_EYE_OUTER, _RIGHT_IRIS)
+        return float((left + right) / 2.0)
+    except (IndexError, AttributeError, TypeError):
+        return 1.0 if yaw < 0.08 else 0.0
+
+
+def _frame_quality_score(rgb_arr: np.ndarray, lms) -> float:
+    """Higher = better frame for emotion inference (face size + brightness)."""
+    h, w = rgb_arr.shape[:2]
+    xs = [lm.x for lm in lms]
+    ys = [lm.y for lm in lms]
+    face_area = (max(xs) - min(xs)) * (max(ys) - min(ys))
+    size_score = min(face_area / 0.12, 1.0)
+    gray = np.mean(rgb_arr.astype(np.float32), axis=2)
+    brightness = float(np.mean(gray)) / 255.0
+    brightness_score = 1.0 - abs(brightness - 0.45) * 2.0
+    brightness_score = max(0.0, min(1.0, brightness_score))
+    return float(size_score * 0.65 + brightness_score * 0.35)
+
+
+def _batch_classify_emotions(pil_images: list, emotion_pipe, batch_size: int) -> list[list[dict]]:
+    """Run HF image-classification in batches for throughput."""
+    if not pil_images:
+        return []
+
+    all_preds: list[list[dict]] = []
+    for start in range(0, len(pil_images), batch_size):
+        chunk = pil_images[start : start + batch_size]
+        raw = emotion_pipe(chunk, batch_size=len(chunk))
+        if chunk and not isinstance(raw, list):
+            raw = [raw]
+        elif chunk and raw and isinstance(raw[0], dict):
+            raw = [raw]
+        all_preds.extend(raw)
+    return all_preds
+
+
 # ---------------------------------------------------------------------------
 # Audio prosody via librosa
 # ---------------------------------------------------------------------------
@@ -297,6 +360,25 @@ def _analyze_audio(video_path: str) -> dict[str, float]:
     except Exception as e:
         logger.warning("Audio prosody analysis failed: %s", e)
         return {}
+
+
+def _analyze_audio_bytes(audio_bytes: bytes, filename: str = "answer.webm") -> dict[str, float]:
+    """Extract prosody from answer audio bytes (webm/mp4/wav)."""
+    if not audio_bytes:
+        return {}
+
+    suffix = os.path.splitext(filename)[-1] or ".webm"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(audio_bytes)
+        tmp_path = tmp.name
+
+    try:
+        return _analyze_audio(tmp_path)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -348,30 +430,35 @@ async def analyze_images(
     images: list[bytes],
     question: str = "",
     generate_narrative: bool = True,
+    audio_bytes: bytes | None = None,
+    audio_filename: str = "answer.webm",
+    snapshot_interval_sec: float | None = None,
 ) -> dict[str, Any]:
     """
     Analyse a list of JPEG/PNG snapshot bytes captured during recording.
 
-    No cv2 required — uses PIL + mediapipe static image mode.
-    This is the preferred path when snapshots are available.
+    Uses PIL + MediaPipe (iris gaze, EAR blinks) and batched HuggingFace emotion
+    inference. Optional answer audio adds librosa prosody to behavior scores.
     """
     if USE_MOCK or not images:
         return _mock_result(question)
 
+    interval = snapshot_interval_sec if snapshot_interval_sec and snapshot_interval_sec > 0 else SNAPSHOT_INTERVAL_SEC
+
     try:
-        import numpy as np
         from PIL import Image as PILImage
 
         emotion_pipe = _get_emotion_pipeline()
+        prosody = _analyze_audio_bytes(audio_bytes, audio_filename) if audio_bytes else {}
 
         ear_values: list[float] = []
+        eye_contact_values: list[float] = []
         yaw_values: list[float] = []
         pitch_values: list[float] = []
-        emotion_accumulator: dict[str, list[float]] = {}
-        frames_analyzed = 0
         frame_scores: list[dict[str, Any]] = []
+        face_frames: list[dict[str, Any]] = []
 
-        for img_bytes in images:
+        for img_index, img_bytes in enumerate(images):
             frame_entry: dict[str, Any] = {"face_detected": False, "frame_status": "issue"}
             try:
                 pil_img = PILImage.open(io.BytesIO(img_bytes)).convert("RGB")
@@ -385,47 +472,73 @@ async def analyze_images(
 
                 ear_val = _ear(lms, w, h)
                 yaw, pitch = _head_pose(lms, w, h)
+                eye_contact = _iris_eye_contact(lms, yaw)
+
                 ear_values.append(ear_val)
                 yaw_values.append(yaw)
                 pitch_values.append(pitch)
+                eye_contact_values.append(eye_contact)
 
-                preds = emotion_pipe(pil_img)
-                frame_emotions: dict[str, float] = {}
-                if preds:
-                    for p in preds:
-                        label = _normalize_emotion_label(p["label"])
-                        score = round(p["score"], 4)
-                        frame_emotions[label] = score
-                        emotion_accumulator.setdefault(label, []).append(score)
+                quality = _frame_quality_score(rgb_arr, lms)
+                face_frames.append({
+                    "index": len(frame_scores),
+                    "quality": quality,
+                    "pil": pil_img,
+                    "eye_contact": eye_contact,
+                })
 
-                eye_contact = 1.0 if yaw < 0.08 else 0.0
-                f_conf, f_nerv = _derive_scores(frame_emotions, eye_contact, 0.85, 16.0, {})
-                dominant = max(frame_emotions, key=frame_emotions.get) if frame_emotions else "neutral"
+                f_conf, f_nerv = _derive_scores({}, eye_contact, 0.85, 16.0, prosody)
                 frame_entry = {
                     "face_detected": True,
                     "confidence": f_conf,
                     "nervousness": f_nerv,
-                    "dominant_emotion": dominant,
+                    "dominant_emotion": "neutral",
                     "eye_contact": round(eye_contact, 2),
                     "frame_status": _frame_status(True, f_conf, f_nerv, eye_contact),
                 }
                 frame_scores.append(frame_entry)
-                frames_analyzed += 1
             except Exception as e:
-                logger.debug("Snapshot analysis error: %s", e)
+                logger.debug("Snapshot landmark error: %s", e)
                 frame_scores.append(frame_entry)
-                continue
 
+        frames_analyzed = len(ear_values)
         if frames_analyzed == 0:
             logger.warning("No faces detected in snapshots — returning mock")
             return _mock_result(question)
 
+        selected = sorted(face_frames, key=lambda item: item["quality"], reverse=True)[:MAX_EMOTION_FRAMES]
+        pil_batch = [item["pil"] for item in selected]
+        batch_preds = _batch_classify_emotions(pil_batch, emotion_pipe, EMOTION_BATCH_SIZE)
+
+        emotion_accumulator: dict[str, list[float]] = {}
+        for slot, preds in zip(selected, batch_preds):
+            if not preds:
+                continue
+            frame_emotions: dict[str, float] = {}
+            for p in preds:
+                label = _normalize_emotion_label(p["label"])
+                score = round(float(p["score"]), 4)
+                frame_emotions[label] = score
+                emotion_accumulator.setdefault(label, []).append(score)
+
+            idx = slot["index"]
+            ec = slot["eye_contact"]
+            f_conf, f_nerv = _derive_scores(frame_emotions, ec, 0.85, 16.0, prosody)
+            dominant = max(frame_emotions, key=frame_emotions.get)
+            if idx < len(frame_scores) and frame_scores[idx].get("face_detected"):
+                frame_scores[idx].update({
+                    "confidence": f_conf,
+                    "nervousness": f_nerv,
+                    "dominant_emotion": dominant,
+                    "frame_status": _frame_status(True, f_conf, f_nerv, ec),
+                })
+
         ear_arr = np.array(ear_values)
-        blinks = int(np.sum(np.diff((ear_arr < 0.21).astype(int)) == 1))
-        duration_sec = max(1, len(images) * 15)  # ~15s between snapshots
+        blinks = int(np.sum(np.diff((ear_arr < 0.21).astype(int)) == 1)) if len(ear_arr) > 1 else 0
+        duration_sec = max(1.0, len(images) * interval)
         blink_rate = round(blinks / duration_sec * 60, 1)
 
-        eye_contact_ratio = round(float(np.mean(np.array(yaw_values) < 0.08)), 3)
+        eye_contact_ratio = round(float(np.mean(eye_contact_values)), 3)
         head_stability = round(float(1.0 - min(np.std(yaw_values) + np.std(pitch_values), 1.0)), 3)
 
         emotion_dist: dict[str, float] = {
@@ -434,14 +547,14 @@ async def analyze_images(
         }
 
         confidence, nervousness = _derive_scores(
-            emotion_dist, eye_contact_ratio, head_stability, blink_rate, {}
+            emotion_dist, eye_contact_ratio, head_stability, blink_rate, prosody
         )
 
         coaching_narrative = ""
         if generate_narrative:
             coaching_narrative = _generate_narrative(
                 confidence, nervousness, eye_contact_ratio,
-                head_stability, blink_rate, emotion_dist, {}, question
+                head_stability, blink_rate, emotion_dist, prosody, question
             )
 
         return {
@@ -451,7 +564,7 @@ async def analyze_images(
             "head_stability": head_stability,
             "blink_rate": blink_rate,
             "emotion_distribution": emotion_dist,
-            "prosody": {},
+            "prosody": prosody,
             "coaching_narrative": coaching_narrative,
             "frames_analyzed": frames_analyzed,
             "frame_scores": frame_scores,
@@ -516,6 +629,7 @@ def _run_analysis(video_path: str, question: str, generate_narrative: bool) -> d
     ear_values: list[float] = []
     yaw_values: list[float] = []
     pitch_values: list[float] = []
+    eye_contact_values: list[float] = []
     emotion_accumulator: dict[str, list[float]] = {}
     frames_analyzed = 0
     frame_idx = 0
@@ -544,6 +658,7 @@ def _run_analysis(video_path: str, question: str, generate_narrative: bool) -> d
         yaw, pitch = _head_pose(lms, w, h)
         yaw_values.append(yaw)
         pitch_values.append(pitch)
+        eye_contact_values.append(_iris_eye_contact(lms, yaw))
 
         # Emotion
         emotions = _score_frame_emotion(frame, emotion_pipe)
@@ -566,8 +681,8 @@ def _run_analysis(video_path: str, question: str, generate_narrative: bool) -> d
     duration_sec = max(1, frames_analyzed / 3)  # sampled at 3 fps
     blink_rate = round(blinks / duration_sec * 60, 1)  # blinks per minute
 
-    # Eye contact: fraction of frames where gaze is roughly centred (low yaw)
-    eye_contact_ratio = round(float(np.mean(np.array(yaw_values) < 0.08)), 3)
+    # Eye contact: iris-aware gaze averaged across sampled frames
+    eye_contact_ratio = round(float(np.mean(eye_contact_values)), 3) if eye_contact_values else 0.0
 
     # Head stability: inverse of yaw + pitch std dev
     head_stability = round(float(1.0 - min(np.std(yaw_values) + np.std(pitch_values), 1.0)), 3)

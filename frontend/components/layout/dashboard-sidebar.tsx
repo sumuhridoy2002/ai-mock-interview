@@ -20,6 +20,7 @@ import {
   List,
   MessageCircleQuestion,
   Users,
+  Database,
 } from "lucide-react";
 import { fetchUser, getStoredUser, isAdmin, type User as AuthUser } from "@/lib/auth";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -90,6 +91,13 @@ const NAV_GROUPS: NavGroup[] = [
         label: "User Management",
         description: "Browse candidates",
         icon: Users,
+        adminOnly: true,
+      },
+      {
+        href: "/admin/erd",
+        label: "Database ERD",
+        description: "Full schema diagram",
+        icon: Database,
         adminOnly: true,
       },
     ],

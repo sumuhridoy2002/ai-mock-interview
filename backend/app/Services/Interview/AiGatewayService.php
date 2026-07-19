@@ -242,27 +242,39 @@ class AiGatewayService
     }
 
     /**
-     * Send an array of JPEG snapshot file paths to the AI snapshot analysis endpoint.
+     * Send snapshot images (+ optional answer audio) to the AI vision pipeline.
      *
      * @param  string[]  $storagePaths  Paths on the `local` disk
-     * @param  string    $question      Interview question (for narrative context)
+     * @param  string|null  $audioPath  Optional answer audio for prosody analysis
      */
-    public function analyzeSnapshots(array $storagePaths, string $question = ''): array
-    {
+    public function analyzeSnapshots(
+        array $storagePaths,
+        string $question = '',
+        ?string $audioPath = null,
+        int $snapshotIntervalSec = 10,
+    ): array {
         $timeout = (int) config('ai.timeout', 120);
         $request = Http::timeout($timeout)->withHeaders($this->headers());
 
         foreach ($storagePaths as $i => $path) {
             $abs = Storage::disk('local')->path($path);
             if (is_readable($abs)) {
-                $request = $request->attach("snapshots", file_get_contents($abs), "snap_{$i}.jpg");
+                $request = $request->attach('snapshots', file_get_contents($abs), "snap_{$i}.jpg");
+            }
+        }
+
+        if ($audioPath) {
+            $audioAbs = Storage::disk('local')->path($audioPath);
+            if (is_readable($audioAbs)) {
+                $request = $request->attach('audio', file_get_contents($audioAbs), basename($audioPath));
             }
         }
 
         try {
             $response = $request->post(config('ai.service_url').'/pipeline/vision/analyze-snapshots', [
-                'question'           => $question,
-                'generate_narrative' => 'true',
+                'question'                => $question,
+                'generate_narrative'      => 'true',
+                'snapshot_interval_sec'   => (string) $snapshotIntervalSec,
             ]);
 
             $response->throw();

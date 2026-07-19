@@ -12,6 +12,7 @@ import {
   Trophy,
   Users,
   ChevronRight,
+  Database,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHero, StatTile } from "@/components/ui/page-shell";
@@ -113,6 +114,7 @@ export default function AdminDashboardPage() {
                 <CardContent className="space-y-2">
                   {[
                     { href: "/admin/users", label: "Manage candidates", icon: Users },
+                    { href: "/admin/erd", label: "Database ERD", icon: Database },
                     { href: "/system/metrics", label: "System metrics", icon: Activity },
                     { href: "/system/expert", label: "AI Expert", icon: MessageCircleQuestion },
                     { href: "/", label: "Public leaderboard", icon: Trophy },

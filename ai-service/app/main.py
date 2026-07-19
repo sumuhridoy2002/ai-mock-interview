@@ -223,15 +223,29 @@ async def vision_analyze_snapshots(
     snapshots: list[UploadFile] = File(...),
     question: str = Form(""),
     generate_narrative: str = Form("true"),
+    snapshot_interval_sec: str = Form("10"),
+    audio: UploadFile | None = File(None),
 ):
     """
-    Analyse a list of JPEG/PNG snapshot images (captured ~every 15s during recording).
-    No cv2 required — uses PIL + mediapipe static image mode.
-    Returns the same behavioural metrics as /pipeline/vision/analyze.
+    Analyse JPEG/PNG snapshots (~every 10s during recording).
+    Optional answer audio adds librosa prosody to confidence/nervousness scores.
     """
     images: list[bytes] = [await s.read() for s in snapshots]
+    audio_bytes = await audio.read() if audio is not None else None
+    audio_name = audio.filename if audio is not None else "answer.webm"
     want_narrative = generate_narrative.lower() not in ("false", "0", "no")
-    return await analyze_images(images, question=question, generate_narrative=want_narrative)
+    try:
+        interval = float(snapshot_interval_sec)
+    except ValueError:
+        interval = 10.0
+    return await analyze_images(
+        images,
+        question=question,
+        generate_narrative=want_narrative,
+        audio_bytes=audio_bytes,
+        audio_filename=audio_name,
+        snapshot_interval_sec=interval,
+    )
 
 
 @app.post("/pipeline/voice/process", dependencies=[Depends(verify_secret)] if AI_SECRET else [])
