@@ -3,11 +3,15 @@
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useCallback, useEffect, useState } from "react";
 import { Menu, Sparkles } from "lucide-react";
-import { getToken, logout } from "@/lib/auth";
+import { fetchUser, getStoredUser, getToken, isAdmin, logout } from "@/lib/auth";
 import { useScheduledInterviewAlarm } from "@/hooks/useScheduledInterviewAlarm";
 import { AlarmBanner } from "@/components/layout/alarm-banner";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+
+function isRestrictedPath(pathname: string): boolean {
+  return pathname.startsWith("/system/") || pathname.startsWith("/admin/");
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -21,10 +25,27 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!getToken()) {
       router.replace("/login");
-    } else {
-      setReady(true);
+      return;
     }
-  }, [router]);
+
+    const stored = getStoredUser();
+    if (isRestrictedPath(pathname) && stored && !isAdmin(stored)) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    fetchUser()
+      .then((user) => {
+        if (isRestrictedPath(pathname) && !isAdmin(user)) {
+          router.replace("/dashboard");
+          return;
+        }
+        setReady(true);
+      })
+      .catch(() => {
+        router.replace("/login");
+      });
+  }, [router, pathname]);
 
   useEffect(() => {
     setMobileOpen(false);

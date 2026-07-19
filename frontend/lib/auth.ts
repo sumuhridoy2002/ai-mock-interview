@@ -1,14 +1,25 @@
 import { api } from "./api";
 
+export type UserRole = "admin" | "candidate";
+
 export interface User {
   id: number;
   name: string;
   email: string;
+  role: UserRole;
+  public_slug?: string | null;
+  is_profile_public?: boolean;
+  show_on_leaderboard?: boolean;
+  public_headline?: string | null;
 }
 
 export interface AuthResponse {
   user: User;
   token: string;
+}
+
+export function isAdmin(user: User | null | undefined): boolean {
+  return user?.role === "admin";
 }
 
 export function getToken(): string | null {
@@ -28,7 +39,12 @@ export function clearToken(): void {
 export function getStoredUser(): User | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem("auth_user");
-  return raw ? JSON.parse(raw) : null;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as User;
+  } catch {
+    return null;
+  }
 }
 
 export function setStoredUser(user: User): void {
@@ -74,7 +90,15 @@ export async function fetchUser(): Promise<User> {
   return data.user;
 }
 
-export async function updateProfile(payload: { name?: string; email?: string }): Promise<User> {
+export interface UpdateProfilePayload {
+  name?: string;
+  email?: string;
+  public_headline?: string | null;
+  is_profile_public?: boolean;
+  show_on_leaderboard?: boolean;
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
   const data = await api<{ user: User }>("/user", {
     method: "PATCH",
     body: JSON.stringify(payload),

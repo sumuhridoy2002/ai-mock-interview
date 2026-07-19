@@ -24,6 +24,9 @@ class UpdateProfileRequest extends FormRequest
                 'max:255',
                 Rule::unique('users', 'email')->ignore($this->user()?->id),
             ],
+            'public_headline' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'is_profile_public' => ['sometimes', 'boolean'],
+            'show_on_leaderboard' => ['sometimes', 'boolean'],
         ];
     }
 }

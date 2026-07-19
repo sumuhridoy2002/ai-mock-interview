@@ -2,12 +2,31 @@
 
 import Link from "next/link";
 import { Activity, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useSystemMetrics } from "@/hooks/useSystemMetrics";
+import { fetchUser, getStoredUser, isAdmin } from "@/lib/auth";
 import { ratingClass } from "@/lib/performance-benchmarks";
 import { cn } from "@/lib/utils";
 
 export function SystemStatusFooter() {
+  const [show, setShow] = useState(false);
   const { metrics, refresh, isRefreshing, refreshIntervalSeconds } = useSystemMetrics();
+
+  useEffect(() => {
+    const stored = getStoredUser();
+    if (isAdmin(stored)) {
+      setShow(true);
+      return;
+    }
+
+    fetchUser()
+      .then((user) => setShow(isAdmin(user)))
+      .catch(() => setShow(false));
+  }, []);
+
+  if (!show) {
+    return null;
+  }
 
   const apiLabel =
     metrics.apiStatus === "checking"
@@ -38,17 +57,22 @@ export function SystemStatusFooter() {
             {metrics.performanceScore}%
           </span>
           <span className="hidden sm:inline text-xs text-slate-500">SPS</span>
-          <span className={cn("hidden sm:inline text-xs font-mono", ratingClass(apiRating))}>
-            API {apiLabel}
-          </span>
         </Link>
+        <span className="text-slate-700">|</span>
+        <span
+          className={cn("px-2 text-xs font-mono", ratingClass(apiRating))}
+          title="API latency"
+        >
+          API {apiLabel}
+        </span>
         <button
           type="button"
-          onClick={() => void refresh()}
-          className="rounded-full p-1.5 hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-colors"
-          title={`Refresh (auto every ${refreshIntervalSeconds}s)`}
+          onClick={() => refresh()}
+          disabled={isRefreshing}
+          className="rounded-full p-1.5 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200 disabled:opacity-50"
+          title={`Refresh metrics (auto every ${refreshIntervalSeconds}s)`}
         >
-          <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin text-indigo-400")} />
+          <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
         </button>
       </div>
     </div>

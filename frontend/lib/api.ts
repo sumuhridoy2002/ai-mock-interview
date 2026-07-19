@@ -44,6 +44,32 @@ export async function api<T>(
   return data as T;
 }
 
+/** Public API calls without auth token. */
+export async function publicApi<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: HeadersInit = {
+    Accept: "application/json",
+    ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new ApiError(
+      (data as { message?: string }).message || "Request failed",
+      response.status,
+      data
+    );
+  }
+
+  return data as T;
+}
+
 /** Fetch a binary file from the API with the stored auth token. */
 export async function apiBlob(path: string): Promise<Blob> {
   const token =

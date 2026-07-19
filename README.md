@@ -60,6 +60,19 @@ ollama serve
 
 > Open **[http://localhost:3000](http://localhost:3000)** — Laragon Redis + all 6 terminals must be running for full functionality.
 
+### Roles & admin access
+
+After migrating, seed the default admin:
+
+```bash
+cd backend
+php artisan db:seed
+```
+
+Configure `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env` (see `.env.example`). Registration always creates **candidate** users. Admins see the **Users** and **System** sections; candidates do not.
+
+Public talent discovery: candidates can opt in from **Profile** (`/profile`) to appear on the homepage leaderboard (`/`) and at `/public/profiles/{slug}`. Admins can create share links from **Admin → Users → [user] → Sharing** (`/share/{token}`).
+
 ---
 
 ## Quick Start

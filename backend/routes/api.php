@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ExpertChatController;
 use App\Http\Controllers\Api\InterviewController;
+use App\Http\Controllers\Api\PublicProfileController;
 use App\Http\Controllers\Api\ResumeController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +16,11 @@ Route::prefix('v1')->group(function () {
         'ts'  => now()->toISOString(),
     ]))->middleware('throttle:120,1');
 
+    Route::get('/public/leaderboard', [PublicProfileController::class, 'leaderboard'])->middleware('throttle:60,1');
+    Route::get('/public/profiles/{slug}', [PublicProfileController::class, 'show'])->middleware('throttle:60,1');
+    Route::get('/public/share/{token}', [PublicProfileController::class, 'share'])->middleware('throttle:60,1');
+    Route::get('/public/share/{token}/resumes/{resume}/file', [PublicProfileController::class, 'shareResumeFile'])->middleware('throttle:30,1');
+
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 
@@ -22,6 +29,17 @@ Route::prefix('v1')->group(function () {
         Route::get('/user', [AuthController::class, 'user']);
         Route::patch('/user', [AuthController::class, 'updateProfile']);
         Route::put('/user/password', [AuthController::class, 'updatePassword']);
+
+        Route::middleware('admin')->prefix('admin')->group(function () {
+            Route::get('/users', [AdminController::class, 'index']);
+            Route::get('/users/{user}', [AdminController::class, 'show']);
+            Route::patch('/users/{user}', [AdminController::class, 'update']);
+            Route::get('/users/{user}/interviews/{interview}/report/pdf', [AdminController::class, 'downloadReportPdf']);
+            Route::get('/users/{user}/resumes/{resume}/file', [AdminController::class, 'streamResumeFile']);
+            Route::get('/users/{user}/share-links', [AdminController::class, 'listShareLinks']);
+            Route::post('/users/{user}/share-links', [AdminController::class, 'createShareLink']);
+            Route::delete('/share-links/{link}', [AdminController::class, 'revokeShareLink']);
+        });
 
         Route::get('/resumes', [ResumeController::class, 'index']);
         Route::post('/resumes', [ResumeController::class, 'store'])->middleware('throttle:60,1');

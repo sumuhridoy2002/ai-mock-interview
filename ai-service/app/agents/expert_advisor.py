@@ -49,6 +49,75 @@ def _user_stats_line(context: dict[str, Any]) -> str:
     return ""
 
 
+_GREETING_RE = re.compile(
+    r"^\s*(hi|hello|hey|hiya|howdy|yo|sup|greetings|"
+    r"good\s+(morning|afternoon|evening|day)|"
+    r"what'?s?\s+up|thanks|thank\s+you|thx|"
+    r"bye|goodbye|see\s+you|nice\s+to\s+meet)\b",
+    re.I,
+)
+
+
+def _normalize_message(message: str) -> str:
+    return re.sub(r"[^\w\s']", " ", message.lower()).strip()
+
+
+def _is_greeting_or_smalltalk(message: str) -> bool:
+    normalized = _normalize_message(message)
+    if not normalized:
+        return True
+    if _GREETING_RE.match(normalized):
+        return True
+    words = normalized.split()
+    if len(words) <= 3 and "?" not in message:
+        casual = {"hi", "hello", "hey", "thanks", "thank", "yo", "sup", "bye", "ok", "okay", "cool", "nice"}
+        if words and all(w in casual for w in words):
+            return True
+    return False
+
+
+def _looks_like_follow_up(message: str) -> bool:
+    normalized = _normalize_message(message)
+    if not normalized or _is_greeting_or_smalltalk(message):
+        return False
+    if "?" in message:
+        return True
+    follow_up_patterns = (
+        r"\b(that|this|those|these|it|them|same|above|earlier|before)\b",
+        r"\b(more|also|another|else|again|recap|repeat|continue|clarify)\b",
+        r"\b(what about|how about|tell me more|go on|and then|you said|you mentioned)\b",
+        r"^(why|how|what|when|where|which|who|can you|could you|do you|does it|is it|are there)\b",
+    )
+    return any(re.search(pattern, normalized) for pattern in follow_up_patterns)
+
+
+def _reply_greeting(context: dict[str, Any], message: str) -> str:
+    normalized = _normalize_message(message)
+    completed = context.get("user_completed_interviews", 0)
+
+    if re.search(r"\b(thanks|thank you|thx)\b", normalized):
+        return (
+            "You're welcome! Happy to help anytime. "
+            "If you want to dig into scoring, AI models, or interview strategy, just ask."
+        )
+    if re.search(r"\b(bye|goodbye|see you)\b", normalized):
+        return "Good luck with your practice interviews! Come back whenever you want coaching or platform help."
+
+    stats_hint = ""
+    if completed:
+        stats_hint = (
+            f" I can see you've completed {completed} interview{'s' if completed != 1 else ''} here — "
+            "ask me how to improve your scores or how evaluation works."
+        )
+
+    return (
+        "Hello! I'm your Mock Interview Pro expert advisor."
+        f"{stats_hint}\n\n"
+        "Ask me about scoring, local AI models, behavior analysis, STAR answers, or your reports — "
+        "what would you like to know?"
+    )
+
+
 def _detect_topics(message: str) -> list[str]:
     """Priority-ordered topic detection — specific topics before generic ones."""
     m = message.lower()
@@ -71,7 +140,11 @@ def _detect_topics(message: str) -> list[str]:
     if re.search(r"\b(report|pdf|hiring recommendation|overall score|final score)\b", m):
         return ["report"]
 
-    if re.search(r"(evaluat\w*|how do you score|how does scoring|how are answers|how it works|pipeline|process)", m):
+    if re.search(
+        r"(evaluat\w*|how do you score|how does scoring|how are answers|how it works|pipeline|process|"
+        r"\bscoring\b|\bscore\b|\bevaluate\b|\bevaluation\b|interview process)",
+        m,
+    ):
         return ["evaluation"]
 
     if re.search(r"\b(pass|fail|threshold|grade|band)\b", m) or re.search(r"\b70\b", m):
@@ -223,9 +296,8 @@ def _reply_coaching(context: dict[str, Any]) -> str:
 
 
 def _reply_overview(context: dict[str, Any]) -> str:
-    prefix = _user_stats_line(context)
     return (
-        f"{prefix}I'm your Mock Interview Pro expert advisor. I can explain:\n\n"
+        "I'm your Mock Interview Pro expert advisor. I can explain:\n\n"
         "• How we evaluate your answers (5 scoring dimensions + Llama 3 AI)\n"
         "• Which local AI models power scoring, transcription, and behavior analysis\n"
         "• How video behavior metrics (eye contact, emotion, prosody) appear in your report\n"
@@ -279,13 +351,19 @@ TOPIC_FOLLOWUPS: dict[str, list[str]] = {
 
 def _expert_reply(message: str, history: list[dict[str, Any]], context: dict[str, Any]) -> dict[str, Any]:
     """Knowledge-driven expert system — used when Ollama is unavailable or returns empty."""
+    if _is_greeting_or_smalltalk(message):
+        return {
+            "reply": _reply_greeting(context, message).strip(),
+            "suggested_followups": DEFAULT_FOLLOWUPS,
+        }
+
     topics = _detect_topics(message)
     primary = topics[0]
 
-    # Follow-up detection: short questions referencing prior context
-    if primary == "overview" and history:
+    # Follow-up detection: only when the message clearly references prior context
+    if primary == "overview" and history and _looks_like_follow_up(message):
         last_user = next((h["content"] for h in reversed(history) if h.get("role") == "user"), "")
-        if len(message.split()) <= 6 and last_user:
+        if last_user and not _is_greeting_or_smalltalk(last_user):
             topics = _detect_topics(last_user)
             primary = topics[0]
 
@@ -343,7 +421,7 @@ async def chat_expert(
     try:
         result = parse_with_fallback(raw, expert_fallback)
         reply = str(result.get("reply") or "").strip()
-        if len(reply) < 20:
+        if len(reply) < 20 and not _is_greeting_or_smalltalk(message):
             return expert_fallback
         followups = result.get("suggested_followups")
         if not isinstance(followups, list) or not followups:

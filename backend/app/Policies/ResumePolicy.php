@@ -10,7 +10,7 @@ class ResumePolicy
 {
     public function view(User $user, Resume $resume): bool
     {
-        return $resume->user_id === $user->id;
+        return $user->isAdmin() || $resume->user_id === $user->id;
     }
 
     public function update(User $user, Resume $resume): bool

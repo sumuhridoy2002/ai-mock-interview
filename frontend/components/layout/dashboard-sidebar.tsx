@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -19,8 +19,9 @@ import {
   Workflow,
   List,
   MessageCircleQuestion,
+  Users,
 } from "lucide-react";
-import { fetchUser, getStoredUser, type User as AuthUser } from "@/lib/auth";
+import { fetchUser, getStoredUser, isAdmin, type User as AuthUser } from "@/lib/auth";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -29,11 +30,13 @@ interface NavItem {
   label: string;
   description: string;
   icon: typeof LayoutDashboard;
+  adminOnly?: boolean;
 }
 
 interface NavGroup {
   title: string;
   items: NavItem[];
+  adminOnly?: boolean;
 }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -66,43 +69,63 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    title: "Admin",
+    adminOnly: true,
+    items: [
+      {
+        href: "/admin/users",
+        label: "Users",
+        description: "Candidates & dossiers",
+        icon: Users,
+        adminOnly: true,
+      },
+    ],
+  },
+  {
     title: "System",
+    adminOnly: true,
     items: [
       {
         href: "/system/metrics",
         label: "Metrics",
         description: "Performance scores",
         icon: Activity,
+        adminOnly: true,
       },
       {
         href: "/system/stack",
         label: "Stack",
         description: "Technology layers",
         icon: Server,
+        adminOnly: true,
       },
       {
         href: "/system/compare",
         label: "Compare",
         description: "vs other platforms",
         icon: GitCompare,
+        adminOnly: true,
       },
       {
         href: "/system/features",
         label: "Features",
         description: "Full capability list",
         icon: List,
+        adminOnly: true,
       },
       {
         href: "/system/how-it-works",
         label: "How it works",
         description: "Architecture & flow",
         icon: Workflow,
+        adminOnly: true,
       },
       {
         href: "/system/expert",
         label: "AI Expert",
         description: "Ask about scoring & strategy",
         icon: MessageCircleQuestion,
+        adminOnly: true,
       },
     ],
   },
@@ -122,6 +145,7 @@ const NAV_GROUPS: NavGroup[] = [
 function isNavActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") return pathname === "/dashboard";
   if (href === "/interview/setup") return pathname.startsWith("/interview");
+  if (href.startsWith("/admin/")) return pathname === href || pathname.startsWith(`${href}/`);
   if (href.startsWith("/system/")) return pathname === href || pathname.startsWith(`${href}/`);
   return pathname.startsWith(href);
 }
@@ -148,6 +172,14 @@ export function DashboardSidebar({
     onMobileClose();
   }, [pathname, onMobileClose]);
 
+  const visibleGroups = useMemo(() => {
+    const admin = isAdmin(user);
+    return NAV_GROUPS.filter((group) => !group.adminOnly || admin).map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.adminOnly || admin),
+    }));
+  }, [user]);
+
   return (
     <aside
       className={cn(
@@ -167,7 +199,7 @@ export function DashboardSidebar({
               Mock Interview Pro
             </p>
             <p className="truncate text-sm font-medium uppercase tracking-wider text-muted-foreground">
-              Interview prep
+              {isAdmin(user) ? "Admin workspace" : "Interview prep"}
             </p>
           </div>
         </Link>
@@ -194,7 +226,7 @@ export function DashboardSidebar({
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-3 scrollbar-thin">
-        {NAV_GROUPS.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.title} className="mb-6 last:mb-2">
             <p className="mb-2 px-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {group.title}

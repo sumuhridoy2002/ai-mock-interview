@@ -9,8 +9,6 @@ import { PageHero, StatTile, CategoryHeading } from "@/components/ui/page-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SystemHealthPanel } from "@/components/system/system-health-panel";
-import { useSystemMetrics } from "@/hooks/useSystemMetrics";
 import { api } from "@/lib/api";
 import { formatScore } from "@/lib/utils";
 import { computeAverage, letterGrade, scoreBandColor, scoreBarColor, trendDelta as computeTrendDelta } from "@/lib/scoring/interview";
@@ -147,7 +145,6 @@ function EditScheduleForm({ row, onSave, onClear, onCancel }: EditScheduleFormPr
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { metrics: systemMetrics } = useSystemMetrics();
   const [interviews, setInterviews] = useState<InterviewRow[]>([]);
   const [scheduled, setScheduled] = useState<ScheduledRow[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -245,9 +242,6 @@ export default function DashboardPage() {
           <StatTile icon={TrendingUp} label="Average Score" value={formatScore(avgScore)} accent="emerald" />
           <StatTile icon={Award} label="Completed" value={completed.length} accent="amber" />
         </div>
-
-        {/* System Health */}
-        <SystemHealthPanel metrics={systemMetrics} variant="dashboard" />
 
         {/* Progress Overview */}
         {completed.length > 0 && (

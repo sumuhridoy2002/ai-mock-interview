@@ -1,19 +1,24 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHero, SectionPanel } from "@/components/ui/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { User as UserIcon } from "lucide-react";
+import { User as UserIcon, ExternalLink } from "lucide-react";
 import { changePassword, fetchUser, getStoredUser, updateProfile, User } from "@/lib/auth";
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(getStoredUser());
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
+  const [publicHeadline, setPublicHeadline] = useState(user?.public_headline ?? "");
+  const [isProfilePublic, setIsProfilePublic] = useState(user?.is_profile_public ?? false);
+  const [showOnLeaderboard, setShowOnLeaderboard] = useState(user?.show_on_leaderboard ?? false);
   const [profileMsg, setProfileMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [visibilitySaving, setVisibilitySaving] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -27,6 +32,9 @@ export default function ProfilePage() {
         setUser(u);
         setName(u.name);
         setEmail(u.email);
+        setPublicHeadline(u.public_headline ?? "");
+        setIsProfilePublic(u.is_profile_public ?? false);
+        setShowOnLeaderboard(u.show_on_leaderboard ?? false);
       })
       .catch(() => {});
   }, []);
@@ -46,6 +54,30 @@ export default function ProfilePage() {
       });
     } finally {
       setProfileSaving(false);
+    }
+  }
+
+  async function handleVisibilitySave(payload: {
+    is_profile_public?: boolean;
+    show_on_leaderboard?: boolean;
+    public_headline?: string | null;
+  }) {
+    setVisibilitySaving(true);
+    setProfileMsg(null);
+    try {
+      const updated = await updateProfile(payload);
+      setUser(updated);
+      setIsProfilePublic(updated.is_profile_public ?? false);
+      setShowOnLeaderboard(updated.show_on_leaderboard ?? false);
+      setPublicHeadline(updated.public_headline ?? "");
+      setProfileMsg({ type: "ok", text: "Visibility settings updated." });
+    } catch (err) {
+      setProfileMsg({
+        type: "err",
+        text: err instanceof Error ? err.message : "Could not update visibility.",
+      });
+    } finally {
+      setVisibilitySaving(false);
     }
   }
 
@@ -79,7 +111,7 @@ export default function ProfilePage() {
         <PageHero
           icon={UserIcon}
           title="Profile"
-          subtitle="Update your account and password. Theme preference is in the sidebar."
+          subtitle="Update your account, password, and public visibility preferences."
           accent="violet"
         />
 
@@ -158,6 +190,66 @@ export default function ProfilePage() {
             </form>
           </SectionPanel>
         </div>
+
+        <SectionPanel title="Public visibility">
+          <div className="space-y-4 max-w-lg">
+            <p className="text-sm text-muted-foreground">
+              Opt in to share your performance publicly or with recruiters via admin-generated links.
+              Your email is never shown on public pages.
+            </p>
+            <label className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
+              <span className="text-sm">Show my profile publicly</span>
+              <input
+                type="checkbox"
+                checked={isProfilePublic}
+                disabled={visibilitySaving}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setIsProfilePublic(checked);
+                  if (!checked) setShowOnLeaderboard(false);
+                  handleVisibilitySave({
+                    is_profile_public: checked,
+                    show_on_leaderboard: checked ? showOnLeaderboard : false,
+                  });
+                }}
+              />
+            </label>
+            <label className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
+              <span className="text-sm">Include me in the top 100 leaderboard</span>
+              <input
+                type="checkbox"
+                checked={showOnLeaderboard}
+                disabled={visibilitySaving || !isProfilePublic}
+                onChange={(e) => {
+                  setShowOnLeaderboard(e.target.checked);
+                  handleVisibilitySave({ show_on_leaderboard: e.target.checked });
+                }}
+              />
+            </label>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Public headline</label>
+              <Input
+                value={publicHeadline}
+                onChange={(e) => setPublicHeadline(e.target.value)}
+                placeholder="e.g. Senior Laravel Developer"
+                disabled={!isProfilePublic || visibilitySaving}
+                onBlur={() =>
+                  isProfilePublic &&
+                  handleVisibilitySave({ public_headline: publicHeadline || null })
+                }
+              />
+            </div>
+            {user?.public_slug && isProfilePublic && (
+              <Link
+                href={`/public/profiles/${user.public_slug}`}
+                target="_blank"
+                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+              >
+                Preview public profile <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            )}
+          </div>
+        </SectionPanel>
       </div>
     </AppShell>
   );

@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdatePasswordRequest;
 use App\Http\Requests\UpdateProfileRequest;
-use App\Http\Controllers\Controller;
 use App\Jobs\SendWelcomeEmailJob;
 use App\Models\User;
+use App\Services\UserPublicProfileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +16,10 @@ use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly UserPublicProfileService $profileService,
+    ) {}
+
     public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -27,6 +32,7 @@ class AuthController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'role' => 'candidate',
         ]);
 
         SendWelcomeEmailJob::dispatch($user);
@@ -34,7 +40,7 @@ class AuthController extends Controller
         $token = $user->createToken('api')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
+            'user' => $this->userPayload($user),
             'token' => $token,
         ], 201);
     }
@@ -55,7 +61,7 @@ class AuthController extends Controller
         $token = $user->createToken('api')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
+            'user' => $this->userPayload($user),
             'token' => $token,
         ]);
     }
@@ -69,7 +75,7 @@ class AuthController extends Controller
 
     public function user(Request $request): JsonResponse|\Illuminate\Http\Response
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
         $etag = '"'.md5((string) $user->updated_at).'"';
 
@@ -80,7 +86,7 @@ class AuthController extends Controller
             ]);
         }
 
-        return response()->json(['user' => $user->only('id', 'name', 'email')])->withHeaders([
+        return response()->json(['user' => $this->userPayload($user)])->withHeaders([
             'ETag'          => $etag,
             'Cache-Control' => 'private, no-cache',
         ]);
@@ -90,10 +96,25 @@ class AuthController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $user->update($request->validated());
-        $user->refresh();
+        $validated = $request->validated();
 
-        return response()->json(['user' => $user->only('id', 'name', 'email')]);
+        if (($validated['show_on_leaderboard'] ?? false) && ! ($validated['is_profile_public'] ?? $user->is_profile_public)) {
+            return response()->json(['message' => 'Public profile must be enabled before joining the leaderboard.'], 422);
+        }
+
+        $user->update($validated);
+
+        if ($user->is_profile_public && ! $user->public_slug) {
+            $this->profileService->ensureSlug($user);
+            $user->refresh();
+        }
+
+        if (! $user->is_profile_public) {
+            $user->update(['show_on_leaderboard' => false]);
+            $user->refresh();
+        }
+
+        return response()->json(['user' => $this->userPayload($user)]);
     }
 
     public function updatePassword(UpdatePasswordRequest $request): JsonResponse
@@ -108,5 +129,22 @@ class AuthController extends Controller
         $user->update(['password' => $request->input('password')]);
 
         return response()->json(['message' => 'Password updated successfully.']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function userPayload(User $user): array
+    {
+        return $user->only(
+            'id',
+            'name',
+            'email',
+            'role',
+            'public_slug',
+            'is_profile_public',
+            'show_on_leaderboard',
+            'public_headline',
+        );
     }
 }
