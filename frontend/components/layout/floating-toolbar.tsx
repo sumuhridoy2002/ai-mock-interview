@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Activity, Download, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useSystemMetrics, SYSTEM_FOOTER_REFRESH_SECONDS } from "@/hooks/useSystemMetrics";
 import { getStoredUser, getToken, isAdmin } from "@/lib/auth";
 import { exportPageToPng, pageExportFilename } from "@/lib/export-page-png";
@@ -26,6 +26,16 @@ function isDownloadExcludedPath(pathname: string): boolean {
 
 function shouldShowDownload(pathname: string): boolean {
   return !isDownloadExcludedPath(pathname) && Boolean(getToken());
+}
+
+function shouldShowAdminMetrics(pathname: string): boolean {
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return true;
+  }
+  if (pathname.startsWith("/system/") && !pathname.startsWith("/system/expert")) {
+    return true;
+  }
+  return false;
 }
 
 function SystemMetricsPill() {
@@ -137,20 +147,19 @@ function PageDownloadPill() {
 
 export function FloatingToolbar() {
   const pathname = usePathname();
-  const [showMetrics, setShowMetrics] = useState(false);
-
-  useEffect(() => {
-    setShowMetrics(isAdmin(getStoredUser()));
-  }, []);
-
+  const user = getStoredUser();
   const showDownload = shouldShowDownload(pathname);
+  const showMetrics = isAdmin(user) && shouldShowAdminMetrics(pathname);
 
   if (!showDownload && !showMetrics) {
     return null;
   }
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+    <div
+      className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2"
+      data-page-export-ignore
+    >
       {showMetrics && <SystemMetricsPill />}
       {showDownload && <PageDownloadPill />}
     </div>

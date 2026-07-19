@@ -52,37 +52,51 @@ export function PageHero({
   className,
 }: PageHeroProps) {
   return (
-    <section
-      className={cn(
-        "rounded-2xl bg-gradient-to-br p-6 sm:p-8 text-white shadow-xl overflow-hidden relative isolate",
-        HERO_GRADIENT[accent],
-        accent === "indigo" && "shadow-indigo-500/20",
-        className,
-      )}
-    >
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
+    <section className={cn("relative isolate rounded-2xl shadow-xl", className)} data-page-hero>
+      <div
+        className={cn(
+          "absolute inset-0 rounded-2xl bg-gradient-to-br",
+          HERO_GRADIENT[accent],
+          accent === "indigo" && "shadow-indigo-500/20",
+        )}
+        aria-hidden
+      />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" aria-hidden>
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute -left-10 -bottom-10 h-36 w-36 rounded-full bg-white/10 blur-3xl" />
       </div>
 
       <div
         className={cn(
-          "relative z-10 flex flex-wrap items-center gap-x-5 gap-y-4",
-          centered ? "justify-center text-center flex-col" : "justify-between",
+          "relative z-10 p-6 sm:p-8 text-white",
+          centered ? "text-center" : "flex items-start justify-between gap-5",
         )}
       >
-        <div className={cn("flex min-w-0 flex-1 items-center gap-4", centered && "flex-col")}>
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/25 shadow-lg">
+        <div
+          className={cn(
+            centered
+              ? "mx-auto flex max-w-2xl flex-col items-center"
+              : "grid min-w-0 flex-1 items-center [grid-template-columns:3.5rem_minmax(0,1fr)]",
+          )}
+          data-page-hero-row
+        >
+          <div
+            className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/25 shadow-lg"
+            data-page-hero-icon
+          >
             <Icon className="h-7 w-7 text-white" />
           </div>
-          <div className={cn("min-w-0 flex-1", centered && "max-w-2xl")}>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight break-words">{title}</h1>
+          <div
+            className={cn(centered ? "mt-4" : "pl-4 sm:pl-5")}
+            data-page-hero-text
+          >
+            <h1 className="text-xl font-bold leading-snug tracking-tight break-words sm:text-2xl">{title}</h1>
             {subtitle && (
-              <p className="mt-1.5 text-sm text-white/85 leading-relaxed font-medium break-words">{subtitle}</p>
+              <p className="mt-1.5 text-sm font-medium leading-relaxed text-white/85 break-words">{subtitle}</p>
             )}
           </div>
         </div>
-        {children && <div className={cn("relative z-10 shrink-0", centered && "w-full flex justify-center")}>{children}</div>}
+        {children && <div className={cn("shrink-0", centered && "mx-auto mt-4")}>{children}</div>}
       </div>
     </section>
   );
