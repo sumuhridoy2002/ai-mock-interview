@@ -2,35 +2,88 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Search, Users, ChevronRight } from "lucide-react";
+import { Search, Users, ChevronRight, ChevronLeft } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHero } from "@/components/ui/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchAdminUsers, type AdminUserRow } from "@/lib/admin";
 import { formatScore } from "@/lib/utils";
+
+const PER_PAGE = 20;
+
+function AdminUsersTableSkeleton() {
+  return (
+    <>
+      {Array.from({ length: PER_PAGE }).map((_, index) => (
+        <tr key={`skeleton-${index}`} className="border-b border-border/60">
+          <td className="px-4 py-3">
+            <Skeleton className="h-4 w-36" />
+          </td>
+          <td className="px-4 py-3">
+            <Skeleton className="h-4 w-48" />
+          </td>
+          <td className="px-4 py-3">
+            <Skeleton className="h-4 w-12" />
+          </td>
+          <td className="px-4 py-3">
+            <Skeleton className="h-4 w-10" />
+          </td>
+          <td className="px-4 py-3">
+            <Skeleton className="h-4 w-14" />
+          </td>
+          <td className="px-4 py-3">
+            <div className="flex justify-end">
+              <Skeleton className="h-4 w-12" />
+            </div>
+          </td>
+        </tr>
+      ))}
+    </>
+  );
+}
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (term: string) => {
+  const load = useCallback(async (term: string, pageNumber: number) => {
     setLoading(true);
     try {
-      const res = await fetchAdminUsers(term);
+      const res = await fetchAdminUsers(term, pageNumber, PER_PAGE);
       setUsers(res.data ?? []);
+      setCurrentPage(res.current_page ?? pageNumber);
+      setLastPage(res.last_page ?? 1);
+      setTotal(res.total ?? 0);
     } catch {
       setUsers([]);
+      setCurrentPage(1);
+      setLastPage(1);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load(query);
-  }, [load, query]);
+    load(query, page);
+  }, [load, query, page]);
+
+  const handleSearch = () => {
+    setPage(1);
+    setQuery(search);
+  };
+
+  const from = total === 0 ? 0 : (currentPage - 1) * PER_PAGE + 1;
+  const to = Math.min(currentPage * PER_PAGE, total);
 
   return (
     <AppShell>
@@ -47,7 +100,7 @@ export default function AdminUsersPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && setQuery(search)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search by name or email…"
             className="pl-9"
           />
@@ -69,11 +122,7 @@ export default function AdminUsersPage() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                        Loading users…
-                      </td>
-                    </tr>
+                    <AdminUsersTableSkeleton />
                   ) : users.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
@@ -112,6 +161,41 @@ export default function AdminUsersPage() {
                 </tbody>
               </table>
             </div>
+
+            {(loading || total > 0) && (
+              <div className="flex flex-col items-center gap-3 border-t border-border px-4 py-4">
+                <p className="text-sm text-muted-foreground">
+                  {loading && total === 0
+                    ? "Loading candidates…"
+                    : `Showing ${from}–${to} of ${total} candidates`}
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={loading || currentPage <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <span className="min-w-[7rem] text-center text-sm text-muted-foreground">
+                    Page {currentPage} of {lastPage}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={loading || currentPage >= lastPage}
+                    onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
