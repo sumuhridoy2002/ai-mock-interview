@@ -3,25 +3,19 @@
 import Link from "next/link";
 import { Activity, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useSystemMetrics } from "@/hooks/useSystemMetrics";
-import { fetchUser, getStoredUser, isAdmin } from "@/lib/auth";
+import { useSystemMetrics, SYSTEM_FOOTER_REFRESH_SECONDS } from "@/hooks/useSystemMetrics";
+import { getStoredUser, isAdmin } from "@/lib/auth";
 import { ratingClass } from "@/lib/performance-benchmarks";
 import { cn } from "@/lib/utils";
 
 export function SystemStatusFooter() {
   const [show, setShow] = useState(false);
-  const { metrics, refresh, isRefreshing, refreshIntervalSeconds } = useSystemMetrics();
+  const { metrics, refresh, isRefreshing, refreshIntervalSeconds } = useSystemMetrics({
+    refreshIntervalSeconds: SYSTEM_FOOTER_REFRESH_SECONDS,
+  });
 
   useEffect(() => {
-    const stored = getStoredUser();
-    if (isAdmin(stored)) {
-      setShow(true);
-      return;
-    }
-
-    fetchUser()
-      .then((user) => setShow(isAdmin(user)))
-      .catch(() => setShow(false));
+    setShow(isAdmin(getStoredUser()));
   }, []);
 
   if (!show) {

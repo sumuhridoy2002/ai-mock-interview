@@ -87,8 +87,15 @@ export async function fetchAdminStats(): Promise<AdminStats> {
   return api<AdminStats>("/admin/stats");
 }
 
-export async function fetchAdminUsers(search = "", page = 1): Promise<AdminUsersResponse> {
-  const params = new URLSearchParams({ page: String(page) });
+export async function fetchAdminUsers(
+  search = "",
+  page = 1,
+  perPage = 20,
+): Promise<AdminUsersResponse> {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(perPage),
+  });
   if (search) params.set("search", search);
   return api<AdminUsersResponse>(`/admin/users?${params.toString()}`);
 }

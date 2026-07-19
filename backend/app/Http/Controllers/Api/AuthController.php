@@ -8,7 +8,9 @@ use App\Http\Requests\UpdateProfileRequest;
 use App\Jobs\SendWelcomeEmailJob;
 use App\Models\User;
 use App\Services\UserPublicProfileService;
+use App\Support\PlatformCache;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -106,6 +108,8 @@ class AuthController extends Controller
             return response()->json(['message' => 'Public profile must be enabled before joining the leaderboard.'], 422);
         }
 
+        $previousSlug = $user->public_slug;
+
         $user->update($validated);
 
         if ($user->is_profile_public && ! $user->public_slug) {
@@ -116,6 +120,11 @@ class AuthController extends Controller
         if (! $user->is_profile_public) {
             $user->update(['show_on_leaderboard' => false]);
             $user->refresh();
+        }
+
+        PlatformCache::forgetUser($user->id, $previousSlug);
+        if ($user->public_slug && $user->public_slug !== $previousSlug) {
+            Cache::forget(PlatformCache::publicProfileKey($user->public_slug));
         }
 
         return response()->json(['user' => $this->userPayload($user)]);

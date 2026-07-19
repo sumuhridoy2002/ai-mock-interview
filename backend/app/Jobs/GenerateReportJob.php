@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Interview;
 use App\Services\Interview\AiGatewayService;
 use App\Services\Interview\ReportService;
+use App\Support\PlatformCache;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -37,6 +38,11 @@ class GenerateReportJob implements ShouldQueue
 
         try {
             $reportService->generate($this->interview, $reportData);
+
+            $user = $this->interview->user;
+            if ($user) {
+                PlatformCache::forgetUser($user->id, $user->public_slug);
+            }
         } catch (\Throwable $e) {
             Log::error('GenerateReportJob failed', [
                 'interview_id' => $this->interview->id,

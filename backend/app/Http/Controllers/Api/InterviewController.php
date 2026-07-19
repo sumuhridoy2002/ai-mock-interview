@@ -496,7 +496,7 @@ class InterviewController extends Controller
 
     /**
      * Accept snapshot images captured every ~15 s during an answer recording.
-     * Stores the images and queues AnalyzeSnapshotsJob (no cv2 required).
+     * Stores the images for batch analysis at interview completion (AnalyzeInterviewSnapshotsJob).
      */
     public function submitSnapshots(Request $request, Interview $interview, int $answerId): JsonResponse
     {

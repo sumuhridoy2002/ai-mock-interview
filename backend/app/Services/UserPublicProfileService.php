@@ -3,6 +3,10 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\PlatformCache;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class UserPublicProfileService
@@ -23,6 +27,7 @@ class UserPublicProfileService
         }
 
         $user->update(['public_slug' => $slug]);
+        PlatformCache::forgetUser($user->id, $user->public_slug);
 
         return $user->fresh();
     }
@@ -32,24 +37,47 @@ class UserPublicProfileService
      */
     public function userStats(User $user): array
     {
-        $completed = $user->interviews()
-            ->where('status', 'completed')
-            ->with('report:id,interview_id,overall_score,hiring_recommendation')
-            ->get();
+        return Cache::remember(
+            PlatformCache::userStatsKey($user->id),
+            300,
+            fn () => $this->computeUserStats($user),
+        );
+    }
 
-        $scores = $completed
-            ->map(fn ($i) => $i->report?->overall_score)
-            ->filter(fn ($s) => $s !== null && $s > 0)
-            ->values();
+    /**
+     * @return array<string, mixed>
+     */
+    private function computeUserStats(User $user): array
+    {
+        $row = DB::table('interviews')
+            ->leftJoin('interview_reports', 'interviews.id', '=', 'interview_reports.interview_id')
+            ->where('interviews.user_id', $user->id)
+            ->selectRaw('COUNT(interviews.id) as interview_count')
+            ->selectRaw("SUM(CASE WHEN interviews.status = 'completed' THEN 1 ELSE 0 END) as completed_count")
+            ->selectRaw('MAX(interviews.updated_at) as last_active_at')
+            ->selectRaw("AVG(CASE WHEN interviews.status = 'completed' AND interview_reports.overall_score > 0 THEN interview_reports.overall_score END) as average_score")
+            ->first();
 
-        $avgScore = $scores->isEmpty() ? null : (int) round($scores->avg());
+        $avgScore = $row?->average_score !== null ? (int) round((float) $row->average_score) : null;
 
         return [
-            'interview_count' => $user->interviews()->count(),
-            'completed_count' => $completed->count(),
+            'interview_count' => (int) ($row->interview_count ?? 0),
+            'completed_count' => (int) ($row->completed_count ?? 0),
             'average_score' => $avgScore,
-            'last_active_at' => $user->interviews()->latest()->value('updated_at'),
+            'last_active_at' => $row?->last_active_at,
         ];
+    }
+
+    /**
+     * @return Collection<int, \App\Models\Interview>
+     */
+    private function completedInterviewsWithReports(User $user): Collection
+    {
+        return $user->interviews()
+            ->where('status', 'completed')
+            ->with(['report:id,interview_id,overall_score,hiring_recommendation,category_scores,strengths,weaknesses,improvement_areas'])
+            ->latest()
+            ->get(['id', 'job_title', 'interview_type', 'experience_level', 'created_at']);
     }
 
     /**
@@ -141,15 +169,12 @@ class UserPublicProfileService
     }
 
     /**
+     * @param  Collection<int, \App\Models\Interview>  $interviews
      * @return array<int, array<string, mixed>>
      */
-    public function publicInterviewsPayload(User $user): array
+    private function mapInterviewsPayload(Collection $interviews): array
     {
-        return $user->interviews()
-            ->where('status', 'completed')
-            ->with(['report:id,interview_id,overall_score,hiring_recommendation,category_scores,strengths,weaknesses'])
-            ->latest()
-            ->get(['id', 'job_title', 'interview_type', 'experience_level', 'created_at'])
+        return $interviews
             ->map(fn ($interview) => [
                 'id' => $interview->id,
                 'job_title' => $interview->job_title,
@@ -167,15 +192,11 @@ class UserPublicProfileService
     }
 
     /**
+     * @param  Collection<int, \App\Models\Interview>  $interviews
      * @return array<string, mixed>
      */
-    public function publicPerformancePayload(User $user): array
+    private function mapPerformancePayload(Collection $interviews): array
     {
-        $interviews = $user->interviews()
-            ->where('status', 'completed')
-            ->with('report:id,interview_id,overall_score,hiring_recommendation,strengths,weaknesses,improvement_areas')
-            ->get();
-
         $scores = $interviews
             ->map(fn ($i) => $i->report?->overall_score)
             ->filter(fn ($s) => $s !== null && $s > 0)
@@ -229,24 +250,68 @@ class UserPublicProfileService
      */
     public function publicProfilePayload(User $user): array
     {
-        $stats = $this->userStats($user);
-        $resume = $this->latestParsedResume($user);
-        $cv = $this->publicCvPayload($resume);
-        $skills = $cv['skills'] ?? $this->extractSkills($user);
+        return Cache::remember(
+            PlatformCache::publicProfileKey((string) $user->public_slug),
+            300,
+            function () use ($user) {
+                $stats = $this->userStats($user);
+                $resume = $this->latestParsedResume($user);
+                $cv = $this->publicCvPayload($resume);
+                $skills = $cv['skills'] ?? $this->extractSkills($user);
+                $completedInterviews = $this->completedInterviewsWithReports($user);
 
-        return [
-            'name' => $user->name,
-            'slug' => $user->public_slug,
-            'headline' => $user->public_headline,
-            'member_since' => $user->created_at,
-            'average_score' => $stats['average_score'],
-            'completed_count' => $stats['completed_count'],
-            'interview_count' => $stats['interview_count'],
-            'last_active_at' => $stats['last_active_at'],
-            'skills' => $skills,
-            'cv' => $cv,
-            'interviews' => $this->publicInterviewsPayload($user),
-            'performance' => $this->publicPerformancePayload($user),
-        ];
+                return [
+                    'name' => $user->name,
+                    'slug' => $user->public_slug,
+                    'headline' => $user->public_headline,
+                    'member_since' => $user->created_at,
+                    'average_score' => $stats['average_score'],
+                    'completed_count' => $stats['completed_count'],
+                    'interview_count' => $stats['interview_count'],
+                    'last_active_at' => $stats['last_active_at'],
+                    'skills' => $skills,
+                    'cv' => $cv,
+                    'interviews' => $this->mapInterviewsPayload($completedInterviews),
+                    'performance' => $this->mapPerformancePayload($completedInterviews),
+                ];
+            },
+        );
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function buildLeaderboard(int $limit): array
+    {
+        $users = User::query()
+            ->where('role', 'candidate')
+            ->where('show_on_leaderboard', true)
+            ->where('is_profile_public', true)
+            ->whereNotNull('public_slug')
+            ->get(['id', 'name', 'public_slug', 'public_headline']);
+
+        return $users
+            ->map(function (User $user) {
+                $stats = $this->userStats($user);
+
+                return [
+                    'name' => $user->name,
+                    'slug' => $user->public_slug,
+                    'headline' => $user->public_headline,
+                    'average_score' => $stats['average_score'] ?? 0,
+                    'completed_count' => $stats['completed_count'],
+                ];
+            })
+            ->filter(fn (array $row) => ($row['average_score'] ?? 0) > 0)
+            ->sortByDesc('average_score')
+            ->values()
+            ->take($limit)
+            ->values()
+            ->map(function (array $row, int $index) {
+                $row['rank'] = $index + 1;
+
+                return $row;
+            })
+            ->all();
     }
 }

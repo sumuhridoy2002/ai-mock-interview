@@ -25,10 +25,10 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([fetchAdminStats(), fetchAdminUsers()])
+    Promise.all([fetchAdminStats(), fetchAdminUsers("", 1, 5)])
       .then(([statsRes, usersRes]) => {
         setStats(statsRes);
-        setRecentUsers((usersRes.data ?? []).slice(0, 5));
+        setRecentUsers(usersRes.data ?? []);
       })
       .catch(() => {
         setStats(null);

@@ -1,4 +1,6 @@
-import { api } from "./api";
+import { API_URL, api } from "./api";
+
+export const USER_ETAG_STORAGE_KEY = "mip_user_etag";
 
 export type UserRole = "admin" | "candidate";
 
@@ -85,9 +87,47 @@ export async function logout(): Promise<void> {
 }
 
 export async function fetchUser(): Promise<User> {
-  const data = await api<{ user: User }>("/user");
-  setStoredUser(data.user);
-  return data.user;
+  const token = getToken();
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const lastEtag =
+    typeof sessionStorage !== "undefined"
+      ? (sessionStorage.getItem(USER_ETAG_STORAGE_KEY) ?? undefined)
+      : undefined;
+
+  const response = await fetch(`${API_URL}/user`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(lastEtag ? { "If-None-Match": lastEtag } : {}),
+    },
+    cache: "no-store",
+  });
+
+  const newEtag = response.headers.get("ETag");
+  if (newEtag && typeof sessionStorage !== "undefined") {
+    sessionStorage.setItem(USER_ETAG_STORAGE_KEY, newEtag);
+  }
+
+  if (response.status === 304) {
+    const stored = getStoredUser();
+    if (stored) {
+      return stored;
+    }
+  }
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = (data as { message?: string }).message || "Request failed";
+    throw new Error(message);
+  }
+
+  const user = (data as { user: User }).user;
+  setStoredUser(user);
+  return user;
 }
 
 export interface UpdateProfilePayload {

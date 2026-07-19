@@ -7,8 +7,10 @@ use App\Models\PublicShareLink;
 use App\Models\Resume;
 use App\Models\User;
 use App\Services\UserPublicProfileService;
+use App\Support\PlatformCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class PublicProfileController extends Controller
@@ -21,35 +23,17 @@ class PublicProfileController extends Controller
     {
         $limit = min((int) $request->query('limit', 100), 100);
 
-        $entries = User::query()
-            ->where('role', 'candidate')
-            ->where('show_on_leaderboard', true)
-            ->where('is_profile_public', true)
-            ->whereNotNull('public_slug')
-            ->get()
-            ->map(function (User $user) {
-                $stats = $this->profileService->userStats($user);
+        $entries = Cache::remember(
+            PlatformCache::leaderboardKey($limit),
+            120,
+            fn () => $this->profileService->buildLeaderboard($limit),
+        );
 
-                return [
-                    'name' => $user->name,
-                    'slug' => $user->public_slug,
-                    'headline' => $user->public_headline,
-                    'average_score' => $stats['average_score'] ?? 0,
-                    'completed_count' => $stats['completed_count'],
-                ];
-            })
-            ->filter(fn (array $row) => ($row['average_score'] ?? 0) > 0)
-            ->sortByDesc('average_score')
-            ->values()
-            ->take($limit)
-            ->values()
-            ->map(function (array $row, int $index) {
-                $row['rank'] = $index + 1;
-
-                return $row;
-            });
-
-        return response()->json(['data' => $entries]);
+        return response()
+            ->json(['data' => $entries])
+            ->withHeaders([
+                'Cache-Control' => 'public, max-age=60, stale-while-revalidate=120',
+            ]);
     }
 
     public function show(string $slug): JsonResponse
@@ -64,7 +48,11 @@ class PublicProfileController extends Controller
             return response()->json(['message' => 'Profile not found.'], 404);
         }
 
-        return response()->json(['profile' => $this->profileService->publicProfilePayload($user)]);
+        return response()
+            ->json(['profile' => $this->profileService->publicProfilePayload($user)])
+            ->withHeaders([
+                'Cache-Control' => 'public, max-age=60, stale-while-revalidate=120',
+            ]);
     }
 
     public function share(string $token): JsonResponse

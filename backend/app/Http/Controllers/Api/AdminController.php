@@ -8,8 +8,10 @@ use App\Models\PublicShareLink;
 use App\Models\Resume;
 use App\Models\User;
 use App\Services\UserPublicProfileService;
+use App\Support\PlatformCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -22,31 +24,36 @@ class AdminController extends Controller
 
     public function stats(): JsonResponse
     {
-        $candidates = User::query()->where('role', 'candidate');
+        $payload = Cache::remember(PlatformCache::ADMIN_STATS, 60, function () {
+            $candidates = User::query()->where('role', 'candidate');
 
-        return response()->json([
-            'total_candidates' => (clone $candidates)->count(),
-            'public_profiles' => (clone $candidates)->where('is_profile_public', true)->count(),
-            'on_leaderboard' => (clone $candidates)->where('show_on_leaderboard', true)->count(),
-            'total_interviews' => Interview::query()
-                ->whereHas('user', fn ($q) => $q->where('role', 'candidate'))
-                ->count(),
-            'completed_interviews' => Interview::query()
-                ->whereHas('user', fn ($q) => $q->where('role', 'candidate'))
-                ->where('status', 'completed')
-                ->count(),
-            'active_share_links' => PublicShareLink::query()
-                ->whereNull('revoked_at')
-                ->where(function ($q) {
-                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-                })
-                ->count(),
-        ]);
+            return [
+                'total_candidates' => (clone $candidates)->count(),
+                'public_profiles' => (clone $candidates)->where('is_profile_public', true)->count(),
+                'on_leaderboard' => (clone $candidates)->where('show_on_leaderboard', true)->count(),
+                'total_interviews' => Interview::query()
+                    ->whereHas('user', fn ($q) => $q->where('role', 'candidate'))
+                    ->count(),
+                'completed_interviews' => Interview::query()
+                    ->whereHas('user', fn ($q) => $q->where('role', 'candidate'))
+                    ->where('status', 'completed')
+                    ->count(),
+                'active_share_links' => PublicShareLink::query()
+                    ->whereNull('revoked_at')
+                    ->where(function ($q) {
+                        $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                    })
+                    ->count(),
+            ];
+        });
+
+        return response()->json($payload);
     }
 
     public function index(Request $request): JsonResponse
     {
         $search = $request->string('search')->trim()->toString();
+        $perPage = min(max((int) $request->query('per_page', 20), 1), 50);
 
         $users = User::query()
             ->where('role', 'candidate')
@@ -58,7 +65,7 @@ class AdminController extends Controller
             })
             ->withCount('interviews')
             ->latest()
-            ->paginate(20);
+            ->paginate($perPage);
 
         $users->getCollection()->transform(function (User $user) {
             $stats = $this->profileService->userStats($user);
@@ -155,6 +162,8 @@ class AdminController extends Controller
             return response()->json(['message' => 'Public profile must be enabled before joining the leaderboard.'], 422);
         }
 
+        $previousSlug = $user->public_slug;
+
         $user->update($validated);
 
         if ($user->is_profile_public && ! $user->public_slug) {
@@ -165,6 +174,11 @@ class AdminController extends Controller
         if (! $user->is_profile_public) {
             $user->update(['show_on_leaderboard' => false]);
             $user->refresh();
+        }
+
+        PlatformCache::forgetUser($user->id, $previousSlug);
+        if ($user->public_slug && $user->public_slug !== $previousSlug) {
+            Cache::forget(PlatformCache::publicProfileKey($user->public_slug));
         }
 
         return response()->json(['user' => $this->userPayload($user->fresh())]);
@@ -236,12 +250,16 @@ class AdminController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
+        PlatformCache::forgetAdminStats();
+
         return response()->json(['link' => $link], 201);
     }
 
     public function revokeShareLink(PublicShareLink $link): JsonResponse
     {
         $link->update(['revoked_at' => now()]);
+
+        PlatformCache::forgetAdminStats();
 
         return response()->json(['message' => 'Share link revoked.', 'link' => $link->fresh()]);
     }

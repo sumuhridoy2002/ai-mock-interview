@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { API_URL } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { getToken, USER_ETAG_STORAGE_KEY } from "@/lib/auth";
 import { EMPTY_CONTEXT_DATA, measureClientContext, type ContextDataMetrics } from "@/lib/context-metrics";
 import {
   BENCHMARK_DOC_IDS,
@@ -22,10 +22,11 @@ import {
   type SessionAverages,
 } from "@/lib/performance-history";
 
-/** Recommended auto-refresh interval for the sticky system monitor. */
+/** Recommended auto-refresh interval on the dedicated metrics page. */
 export const SYSTEM_MONITOR_REFRESH_SECONDS = 15;
 
-const ETAG_STORAGE_KEY = "mip_user_etag";
+/** Slower polling for the sticky footer monitor (runs on every admin page). */
+export const SYSTEM_FOOTER_REFRESH_SECONDS = 60;
 
 export interface ApiTimingBreakdown {
   /** Round-trip to /ping (no auth, no DB) — pure network + PHP bootstrap overhead. */
@@ -163,7 +164,8 @@ function buildComparisons(
   };
 }
 
-export function useSystemMetrics() {
+export function useSystemMetrics(options?: { refreshIntervalSeconds?: number }) {
+  const refreshIntervalSeconds = options?.refreshIntervalSeconds ?? SYSTEM_MONITOR_REFRESH_SECONDS;
   const pathname = usePathname();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const refreshInFlight = useRef(false);
@@ -216,7 +218,7 @@ export function useSystemMetrics() {
       try {
         const lastEtag =
           typeof sessionStorage !== "undefined"
-            ? (sessionStorage.getItem(ETAG_STORAGE_KEY) ?? undefined)
+            ? (sessionStorage.getItem(USER_ETAG_STORAGE_KEY) ?? undefined)
             : undefined;
 
         const response = await fetch(userUrl, {
@@ -235,7 +237,7 @@ export function useSystemMetrics() {
         // Persist new ETag for next conditional request
         const newEtag = response.headers.get("ETag");
         if (newEtag && typeof sessionStorage !== "undefined") {
-          sessionStorage.setItem(ETAG_STORAGE_KEY, newEtag);
+          sessionStorage.setItem(USER_ETAG_STORAGE_KEY, newEtag);
         }
 
         if (!wasNotModified) {
@@ -293,7 +295,7 @@ export function useSystemMetrics() {
   useEffect(() => {
     void refresh();
 
-    const intervalMs = SYSTEM_MONITOR_REFRESH_SECONDS * 1000;
+    const intervalMs = refreshIntervalSeconds * 1000;
 
     const tick = () => {
       if (document.visibilityState === "visible") {
@@ -315,7 +317,7 @@ export function useSystemMetrics() {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [refresh]);
+  }, [refresh, refreshIntervalSeconds]);
 
-  return { metrics, refresh, isRefreshing, refreshIntervalSeconds: SYSTEM_MONITOR_REFRESH_SECONDS };
+  return { metrics, refresh, isRefreshing, refreshIntervalSeconds };
 }
