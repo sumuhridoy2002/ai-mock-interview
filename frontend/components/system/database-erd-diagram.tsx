@@ -1,351 +1,296 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
-  buildDiagramEdges,
-  ERD_DIAGRAM_CANVAS,
-  ERD_DIAGRAM_LAYOUT,
-  ERD_ENTITY_WIDTH,
-  ERD_ROW_HEIGHT,
-  erdEntityHeight,
-  getDiagramTables,
-  type ErdDiagramSection,
-  type ErdTable,
-} from "@/lib/database-erd";
-import { cn } from "@/lib/utils";
+  ERD_POSTER_ENTITIES,
+  ERD_POSTER_HEADER_HEIGHT,
+  ERD_POSTER_RELATIONS,
+  ERD_POSTER_ROW_HEIGHT,
+  ERD_POSTER_TITLE,
+  ERD_POSTER_VIEWBOX,
+  getPosterEntity,
+  posterEntityHeight,
+  type PosterEntity,
+  type PosterRelation,
+} from "@/lib/database-erd-poster";
 
-type AnchorSide = "left" | "right" | "top" | "bottom";
+const EXPORT_SCALE = 4;
 
-interface Point {
-  x: number;
-  y: number;
-}
+type Side = PosterRelation["fromSide"];
 
-function getAnchor(table: ErdTable, side: AnchorSide): Point {
-  const layout = ERD_DIAGRAM_LAYOUT[table.name];
-  if (!layout) return { x: 0, y: 0 };
-
-  const w = ERD_ENTITY_WIDTH;
-  const h = erdEntityHeight(table);
-  const { x, y } = layout;
-
+function anchor(entity: PosterEntity, side: Side): { x: number; y: number } {
+  const h = posterEntityHeight(entity);
+  const { x, y, width } = entity;
   switch (side) {
     case "left":
       return { x, y: y + h / 2 };
     case "right":
-      return { x: x + w, y: y + h / 2 };
+      return { x: x + width, y: y + h / 2 };
     case "top":
-      return { x: x + w / 2, y };
+      return { x: x + width / 2, y };
     case "bottom":
-      return { x: x + w / 2, y: y + h };
+      return { x: x + width / 2, y: y + h };
   }
 }
 
-function pickSides(from: ErdTable, to: ErdTable): { from: AnchorSide; to: AnchorSide } {
-  const a = ERD_DIAGRAM_LAYOUT[from.name];
-  const b = ERD_DIAGRAM_LAYOUT[to.name];
-  if (!a || !b) return { from: "right", to: "left" };
+function relationPath(from: PosterEntity, to: PosterEntity, rel: PosterRelation): string {
+  const a = anchor(from, rel.fromSide);
+  const b = anchor(to, rel.toSide);
 
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    return dx >= 0 ? { from: "right", to: "left" } : { from: "left", to: "right" };
+  if (rel.fromSide === "right" && rel.toSide === "left") {
+    const mid = (a.x + b.x) / 2;
+    return `M ${a.x} ${a.y} L ${mid} ${a.y} L ${mid} ${b.y} L ${b.x} ${b.y}`;
   }
-  return dy >= 0 ? { from: "bottom", to: "top" } : { from: "top", to: "bottom" };
+  if (rel.fromSide === "bottom" && rel.toSide === "top") {
+    const mid = (a.y + b.y) / 2;
+    return `M ${a.x} ${a.y} L ${a.x} ${mid} L ${b.x} ${mid} L ${b.x} ${b.y}`;
+  }
+  if (rel.fromSide === "right" && rel.toSide === "bottom") {
+    return `M ${a.x} ${a.y} L ${b.x} ${a.y} L ${b.x} ${b.y}`;
+  }
+  return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
 }
 
-function orthogonalPath(from: Point, to: Point, fromSide: AnchorSide, toSide: AnchorSide): string {
-  const gap = 20;
-  let x1 = from.x;
-  let y1 = from.y;
-  let x2 = to.x;
-  let y2 = to.y;
-
-  if (fromSide === "right") x1 += gap;
-  if (fromSide === "left") x1 -= gap;
-  if (fromSide === "bottom") y1 += gap;
-  if (fromSide === "top") y1 -= gap;
-  if (toSide === "left") x2 -= gap;
-  if (toSide === "right") x2 += gap;
-  if (toSide === "top") y2 -= gap;
-  if (toSide === "bottom") y2 += gap;
-
-  const midX = (x1 + x2) / 2;
-  const midY = (y1 + y2) / 2;
-
-  if (fromSide === "right" || fromSide === "left") {
-    return `M ${from.x} ${from.y} L ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2} L ${to.x} ${to.y}`;
+function cardLabelPoint(from: PosterEntity, to: PosterEntity, rel: PosterRelation, which: "from" | "to") {
+  const a = anchor(from, rel.fromSide);
+  const b = anchor(to, rel.toSide);
+  if (which === "from") {
+    if (rel.fromSide === "right") return { x: a.x + 14, y: a.y - 8 };
+    if (rel.fromSide === "bottom") return { x: a.x - 10, y: a.y + 16 };
+    return { x: a.x, y: a.y - 10 };
   }
-  return `M ${from.x} ${from.y} L ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2} L ${to.x} ${to.y}`;
+  if (rel.toSide === "left") return { x: b.x - 18, y: b.y - 8 };
+  if (rel.toSide === "top") return { x: b.x + 6, y: b.y - 12 };
+  return { x: b.x - 10, y: b.y + 14 };
 }
 
-function CrowFoot({ x, y, side, kind }: { x: number; y: number; side: AnchorSide; kind: "one" | "many" }) {
-  const len = 12;
-  const spread = 7;
+function PosterEntityBox({ entity }: { entity: PosterEntity }) {
+  const height = posterEntityHeight(entity);
 
-  if (kind === "one") {
-    if (side === "left" || side === "right") {
-      return (
-        <line
-          x1={x}
-          y1={y - 10}
-          x2={x}
-          y2={y + 10}
-          stroke="currentColor"
-          strokeWidth={2}
-          className="text-indigo-500"
-        />
-      );
-    }
-    return (
-      <line
-        x1={x - 10}
-        y1={y}
-        x2={x + 10}
-        y2={y}
-        stroke="currentColor"
-        strokeWidth={2}
-        className="text-indigo-500"
-      />
-    );
-  }
-
-  if (side === "right") {
-    return (
-      <g className="text-indigo-500" stroke="currentColor" strokeWidth={1.5}>
-        <line x1={x} y1={y} x2={x + len} y2={y - spread} />
-        <line x1={x} y1={y} x2={x + len} y2={y} />
-        <line x1={x} y1={y} x2={x + len} y2={y + spread} />
-      </g>
-    );
-  }
-  if (side === "left") {
-    return (
-      <g className="text-indigo-500" stroke="currentColor" strokeWidth={1.5}>
-        <line x1={x} y1={y} x2={x - len} y2={y - spread} />
-        <line x1={x} y1={y} x2={x - len} y2={y} />
-        <line x1={x} y1={y} x2={x - len} y2={y + spread} />
-      </g>
-    );
-  }
-  if (side === "bottom") {
-    return (
-      <g className="text-indigo-500" stroke="currentColor" strokeWidth={1.5}>
-        <line x1={x} y1={y} x2={x - spread} y2={y + len} />
-        <line x1={x} y1={y} x2={x} y2={y + len} />
-        <line x1={x} y1={y} x2={x + spread} y2={y + len} />
-      </g>
-    );
-  }
   return (
-    <g className="text-indigo-500" stroke="currentColor" strokeWidth={1.5}>
-      <line x1={x} y1={y} x2={x - spread} y2={y - len} />
-      <line x1={x} y1={y} x2={x} y2={y - len} />
-      <line x1={x} y1={y} x2={x + spread} y2={y - len} />
+    <g>
+      <rect
+        x={entity.x}
+        y={entity.y}
+        width={entity.width}
+        height={height}
+        fill="#ffffff"
+        stroke="#64748b"
+        strokeWidth={1.5}
+        rx={2}
+      />
+      <rect x={entity.x} y={entity.y} width={entity.width} height={ERD_POSTER_HEADER_HEIGHT} fill={entity.headerColor} rx={2} />
+      <rect x={entity.x} y={entity.y + ERD_POSTER_HEADER_HEIGHT - 2} width={entity.width} height={4} fill={entity.headerColor} />
+      <text
+        x={entity.x + entity.width / 2}
+        y={entity.y + 25}
+        textAnchor="middle"
+        fill="#ffffff"
+        fontSize={15}
+        fontWeight={700}
+        fontFamily="Arial, Helvetica, sans-serif"
+      >
+        {entity.title}
+      </text>
+      {entity.fields.map((field, index) => {
+        const rowY = entity.y + ERD_POSTER_HEADER_HEIGHT + 8 + index * ERD_POSTER_ROW_HEIGHT;
+        return (
+          <g key={field.name}>
+            <line
+              x1={entity.x + 8}
+              x2={entity.x + entity.width - 8}
+              y1={rowY + ERD_POSTER_ROW_HEIGHT - 6}
+              y2={rowY + ERD_POSTER_ROW_HEIGHT - 6}
+              stroke="#e2e8f0"
+              strokeWidth={1}
+            />
+            {field.kind === "PK" && (
+              <text x={entity.x + 14} y={rowY + 12} fill="#b45309" fontSize={11} fontWeight={700} fontFamily="Arial, sans-serif">
+                PK
+              </text>
+            )}
+            {field.kind === "FK" && (
+              <text x={entity.x + 14} y={rowY + 12} fill="#0369a1" fontSize={11} fontWeight={700} fontFamily="Arial, sans-serif">
+                FK
+              </text>
+            )}
+            <text
+              x={entity.x + (field.kind ? 42 : 14)}
+              y={rowY + 12}
+              fill="#1e293b"
+              fontSize={13}
+              fontFamily="Consolas, Monaco, monospace"
+            >
+              {field.name}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }
 
-function ErdEntityBox({
-  table,
-  highlighted,
-  onHover,
-}: {
-  table: ErdTable;
-  highlighted: boolean;
-  onHover: (name: string | null) => void;
-}) {
-  const layout = ERD_DIAGRAM_LAYOUT[table.name];
-  if (!layout) return null;
+function PosterRelationLine({ rel }: { rel: PosterRelation }) {
+  const from = getPosterEntity(rel.from);
+  const to = getPosterEntity(rel.to);
+  if (!from || !to) return null;
 
-  const height = erdEntityHeight(table);
+  const path = relationPath(from, to, rel);
+  const fromLabel = cardLabelPoint(from, to, rel, "from");
+  const toLabel = cardLabelPoint(from, to, rel, "to");
 
   return (
-    <div
-      id={`erd-${table.name}`}
-      className={cn(
-        "absolute z-10 overflow-hidden rounded-lg border-2 bg-card shadow-md transition-shadow",
-        highlighted
-          ? "border-indigo-500 shadow-indigo-500/25 ring-2 ring-indigo-500/30"
-          : "border-indigo-400/80 dark:border-indigo-500/60",
-      )}
-      style={{ left: layout.x, top: layout.y, width: ERD_ENTITY_WIDTH, minHeight: height }}
-      onMouseEnter={() => onHover(table.name)}
-      onMouseLeave={() => onHover(null)}
-    >
-      <div className="flex items-center gap-2 bg-indigo-600 px-3 py-2.5 text-sm font-bold text-white dark:bg-indigo-700">
-        <span className="truncate">{table.name}</span>
-      </div>
-      <ul className="divide-y divide-border/80">
-        {table.columns.map((column) => (
-          <li
-            key={column.name}
-            className="flex items-center gap-2 px-2.5 text-[11px] font-mono leading-6"
-            style={{ minHeight: ERD_ROW_HEIGHT }}
-          >
-            {column.kind === "pk" && (
-              <span className="shrink-0 rounded bg-amber-500/20 px-1 text-[9px] font-bold text-amber-700 dark:text-amber-300">
-                PK
-              </span>
-            )}
-            {column.kind === "fk" && (
-              <span className="shrink-0 rounded bg-sky-500/20 px-1 text-[9px] font-bold text-sky-700 dark:text-sky-300">
-                FK
-              </span>
-            )}
-            {column.kind === "uk" && (
-              <span className="shrink-0 rounded bg-violet-500/20 px-1 text-[9px] font-bold text-violet-700 dark:text-violet-300">
-                UK
-              </span>
-            )}
-            {!column.kind || column.kind === "col" ? (
-              <span className="w-6 shrink-0" aria-hidden />
-            ) : null}
-            <span className="truncate text-foreground">{column.name}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <g>
+      <path d={path} fill="none" stroke="#475569" strokeWidth={2} />
+      <text x={fromLabel.x} y={fromLabel.y} fill="#334155" fontSize={14} fontWeight={700} fontFamily="Arial, sans-serif">
+        {rel.fromCard}
+      </text>
+      <text x={toLabel.x} y={toLabel.y} fill="#334155" fontSize={14} fontWeight={700} fontFamily="Arial, sans-serif">
+        {rel.toCard}
+      </text>
+    </g>
   );
 }
 
-function ErdDiagramCanvas({
-  section,
-  title,
-  subtitle,
-}: {
-  section: ErdDiagramSection;
-  title: string;
-  subtitle: string;
-}) {
-  const [hovered, setHovered] = useState<string | null>(null);
-  const tables = useMemo(() => getDiagramTables(section), [section]);
-  const edges = useMemo(() => buildDiagramEdges(section), [section]);
-  const canvas = ERD_DIAGRAM_CANVAS[section];
-
-  const tableMap = useMemo(() => new Map(tables.map((t) => [t.name, t])), [tables]);
-
-  const connected = useMemo(() => {
-    if (!hovered) return null;
-    const set = new Set<string>([hovered]);
-    edges.forEach((edge) => {
-      if (edge.from === hovered || edge.to === hovered) {
-        set.add(edge.from);
-        set.add(edge.to);
-      }
-    });
-    return set;
-  }, [hovered, edges]);
-
+function PosterErdSvg({ svgRef }: { svgRef: React.RefObject<SVGSVGElement | null> }) {
   return (
-    <div className="space-y-3">
-      <div>
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
-      </div>
-      <div className="overflow-auto rounded-xl border border-border bg-[#f8fafc] dark:bg-slate-950/50">
-        <div
-          className="relative"
-          style={{ width: canvas.width, height: canvas.height, minWidth: canvas.width, minHeight: canvas.height }}
-        >
-          {/* Grid dots */}
-          <svg
-            className="pointer-events-none absolute inset-0 text-slate-300/60 dark:text-slate-700/40"
-            width={canvas.width}
-            height={canvas.height}
-          >
-            <defs>
-              <pattern id={`grid-${section}`} width={24} height={24} patternUnits="userSpaceOnUse">
-                <circle cx={1} cy={1} r={1} fill="currentColor" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill={`url(#grid-${section})`} />
-          </svg>
+    <svg
+      ref={svgRef}
+      viewBox={`0 0 ${ERD_POSTER_VIEWBOX.width} ${ERD_POSTER_VIEWBOX.height}`}
+      width="100%"
+      height="100%"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label={ERD_POSTER_TITLE}
+    >
+      <rect width={ERD_POSTER_VIEWBOX.width} height={ERD_POSTER_VIEWBOX.height} fill="#f1f5f9" />
+      <text
+        x={ERD_POSTER_VIEWBOX.width / 2}
+        y={52}
+        textAnchor="middle"
+        fill="#0f172a"
+        fontSize={28}
+        fontWeight={700}
+        fontFamily="Arial, Helvetica, sans-serif"
+        letterSpacing={1}
+      >
+        {ERD_POSTER_TITLE}
+      </text>
 
-          {/* Relationship lines */}
-          <svg
-            className="pointer-events-none absolute inset-0 overflow-visible"
-            width={canvas.width}
-            height={canvas.height}
-          >
-            {edges.map((edge) => {
-              const fromTable = tableMap.get(edge.from);
-              const toTable = tableMap.get(edge.to);
-              if (!fromTable || !toTable) return null;
+      {ERD_POSTER_RELATIONS.map((rel) => (
+        <PosterRelationLine key={`${rel.from}-${rel.to}`} rel={rel} />
+      ))}
 
-              const isSelf = edge.from === edge.to;
-              const active =
-                !connected || (connected.has(edge.from) && connected.has(edge.to));
+      {ERD_POSTER_ENTITIES.map((entity) => (
+        <PosterEntityBox key={entity.id} entity={entity} />
+      ))}
 
-              if (isSelf) {
-                const layout = ERD_DIAGRAM_LAYOUT[edge.from];
-                const h = erdEntityHeight(fromTable);
-                const cx = layout.x + ERD_ENTITY_WIDTH + 28;
-                const cy = layout.y + h / 2;
-                return (
-                  <path
-                    key={`${edge.from}-self`}
-                    d={`M ${layout.x + ERD_ENTITY_WIDTH} ${layout.y + h / 2} C ${cx + 40} ${cy - 60}, ${cx + 40} ${cy + 60}, ${layout.x + ERD_ENTITY_WIDTH} ${layout.y + h / 2}`}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={active ? 2 : 1}
-                    className={cn(active ? "text-indigo-500" : "text-indigo-300/50 dark:text-indigo-800")}
-                  />
-                );
-              }
-
-              const sides = pickSides(fromTable, toTable);
-              const fromPt = getAnchor(fromTable, sides.from);
-              const toPt = getAnchor(toTable, sides.to);
-              const path = orthogonalPath(fromPt, toPt, sides.from, sides.to);
-
-              return (
-                <g key={`${edge.from}-${edge.to}-${edge.fromCard}`}>
-                  <path
-                    d={path}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={active ? 2 : 1}
-                    className={cn(active ? "text-indigo-500" : "text-indigo-300/50 dark:text-indigo-800")}
-                  />
-                  <CrowFoot x={fromPt.x} y={fromPt.y} side={sides.from} kind={edge.fromCard} />
-                  <CrowFoot x={toPt.x} y={toPt.y} side={sides.to} kind={edge.toCard} />
-                </g>
-              );
-            })}
-          </svg>
-
-          {tables.map((table) => (
-            <ErdEntityBox
-              key={table.name}
-              table={table}
-              highlighted={!connected || connected.has(table.name)}
-              onHover={setHovered}
-            />
-          ))}
-        </div>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Crow&apos;s foot notation: | = one · &lt; = many. Hover a table to highlight its relationships.
-      </p>
-    </div>
+      <text
+        x={ERD_POSTER_VIEWBOX.width / 2}
+        y={ERD_POSTER_VIEWBOX.height - 24}
+        textAnchor="middle"
+        fill="#64748b"
+        fontSize={12}
+        fontFamily="Arial, sans-serif"
+      >
+        1 = one · M = many · PK = primary key · FK = foreign key
+      </text>
+    </svg>
   );
+}
+
+async function exportSvgToPng(svg: SVGSVGElement, filename: string, scale: number): Promise<void> {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute("width", String(ERD_POSTER_VIEWBOX.width));
+  clone.setAttribute("height", String(ERD_POSTER_VIEWBOX.height));
+
+  const serialized = new XMLSerializer().serializeToString(clone);
+  const svgBlob = new Blob([serialized], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("Failed to render diagram for export."));
+      img.src = url;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = ERD_POSTER_VIEWBOX.width * scale;
+    canvas.height = ERD_POSTER_VIEWBOX.height * scale;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas not supported.");
+
+    ctx.fillStyle = "#f1f5f9";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    await new Promise<void>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("PNG export failed."));
+            return;
+          }
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          link.click();
+          URL.revokeObjectURL(link.href);
+          resolve();
+        },
+        "image/png",
+        1,
+      );
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function DatabaseErdDiagram() {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = useCallback(async () => {
+    if (!svgRef.current || downloading) return;
+    setDownloading(true);
+    try {
+      const stamp = new Date().toISOString().slice(0, 10);
+      await exportSvgToPng(
+        svgRef.current,
+        `mock-interview-pro-erd-${stamp}.png`,
+        EXPORT_SCALE,
+      );
+    } catch {
+      // silent — button re-enables
+    } finally {
+      setDownloading(false);
+    }
+  }, [downloading]);
+
   return (
-    <div className="space-y-10">
-      <ErdDiagramCanvas
-        section="core"
-        title="Application schema"
-        subtitle="Users, interviews, scoring, AI memory, and public sharing — primary business entities."
-      />
-      <ErdDiagramCanvas
-        section="framework"
-        title="Laravel infrastructure"
-        subtitle="Queue, cache, and failed-job tables used by the framework runtime."
-      />
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Classic ERD layout with 1/M cardinality — export at {ERD_POSTER_VIEWBOX.width * EXPORT_SCALE}×
+          {ERD_POSTER_VIEWBOX.height * EXPORT_SCALE}px PNG.
+        </p>
+        <Button type="button" onClick={handleDownload} disabled={downloading} className="gap-2 shrink-0">
+          <Download className="h-4 w-4" />
+          {downloading ? "Generating…" : "Download PNG"}
+        </Button>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-border bg-[#f1f5f9] p-4 shadow-inner">
+        <div className="mx-auto aspect-[1280/820] w-full max-w-6xl min-w-[720px]">
+          <PosterErdSvg svgRef={svgRef} />
+        </div>
+      </div>
     </div>
   );
 }

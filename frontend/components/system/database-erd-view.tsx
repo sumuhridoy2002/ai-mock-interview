@@ -107,7 +107,7 @@ export function DatabaseErdView() {
       <PageHero
         icon={Database}
         title="Database ERD"
-        subtitle={`Entity-relationship diagram — ${ERD_TABLES.length} tables with Crow's foot notation, PK/FK keys, and full column reference.`}
+        subtitle="Classic entity-relationship diagram — download a high-resolution PNG for docs or presentations."
         accent="indigo"
       />
 
