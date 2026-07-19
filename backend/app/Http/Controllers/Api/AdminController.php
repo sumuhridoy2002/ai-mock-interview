@@ -20,6 +20,30 @@ class AdminController extends Controller
         private readonly UserPublicProfileService $profileService,
     ) {}
 
+    public function stats(): JsonResponse
+    {
+        $candidates = User::query()->where('role', 'candidate');
+
+        return response()->json([
+            'total_candidates' => (clone $candidates)->count(),
+            'public_profiles' => (clone $candidates)->where('is_profile_public', true)->count(),
+            'on_leaderboard' => (clone $candidates)->where('show_on_leaderboard', true)->count(),
+            'total_interviews' => Interview::query()
+                ->whereHas('user', fn ($q) => $q->where('role', 'candidate'))
+                ->count(),
+            'completed_interviews' => Interview::query()
+                ->whereHas('user', fn ($q) => $q->where('role', 'candidate'))
+                ->where('status', 'completed')
+                ->count(),
+            'active_share_links' => PublicShareLink::query()
+                ->whereNull('revoked_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->count(),
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $search = $request->string('search')->trim()->toString();

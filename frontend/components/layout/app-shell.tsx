@@ -13,6 +13,9 @@ function isAdminOnlyPath(pathname: string): boolean {
   if (pathname === "/system/expert" || pathname.startsWith("/system/expert/")) {
     return false;
   }
+  if (pathname === "/admin") {
+    return true;
+  }
   return pathname.startsWith("/system/") || pathname.startsWith("/admin/");
 }
 
@@ -42,7 +45,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       return;
     }
     if (isCandidateOnlyPath(pathname) && stored && isAdmin(stored)) {
-      router.replace("/admin/users");
+      router.replace("/admin");
       return;
     }
 
@@ -53,11 +56,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           return;
         }
         if (isCandidateOnlyPath(pathname) && isAdmin(user)) {
-          router.replace("/admin/users");
+          router.replace("/admin");
           return;
         }
         if (pathname === "/dashboard" && isAdmin(user)) {
-          router.replace("/admin/users");
+          router.replace("/admin");
           return;
         }
         setReady(true);

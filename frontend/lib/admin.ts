@@ -74,6 +74,19 @@ export interface AdminUserDossier {
   }>;
 }
 
+export interface AdminStats {
+  total_candidates: number;
+  public_profiles: number;
+  on_leaderboard: number;
+  total_interviews: number;
+  completed_interviews: number;
+  active_share_links: number;
+}
+
+export async function fetchAdminStats(): Promise<AdminStats> {
+  return api<AdminStats>("/admin/stats");
+}
+
 export async function fetchAdminUsers(search = "", page = 1): Promise<AdminUsersResponse> {
   const params = new URLSearchParams({ page: String(page) });
   if (search) params.set("search", search);

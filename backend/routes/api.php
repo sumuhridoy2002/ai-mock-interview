@@ -31,6 +31,7 @@ Route::prefix('v1')->group(function () {
         Route::put('/user/password', [AuthController::class, 'updatePassword']);
 
         Route::middleware('admin')->prefix('admin')->group(function () {
+            Route::get('/stats', [AdminController::class, 'stats']);
             Route::get('/users', [AdminController::class, 'index']);
             Route::get('/users/{user}', [AdminController::class, 'show']);
             Route::patch('/users/{user}', [AdminController::class, 'update']);

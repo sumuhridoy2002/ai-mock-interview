@@ -87,8 +87,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       {
         href: "/admin/users",
-        label: "Users",
-        description: "Manage candidates",
+        label: "User Management",
+        description: "Browse candidates",
         icon: Users,
         adminOnly: true,
       },
@@ -149,6 +149,7 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 function isNavActive(pathname: string, href: string): boolean {
+  if (href === "/admin") return pathname === "/admin";
   if (href === "/dashboard") return pathname === "/dashboard";
   if (href === "/interview/setup") return pathname.startsWith("/interview");
   if (href.startsWith("/admin/")) return pathname === href || pathname.startsWith(`${href}/`);
@@ -190,10 +191,10 @@ export function DashboardSidebar({
           ...group,
           items: [
             {
-              href: "/admin/users",
-              label: "User Management",
-              description: "Candidates & performance",
-              icon: Users,
+              href: "/admin",
+              label: "Dashboard",
+              description: "Platform overview",
+              icon: LayoutDashboard,
             },
           ],
         };
@@ -215,7 +216,7 @@ export function DashboardSidebar({
     >
       {/* Brand */}
       <div className="flex h-[4.25rem] items-center justify-between gap-3 border-b border-border px-5">
-        <Link href="/dashboard" className="flex min-w-0 items-center gap-3 group">
+        <Link href={isAdmin(user) ? "/admin" : "/dashboard"} className="flex min-w-0 items-center gap-3 group">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
             <Sparkles className="h-4 w-4 text-white" />
           </div>

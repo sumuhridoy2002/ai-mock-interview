@@ -24,7 +24,7 @@ export default function LoginPage() {
     try {
       await login(email, password);
       const stored = getStoredUser();
-      router.push(isAdmin(stored) ? "/admin/users" : "/dashboard");
+      router.push(isAdmin(stored) ? "/admin" : "/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

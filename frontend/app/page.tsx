@@ -45,7 +45,7 @@ export default function HomePage() {
             {loggedIn ? (
               <>
                 {admin && (
-                  <Link href="/admin/users">
+                  <Link href="/admin">
                     <Button variant="outline" size="sm">
                       <Shield className="h-4 w-4 mr-1" /> Admin
                     </Button>
