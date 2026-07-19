@@ -18,6 +18,7 @@ import {
   GitCompare,
   Workflow,
   List,
+  MessageCircleQuestion,
 } from "lucide-react";
 import { fetchUser, getStoredUser, type User as AuthUser } from "@/lib/auth";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -96,6 +97,12 @@ const NAV_GROUPS: NavGroup[] = [
         label: "How it works",
         description: "Architecture & flow",
         icon: Workflow,
+      },
+      {
+        href: "/system/expert",
+        label: "AI Expert",
+        description: "Ask about scoring & strategy",
+        icon: MessageCircleQuestion,
       },
     ],
   },

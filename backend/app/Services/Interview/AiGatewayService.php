@@ -292,6 +292,15 @@ class AiGatewayService
         return $response->json();
     }
 
+    public function expertChat(array $payload): array
+    {
+        if (isset($payload['message'])) {
+            $payload['message'] = $this->sanitizer->sanitize($payload['message']);
+        }
+
+        return $this->post('/agents/expert/chat', $payload, (int) config('ai.timeout'));
+    }
+
     public function health(): bool
     {
         try {

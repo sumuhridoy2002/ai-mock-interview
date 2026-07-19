@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 import { PerformanceSamplesDialog } from "@/components/system/performance-samples-dialog";
+import { PerformanceTrendChart } from "@/components/system/performance-trend-chart";
 import { useSystemMetrics, type MetricComparison } from "@/hooks/useSystemMetrics";
 import { getMetricsPageFormulas } from "@/lib/scoring-docs";
 import {
@@ -292,6 +293,22 @@ export function SystemMetricsView() {
           icon={Database}
         />
       </div>
+
+      {/* Performance over time */}
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-md">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
+            <Activity className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-foreground">Performance over time</h2>
+            <p className="text-sm text-muted-foreground">
+              Score, API latency, and page load across your last {metrics.performanceHistory.length} samples
+            </p>
+          </div>
+        </div>
+        <PerformanceTrendChart samples={metrics.performanceHistory} />
+      </section>
 
       {/* Detail panels */}
       <div className="grid gap-4 lg:grid-cols-3">

@@ -192,7 +192,8 @@ export default function ResumeUploadPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
+                    size="sm"
+               
                     className="shrink-0 text-muted-foreground hover:text-red-600"
                     disabled={deletingId === r.id}
                     onClick={(e) => handleDelete(e, r)}

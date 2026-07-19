@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, TrendingUp, Award, ArrowRight, Bell, BellOff, Calendar, Pencil, Trash2, X, Check, TrendingDown, Minus, Star, Target, BarChart2, ChevronRight } from "lucide-react";
+import { Mic, TrendingUp, Award, ArrowRight, Bell, BellOff, Calendar, Pencil, Trash2, X, Check, TrendingDown, Minus, Star, Target, BarChart2, ChevronRight, Activity } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { PageHero, StatTile } from "@/components/ui/page-shell";
+import { PageHero, StatTile, CategoryHeading } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PerformanceTrendChart } from "@/components/system/performance-trend-chart";
+import { useSystemMetrics } from "@/hooks/useSystemMetrics";
 import { api } from "@/lib/api";
 import { formatScore } from "@/lib/utils";
 import { computeAverage, letterGrade, scoreBandColor, scoreBarColor, trendDelta as computeTrendDelta } from "@/lib/scoring/interview";
@@ -38,6 +40,12 @@ interface ScheduledRow {
 function scheduleStatus(row: ScheduledRow): "due" | "upcoming" {
   return new Date(row.scheduled_at) <= new Date() ? "due" : "upcoming";
 }
+
+const TYPE_META: Record<string, { label: string; border: string }> = {
+  technical: { label: "Technical", border: "border-l-indigo-500" },
+  behavioral: { label: "Behavioral", border: "border-l-emerald-500" },
+  mixed: { label: "Mixed", border: "border-l-violet-500" },
+};
 
 function formatScheduledAt(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -139,6 +147,7 @@ function EditScheduleForm({ row, onSave, onClear, onCancel }: EditScheduleFormPr
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { metrics: systemMetrics } = useSystemMetrics();
   const [interviews, setInterviews] = useState<InterviewRow[]>([]);
   const [scheduled, setScheduled] = useState<ScheduledRow[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -237,6 +246,34 @@ export default function DashboardPage() {
           <StatTile icon={Award} label="Completed" value={completed.length} accent="amber" />
         </div>
 
+        {/* System Health */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Activity className="h-4 w-4 text-emerald-500" />
+              System Health
+            </CardTitle>
+            <Link href="/system/metrics" className="text-xs text-primary hover:underline flex items-center gap-1">
+              Full report <ChevronRight className="h-3 w-3" />
+            </Link>
+          </CardHeader>
+          <CardContent className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex items-center gap-3 shrink-0">
+              <p className={`text-3xl font-bold ${scoreBandColor(systemMetrics.performanceScore)}`}>
+                {systemMetrics.performanceScore}
+                <span className="text-sm text-muted-foreground font-normal">/100</span>
+              </p>
+              <div className="text-xs text-muted-foreground">
+                <p>Performance score</p>
+                <p>API {systemMetrics.apiLatencyMs != null ? `${systemMetrics.apiLatencyMs} ms` : "—"}</p>
+              </div>
+            </div>
+            <div className="flex-1 w-full min-w-0">
+              <PerformanceTrendChart samples={systemMetrics.performanceHistory} compact />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Progress Overview */}
         {completed.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -296,7 +333,7 @@ export default function DashboardPage() {
                     <span>Completion rate</span>
                     <span>{interviews.length > 0 ? Math.round((completed.length / interviews.length) * 100) : 0}%</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
                       className="h-full rounded-full bg-indigo-500 transition-all duration-500"
                       style={{ width: `${interviews.length > 0 ? (completed.length / interviews.length) * 100 : 0}%` }}
@@ -322,10 +359,6 @@ export default function DashboardPage() {
                   <div className="space-y-3">
                     {recent8.map((interview, idx) => {
                       const score = interview.report!.overall_score;
-                      const barColor =
-                        score >= 85 ? "bg-emerald-500" :
-                        score >= 70 ? "bg-indigo-500" :
-                        score >= 55 ? "bg-amber-500" : "bg-red-500";
                       return (
                         <Link
                           key={interview.id}
@@ -336,12 +369,12 @@ export default function DashboardPage() {
                           <span className="text-xs text-foreground/80 truncate w-36 shrink-0 group-hover:text-foreground transition-colors">
                             {interview.job_title}
                           </span>
-                          <div className="flex-1 h-5 rounded bg-slate-800 overflow-hidden relative">
+                          <div className="flex-1 h-5 rounded-md bg-muted overflow-hidden relative border border-border/60">
                             <div
-                              className={`h-full rounded ${barColor} transition-all duration-700`}
+                              className={`h-full rounded-sm ${scoreBarColor(score)} transition-all duration-700`}
                               style={{ width: `${score}%` }}
                             />
-                            <span className="absolute inset-0 flex items-center pl-2 text-xs font-medium text-white/80">
+                            <span className="absolute inset-0 flex items-center pl-2 text-xs font-semibold text-foreground/80">
                               {score}
                             </span>
                           </div>
@@ -354,13 +387,16 @@ export default function DashboardPage() {
 
                 {/* Score by type */}
                 {byType.some((t) => t.avg !== null) && (
-                  <div className="mt-5 pt-4 border-t border-slate-700/50">
-                    <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wide">Score by type</p>
+                  <div className="mt-5 pt-4 border-t border-border">
+                    <CategoryHeading>Score by type</CategoryHeading>
                     <div className="grid grid-cols-3 gap-3">
                       {byType.map(({ type, count, avg }) => (
-                        <div key={type} className="rounded-lg bg-slate-800/60 p-3 text-center">
-                          <p className="text-xs text-muted-foreground capitalize mb-1">{type}</p>
-                          <p className={`text-lg font-bold ${avg !== null ? (avg >= 85 ? "text-emerald-400" : avg >= 70 ? "text-indigo-400" : avg >= 55 ? "text-amber-400" : "text-red-400") : "text-muted-foreground"}`}>
+                        <div
+                          key={type}
+                          className={`rounded-xl border border-border border-l-4 bg-card p-3 text-center shadow-sm ${TYPE_META[type].border}`}
+                        >
+                          <p className="text-xs text-muted-foreground mb-1">{TYPE_META[type].label}</p>
+                          <p className={`text-lg font-bold ${avg !== null ? scoreBandColor(avg) : "text-muted-foreground/40"}`}>
                             {avg !== null ? avg : "—"}
                           </p>
                           <p className="text-xs text-muted-foreground">{count} session{count !== 1 ? "s" : ""}</p>

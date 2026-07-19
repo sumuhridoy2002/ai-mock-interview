@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -9,6 +9,7 @@ from app.agents.answer_explainer import explain_answer
 from app.agents.cv_analyzer import analyze_cv
 from app.services.document_parser import extract_document_text
 from app.agents.evaluator import evaluate_answer
+from app.agents.expert_advisor import chat_expert
 from app.agents.job_analyzer import analyze_job
 from app.agents.question_generator import generate_question
 from app.agents.report_generator import generate_report
@@ -155,6 +156,26 @@ class ReportGenerateRequest(BaseModel):
 @app.post("/agents/reports/generate", dependencies=[Depends(verify_secret)] if AI_SECRET else [])
 async def reports_generate(body: ReportGenerateRequest):
     return await generate_report(body.model_dump())
+
+
+class ExpertChatHistoryItem(BaseModel):
+    role: Literal["user", "assistant"] = "user"
+    content: str = ""
+
+
+class ExpertChatRequest(BaseModel):
+    message: str
+    history: list[ExpertChatHistoryItem] = []
+    context: dict[str, Any] = {}
+
+
+@app.post("/agents/expert/chat", dependencies=[Depends(verify_secret)] if AI_SECRET else [])
+async def expert_chat(body: ExpertChatRequest):
+    return await chat_expert(
+        body.message,
+        [h.model_dump() for h in body.history],
+        body.context,
+    )
 
 
 @app.post("/pipeline/transcribe", dependencies=[Depends(verify_secret)] if AI_SECRET else [])

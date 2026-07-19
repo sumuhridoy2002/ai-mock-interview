@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ExpertChatController;
 use App\Http\Controllers\Api\InterviewController;
 use App\Http\Controllers\Api\ResumeController;
 use Illuminate\Support\Facades\Route;
@@ -49,5 +50,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/interviews/{interview}/questions/{sequence}/explain', [InterviewController::class, 'explainQuestion']);
         Route::post('/interviews/{interview}/report/regenerate', [InterviewController::class, 'regenerateReport']);
         Route::get('/interviews/{interview}/report/pdf', [InterviewController::class, 'downloadPdf']);
+
+        Route::get('/expert/chat', [ExpertChatController::class, 'index']);
+        Route::post('/expert/chat', [ExpertChatController::class, 'store'])->middleware('throttle:20,1');
     });
 });

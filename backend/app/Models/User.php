@@ -40,6 +40,11 @@ class User extends Authenticatable
         return $this->hasOne(UserMemoryProfile::class);
     }
 
+    public function expertChatMessages(): HasMany
+    {
+        return $this->hasMany(ExpertChatMessage::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

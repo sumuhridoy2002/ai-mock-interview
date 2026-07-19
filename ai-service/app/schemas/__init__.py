@@ -59,3 +59,8 @@ class VoiceProcessResult(BaseModel):
     transcript: str
     evaluation: EvaluationResult
     next_question: Optional[QuestionResult] = None
+
+
+class ExpertChatResult(BaseModel):
+    reply: str
+    suggested_followups: list[str] = Field(default_factory=list)
