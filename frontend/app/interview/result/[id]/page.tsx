@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Download, ArrowLeft, Award, Video, Camera, FileText } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
 import { PageHero } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -164,8 +163,7 @@ export default function InterviewResultPage() {
   const totalSnaps = galleryQuestions.reduce((s, q) => s + q.snapshotCount, 0);
 
   return (
-    <AppShell>
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
@@ -349,6 +347,5 @@ export default function InterviewResultPage() {
           </>
         )}
       </div>
-    </AppShell>
   );
 }

@@ -13,7 +13,6 @@ import {
   Share2,
   User as UserIcon,
 } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
 import { PageHero, SectionPanel, StatTile } from "@/components/ui/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,19 +124,11 @@ export default function AdminUserDetailPage() {
   }
 
   if (loading) {
-    return (
-      <AppShell>
-        <p className="text-muted-foreground">Loading user profile…</p>
-      </AppShell>
-    );
+    return <p className="text-muted-foreground">Loading user profile…</p>;
   }
 
   if (!dossier) {
-    return (
-      <AppShell>
-        <p className="text-muted-foreground">User not found.</p>
-      </AppShell>
-    );
+    return <p className="text-muted-foreground">User not found.</p>;
   }
 
   const { user, stats, skills, interviews, resumes, share_links } = dossier;
@@ -149,8 +140,7 @@ export default function AdminUserDetailPage() {
   ];
 
   return (
-    <AppShell>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <Link
           href="/admin/users"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -374,6 +364,5 @@ export default function AdminUserDetailPage() {
           </div>
         )}
       </div>
-    </AppShell>
   );
 }

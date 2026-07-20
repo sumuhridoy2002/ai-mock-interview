@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Database,
 } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
 import { PageHero, StatTile } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchAdminStats, fetchAdminUsers, type AdminStats, type AdminUserRow } from "@/lib/admin";
@@ -39,17 +38,16 @@ export default function AdminDashboardPage() {
   }, []);
 
   return (
-    <AppShell>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHero
           icon={LayoutDashboard}
           title="Admin Dashboard"
-          subtitle="Platform overview — candidates, interviews, and public talent discovery."
+          subtitle="Platform overview â€” candidates, interviews, and public talent discovery."
           accent="indigo"
         />
 
         {loading ? (
-          <p className="text-muted-foreground">Loading dashboard…</p>
+          <p className="text-muted-foreground">Loading dashboardâ€¦</p>
         ) : stats ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -95,7 +93,7 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm font-medium">
-                            {user.average_score != null ? formatScore(user.average_score) : "—"}
+                            {user.average_score != null ? formatScore(user.average_score) : "â€”"}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {user.completed_count}/{user.interview_count} done
@@ -137,6 +135,5 @@ export default function AdminDashboardPage() {
           <p className="text-muted-foreground">Could not load dashboard stats.</p>
         )}
       </div>
-    </AppShell>
   );
 }

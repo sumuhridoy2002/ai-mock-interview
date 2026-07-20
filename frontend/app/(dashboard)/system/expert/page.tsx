@@ -1,14 +1,12 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
 import { PageHero } from "@/components/ui/page-shell";
 import { ExpertChatPanel } from "@/components/system/expert-chat-panel";
 
 export default function SystemExpertPage() {
   return (
-    <AppShell>
-      <div className="w-full space-y-6">
+    <div className="w-full space-y-6">
         <PageHero
           icon={Sparkles}
           title="AI Expert"
@@ -17,6 +15,5 @@ export default function SystemExpertPage() {
         />
         <ExpertChatPanel />
       </div>
-    </AppShell>
   );
 }

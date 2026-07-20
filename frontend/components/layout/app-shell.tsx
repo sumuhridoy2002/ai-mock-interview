@@ -1,9 +1,16 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Menu, Sparkles } from "lucide-react";
-import { fetchUser, getStoredUser, getToken, isAdmin, logout } from "@/lib/auth";
+import {
+  fetchUser,
+  getStoredUser,
+  getToken,
+  isAdmin,
+  logout,
+  type User,
+} from "@/lib/auth";
 import { useScheduledInterviewAlarm } from "@/hooks/useScheduledInterviewAlarm";
 import { AlarmBanner } from "@/components/layout/alarm-banner";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
@@ -24,50 +31,71 @@ function isCandidateOnlyPath(pathname: string): boolean {
     && (pathname.startsWith("/interview/") || pathname.startsWith("/resume/"));
 }
 
+function resolveAccess(
+  pathname: string,
+  user: User,
+): { allowed: boolean; redirect?: string } {
+  if (isAdminOnlyPath(pathname) && !isAdmin(user)) {
+    return { allowed: false, redirect: "/dashboard" };
+  }
+  if (isCandidateOnlyPath(pathname) && isAdmin(user)) {
+    return { allowed: false, redirect: "/admin" };
+  }
+  if (pathname === "/dashboard" && isAdmin(user)) {
+    return { allowed: false, redirect: "/admin" };
+  }
+  return { allowed: true };
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  // Always false on first render so server HTML matches client hydration.
   const [ready, setReady] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { firedAlarms, stopRinging } = useScheduledInterviewAlarm();
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!getToken()) {
       router.replace("/login");
       return;
     }
 
     const stored = getStoredUser();
-    if (isAdminOnlyPath(pathname) && stored && !isAdmin(stored)) {
-      router.replace("/dashboard");
-      return;
+    if (stored) {
+      const access = resolveAccess(pathname, stored);
+      if (!access.allowed) {
+        router.replace(access.redirect!);
+        return;
+      }
+      setReady(true);
     }
-    if (isCandidateOnlyPath(pathname) && stored && isAdmin(stored)) {
-      router.replace("/admin");
-      return;
-    }
+
+    let cancelled = false;
 
     fetchUser()
       .then((user) => {
-        if (isAdminOnlyPath(pathname) && !isAdmin(user)) {
-          router.replace("/dashboard");
+        if (cancelled) return;
+
+        const access = resolveAccess(pathname, user);
+        if (!access.allowed) {
+          router.replace(access.redirect!);
           return;
         }
-        if (isCandidateOnlyPath(pathname) && isAdmin(user)) {
-          router.replace("/admin");
-          return;
-        }
-        if (pathname === "/dashboard" && isAdmin(user)) {
-          router.replace("/admin");
-          return;
-        }
+
         setReady(true);
       })
       .catch(() => {
-        router.replace("/login");
+        if (!cancelled) {
+          router.replace("/login");
+        }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [router, pathname]);
 
   useEffect(() => {

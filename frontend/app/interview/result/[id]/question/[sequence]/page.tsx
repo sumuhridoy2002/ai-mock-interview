@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,8 +51,7 @@ export default function QuestionDetailPage() {
   }, [interviewId, sequence]);
 
   return (
-    <AppShell>
-      <div className="max-w-2xl mx-auto space-y-4">
+    <div className="max-w-2xl mx-auto space-y-4">
         <div className="flex items-center gap-3">
           <Link href={`/interview/result/${interviewId}`}>
             <Button variant="ghost" size="sm" className="gap-2">
@@ -82,6 +80,5 @@ export default function QuestionDetailPage() {
           </Card>
         ) : null}
       </div>
-    </AppShell>
   );
 }

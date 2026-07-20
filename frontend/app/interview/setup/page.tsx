@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import { AppShell } from "@/components/layout/app-shell";
 import { PageHero, SectionPanel } from "@/components/ui/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +65,7 @@ export default function InterviewSetupPage() {
     e.preventDefault();
     setError("");
 
-    // Frontend time validation — must be at least 1 minute in the future
+    // Frontend time validation â€” must be at least 1 minute in the future
     if (mode === "schedule") {
       if (!scheduledAt) {
         setError("Please pick a date and time for the schedule.");
@@ -122,8 +121,7 @@ export default function InterviewSetupPage() {
   const labelClass = "text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1.5 block";
 
   return (
-    <AppShell>
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
         <PageHero
           icon={Mic}
           title="Interview Setup"
@@ -298,6 +296,5 @@ export default function InterviewSetupPage() {
             </form>
         </SectionPanel>
       </div>
-    </AppShell>
   );
 }

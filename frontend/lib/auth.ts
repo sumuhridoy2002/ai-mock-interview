@@ -86,7 +86,9 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function fetchUser(): Promise<User> {
+let inflightFetchUser: Promise<User> | null = null;
+
+async function fetchUserFromApi(): Promise<User> {
   const token = getToken();
   if (!token) {
     throw new Error("Not authenticated");
@@ -128,6 +130,18 @@ export async function fetchUser(): Promise<User> {
   const user = (data as { user: User }).user;
   setStoredUser(user);
   return user;
+}
+
+export async function fetchUser(): Promise<User> {
+  if (inflightFetchUser) {
+    return inflightFetchUser;
+  }
+
+  inflightFetchUser = fetchUserFromApi().finally(() => {
+    inflightFetchUser = null;
+  });
+
+  return inflightFetchUser;
 }
 
 export interface UpdateProfilePayload {

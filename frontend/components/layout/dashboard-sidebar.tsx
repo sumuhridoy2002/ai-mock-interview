@@ -22,7 +22,7 @@ import {
   Users,
   Database,
 } from "lucide-react";
-import { fetchUser, getStoredUser, isAdmin, type User as AuthUser } from "@/lib/auth";
+import { getStoredUser, isAdmin, type User as AuthUser } from "@/lib/auth";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -177,11 +177,7 @@ export function DashboardSidebar({
   onSignOut,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
-  const [user, setUser] = useState<AuthUser | null>(getStoredUser());
-
-  useEffect(() => {
-    fetchUser().then(setUser).catch(() => {});
-  }, []);
+  const user = getStoredUser();
 
   useEffect(() => {
     onMobileClose();

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { Mic, MicOff, Square, Volume2, CheckCircle2, RotateCcw } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuestionCard } from "@/components/interview/question-card";
@@ -175,19 +174,16 @@ export default function LiveInterviewPage() {
 
   if (interviewComplete) {
     return (
-      <AppShell>
-        <Card>
-          <CardContent className="py-12 text-center text-slate-400">
-            Interview complete. Preparing your full score summary...
-          </CardContent>
-        </Card>
-      </AppShell>
+      <Card>
+        <CardContent className="py-12 text-center text-slate-400">
+          Interview complete. Preparing your full score summary...
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <AppShell>
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Camera & Microphone</CardTitle>
@@ -309,6 +305,5 @@ export default function LiveInterviewPage() {
           </Card>
         </div>
       </div>
-    </AppShell>
   );
 }

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { AppShell } from "@/components/layout/app-shell";
 import { PageHero, SectionPanel } from "@/components/ui/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,8 +105,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <AppShell>
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
         <PageHero
           icon={UserIcon}
           title="Profile"
@@ -142,7 +140,7 @@ export default function ProfilePage() {
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
               <Button type="submit" disabled={profileSaving}>
-                {profileSaving ? "Saving…" : "Save changes"}
+                {profileSaving ? "Savingâ€¦" : "Save changes"}
               </Button>
             </form>
           </SectionPanel>
@@ -189,7 +187,7 @@ export default function ProfilePage() {
                 />
               </div>
               <Button type="submit" disabled={passwordSaving}>
-                {passwordSaving ? "Updating…" : "Update password"}
+                {passwordSaving ? "Updatingâ€¦" : "Update password"}
               </Button>
             </form>
           </SectionPanel>
@@ -257,6 +255,5 @@ export default function ProfilePage() {
         </SectionPanel>
         )}
       </div>
-    </AppShell>
   );
 }

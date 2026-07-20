@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Search, Users, ChevronRight, ChevronLeft } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
 import { PageHero } from "@/components/ui/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -86,8 +85,7 @@ export default function AdminUsersPage() {
   const to = Math.min(currentPage * PER_PAGE, total);
 
   return (
-    <AppShell>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHero
           icon={Users}
           title="User Management"
@@ -101,7 +99,7 @@ export default function AdminUsersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="Search by name or email…"
+            placeholder="Search by name or emailâ€¦"
             className="pl-9"
           />
         </div>
@@ -138,7 +136,7 @@ export default function AdminUsersPage() {
                           {user.completed_count}/{user.interview_count}
                         </td>
                         <td className="px-4 py-3">
-                          {user.average_score != null ? formatScore(user.average_score) : "—"}
+                          {user.average_score != null ? formatScore(user.average_score) : "â€”"}
                         </td>
                         <td className="px-4 py-3">
                           {user.is_profile_public ? (
@@ -166,8 +164,8 @@ export default function AdminUsersPage() {
               <div className="flex flex-col items-center gap-3 border-t border-border px-4 py-4">
                 <p className="text-sm text-muted-foreground">
                   {loading && total === 0
-                    ? "Loading candidates…"
-                    : `Showing ${from}–${to} of ${total} candidates`}
+                    ? "Loading candidatesâ€¦"
+                    : `Showing ${from}â€“${to} of ${total} candidates`}
                 </p>
                 <div className="flex items-center justify-center gap-2">
                   <Button
@@ -199,6 +197,5 @@ export default function AdminUsersPage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
   );
 }

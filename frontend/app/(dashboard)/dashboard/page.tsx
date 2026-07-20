@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, TrendingUp, Award, ArrowRight, Bell, BellOff, Calendar, Pencil, Trash2, X, Check, TrendingDown, Minus, Star, Target, BarChart2, ChevronRight } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
 import { PageHero, StatTile, CategoryHeading } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -167,7 +166,7 @@ export default function DashboardPage() {
   const completed = interviews.filter((i) => i.status === "completed");
   const avgScore = computeAverage(completed.map((i) => i.report?.overall_score || 0).filter((s) => s > 0));
 
-  // ── Progress metrics ──────────────────────────────────────────────────────
+  // â”€â”€ Progress metrics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const withScore = completed.filter((i) => i.report?.overall_score != null);
   const sortedByDate = [...withScore].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -228,8 +227,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <AppShell>
-      <div className="w-full space-y-6">
+    <div className="w-full space-y-6">
         <PageHero
           icon={BarChart2}
           title="Dashboard"
@@ -366,7 +364,7 @@ export default function DashboardPage() {
                         >
                           <p className="text-xs text-muted-foreground mb-1">{TYPE_META[type].label}</p>
                           <p className={`text-lg font-bold ${avg !== null ? scoreBandColor(avg) : "text-muted-foreground/40"}`}>
-                            {avg !== null ? avg : "—"}
+                            {avg !== null ? avg : "â€”"}
                           </p>
                           <p className="text-xs text-muted-foreground">{count} session{count !== 1 ? "s" : ""}</p>
                         </div>
@@ -495,7 +493,7 @@ export default function DashboardPage() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-foreground">{interview.job_title}</p>
                         <p className="text-sm text-muted-foreground capitalize flex items-center gap-2 flex-wrap">
-                          {interview.experience_level} · {interview.interview_type}
+                          {interview.experience_level} Â· {interview.interview_type}
                           {isActive && (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -518,7 +516,7 @@ export default function DashboardPage() {
                         )}
                         {isActive && (
                           <span className="text-xs font-semibold text-amber-800 bg-amber-500/15 border border-amber-500/30 rounded-full px-2.5 py-0.5 dark:text-amber-300">
-                            {isResuming ? "Resuming…" : "Resume →"}
+                            {isResuming ? "Resumingâ€¦" : "Resume â†’"}
                           </span>
                         )}
                         {!isActive && !isCompleted && (
@@ -556,6 +554,5 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
   );
 }
