@@ -364,7 +364,7 @@ export default function DashboardPage() {
                         >
                           <p className="text-xs text-muted-foreground mb-1">{TYPE_META[type].label}</p>
                           <p className={`text-lg font-bold ${avg !== null ? scoreBandColor(avg) : "text-muted-foreground/40"}`}>
-                            {avg !== null ? avg : "â€”"}
+                            {avg !== null ? avg : "—"}
                           </p>
                           <p className="text-xs text-muted-foreground">{count} session{count !== 1 ? "s" : ""}</p>
                         </div>
@@ -493,7 +493,7 @@ export default function DashboardPage() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-foreground">{interview.job_title}</p>
                         <p className="text-sm text-muted-foreground capitalize flex items-center gap-2 flex-wrap">
-                          {interview.experience_level} Â· {interview.interview_type}
+                          {interview.experience_level} · {interview.interview_type}
                           {isActive && (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -516,7 +516,7 @@ export default function DashboardPage() {
                         )}
                         {isActive && (
                           <span className="text-xs font-semibold text-amber-800 bg-amber-500/15 border border-amber-500/30 rounded-full px-2.5 py-0.5 dark:text-amber-300">
-                            {isResuming ? "Resumingâ€¦" : "Resume â†’"}
+                            {isResuming ? "Resuming…" : "Resume →"}
                           </span>
                         )}
                         {!isActive && !isCompleted && (

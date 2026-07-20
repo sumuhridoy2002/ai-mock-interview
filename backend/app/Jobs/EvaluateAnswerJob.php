@@ -48,16 +48,7 @@ class EvaluateAnswerJob implements ShouldQueue
                 $this->answer->update(['transcript' => $transcript]);
             }
 
-            // Kick off next-question generation immediately after transcription — it
-            // only needs the transcript as context and can run while evaluation proceeds.
-            $this->interview->refresh();
-            if (
-                ! $interviewService->hasAnsweredAllQuestions($this->interview) &&
-                ! $interviewService->hasReachedQuestionLimit($this->interview)
-            ) {
-                GenerateQuestionJob::dispatch($this->interview, $this->session, $transcript);
-            }
-
+            // Next question is queued from submitAnswer(); evaluation runs in parallel.
             $requiredSkills = $this->interview->job_analysis['required_skills'] ?? [];
 
             try {

@@ -140,7 +140,7 @@ export default function ProfilePage() {
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
               <Button type="submit" disabled={profileSaving}>
-                {profileSaving ? "Savingâ€¦" : "Save changes"}
+                {profileSaving ? "Saving…" : "Save changes"}
               </Button>
             </form>
           </SectionPanel>
@@ -187,7 +187,7 @@ export default function ProfilePage() {
                 />
               </div>
               <Button type="submit" disabled={passwordSaving}>
-                {passwordSaving ? "Updatingâ€¦" : "Update password"}
+                {passwordSaving ? "Updating…" : "Update password"}
               </Button>
             </form>
           </SectionPanel>

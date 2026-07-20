@@ -8,5 +8,6 @@ return [
     'report_timeout' => (int) env('AI_REPORT_TIMEOUT', 120),
     'transcribe_timeout' => (int) env('AI_TRANSCRIBE_TIMEOUT', 300),
     'eval_timeout' => (int) env('AI_EVAL_TIMEOUT', 120),
+    'question_timeout' => (int) env('AI_QUESTION_TIMEOUT', 30),
     'cache_ttl' => (int) env('AI_CACHE_TTL', 86400),
 ];

@@ -73,7 +73,12 @@ class AiGatewayService
             'interviews_completed' => (int) ($userMemory['interviews_completed'] ?? 0),
         ];
 
-        return $this->post('/agents/questions/generate', $payload);
+        return $this->post(
+            '/agents/questions/generate',
+            $payload,
+            (int) config('ai.question_timeout', 30),
+            0,
+        );
     }
 
     public function evaluateAnswer(array $payload): array
@@ -324,13 +329,17 @@ class AiGatewayService
         }
     }
 
-    private function post(string $path, array $data, ?int $timeout = null): array
+    private function post(string $path, array $data, ?int $timeout = null, int $retries = 2): array
     {
         try {
-            $response = Http::timeout($timeout ?? config('ai.timeout'))
-                ->retry(2, 200)
-                ->withHeaders($this->headers())
-                ->post(config('ai.service_url').$path, $data);
+            $request = Http::timeout($timeout ?? config('ai.timeout'))
+                ->withHeaders($this->headers());
+
+            if ($retries > 0) {
+                $request = $request->retry($retries, 200);
+            }
+
+            $response = $request->post(config('ai.service_url').$path, $data);
 
             $response->throw();
 

@@ -172,21 +172,29 @@ class InterviewController extends Controller
             ->where('interview_id', $interview->id)
             ->firstOrFail();
 
-        // Transcript is provided by frontend real-time STT; no audio/video stored per-answer.
-        $transcript = $request->input('transcript');
+        $transcript = trim((string) $request->input('transcript', ''));
 
         $answer = $this->interviewService->submitAnswer(
             $interview,
             $question,
-            $transcript,
+            $transcript !== '' ? $transcript : null,
             null,  // audio_path
             $request->input('idempotency_key'),
             $request->integer('duration_seconds') ?: null,
             null,  // video_path
         );
 
-        if ($interview->session && ! $answer->score) {
-            EvaluateAnswerJob::dispatch($interview, $interview->session, $answer);
+        if ($interview->session) {
+            $interview->refresh();
+
+            // Queue next question immediately — do not wait for slow answer evaluation.
+            if (! $this->interviewService->hasReachedQuestionLimit($interview)) {
+                GenerateQuestionJob::dispatch($interview, $interview->session, $transcript ?: null);
+            }
+
+            if (! $answer->score) {
+                EvaluateAnswerJob::dispatch($interview, $interview->session, $answer);
+            }
         }
 
         return response()->json([

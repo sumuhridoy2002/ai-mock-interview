@@ -42,14 +42,16 @@ export function useInterviewSession(
   }, [fetchQuestion]);
 
   useEffect(() => {
-    if (loading || question || interviewComplete) return;
+    if (loading || interviewComplete || question) return;
 
+    void fetchQuestion();
+    const pollMs = awaitingNextQuestion ? 1000 : 3000;
     const interval = setInterval(() => {
       void fetchQuestion();
-    }, 3000);
+    }, pollMs);
 
     return () => clearInterval(interval);
-  }, [loading, question, interviewComplete, fetchQuestion]);
+  }, [loading, question, interviewComplete, awaitingNextQuestion, fetchQuestion]);
 
   useEffect(() => {
     if (!sessionUuid) return;
@@ -71,7 +73,9 @@ export function useInterviewSession(
 
   const markAwaitingNextQuestion = useCallback(() => {
     setAwaitingNextQuestion(true);
-  }, []);
+    setQuestion(null);
+    void fetchQuestion();
+  }, [fetchQuestion]);
 
   return {
     question,

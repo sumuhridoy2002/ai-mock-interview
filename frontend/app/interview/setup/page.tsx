@@ -65,7 +65,7 @@ export default function InterviewSetupPage() {
     e.preventDefault();
     setError("");
 
-    // Frontend time validation â€” must be at least 1 minute in the future
+    // Frontend time validation — must be at least 1 minute in the future
     if (mode === "schedule") {
       if (!scheduledAt) {
         setError("Please pick a date and time for the schedule.");

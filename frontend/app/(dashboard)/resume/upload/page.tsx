@@ -50,7 +50,7 @@ export default function ResumeUploadPage() {
       const res = await api<{ replaced?: boolean }>("/resumes", { method: "POST", body: form });
       await loadResumes();
       if (res.replaced) {
-        setToast("Replaced existing file â€” parsing again.");
+        setToast("Replaced existing file — parsing again.");
       } else {
         setToast("Resume uploaded.");
       }
@@ -76,7 +76,7 @@ export default function ResumeUploadPage() {
         const ids = body.blocking_interview_ids?.join(", ") ?? "";
         setDeleteError(
           ids
-            ? `Used by interview #${ids} â€” complete or cancel first.`
+            ? `Used by interview #${ids} — complete or cancel first.`
             : (body.message ?? "Cannot delete this resume."),
         );
       } else {
@@ -99,7 +99,7 @@ export default function ResumeUploadPage() {
         <PageHero
           icon={Upload}
           title="Upload Resume"
-          subtitle="PDF or DOCX â€” max 5MB. Parsed skills feed your interview questions."
+          subtitle="PDF or DOCX — max 5MB. Parsed skills feed your interview questions."
           accent="blue"
         />
 
@@ -183,7 +183,7 @@ export default function ResumeUploadPage() {
                   ) : r.status === "pending" ? (
                     <Loader2 className="h-5 w-5 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
                   ) : r.status === "failed" ? (
-                    <span title="Parsing failed â€” re-upload to retry">
+                    <span title="Parsing failed — re-upload to retry">
                       <AlertCircle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
                     </span>
                   ) : null}

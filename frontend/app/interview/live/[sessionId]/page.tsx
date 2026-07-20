@@ -112,6 +112,8 @@ export default function LiveInterviewPage() {
           throw new Error("Failed to submit answer.");
         }
 
+        markAwaitingNextQuestion();
+
         const answerData = await response.json();
         const answerId = answerData?.answer_id as number | undefined;
 
@@ -121,21 +123,17 @@ export default function LiveInterviewPage() {
           snapshots.forEach((blob, i) =>
             snapForm.append("snapshots[]", blob, `snap_${i}.jpg`)
           );
-          try {
-            await fetch(
-              `${API_URL}/interviews/${interviewId}/answers/${answerId}/snapshots`,
-              {
-                method: "POST",
-                headers: { Authorization: `Bearer ${getToken()}`, Accept: "application/json" },
-                body: snapForm,
-              }
-            );
-          } catch {
-            // non-critical
-          }
+          void fetch(
+            `${API_URL}/interviews/${interviewId}/answers/${answerId}/snapshots`,
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${getToken()}`, Accept: "application/json" },
+              body: snapForm,
+            },
+          ).catch(() => {
+            // non-critical — do not block the next question
+          });
         }
-
-        markAwaitingNextQuestion();
       } catch {
         setSubmitError("Could not submit your answer. Please try recording again.");
       } finally {

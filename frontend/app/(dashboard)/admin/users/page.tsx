@@ -99,7 +99,7 @@ export default function AdminUsersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="Search by name or emailâ€¦"
+            placeholder="Search by name or email…"
             className="pl-9"
           />
         </div>
@@ -136,7 +136,7 @@ export default function AdminUsersPage() {
                           {user.completed_count}/{user.interview_count}
                         </td>
                         <td className="px-4 py-3">
-                          {user.average_score != null ? formatScore(user.average_score) : "â€”"}
+                          {user.average_score != null ? formatScore(user.average_score) : "—"}
                         </td>
                         <td className="px-4 py-3">
                           {user.is_profile_public ? (
@@ -164,8 +164,8 @@ export default function AdminUsersPage() {
               <div className="flex flex-col items-center gap-3 border-t border-border px-4 py-4">
                 <p className="text-sm text-muted-foreground">
                   {loading && total === 0
-                    ? "Loading candidatesâ€¦"
-                    : `Showing ${from}â€“${to} of ${total} candidates`}
+                    ? "Loading candidates…"
+                    : `Showing ${from}–${to} of ${total} candidates`}
                 </p>
                 <div className="flex items-center justify-center gap-2">
                   <Button
