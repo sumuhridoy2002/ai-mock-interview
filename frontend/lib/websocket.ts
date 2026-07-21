@@ -5,7 +5,7 @@ const REVERB_KEY = process.env.NEXT_PUBLIC_REVERB_APP_KEY || "local-key";
 const REVERB_HOST = process.env.NEXT_PUBLIC_REVERB_HOST || "localhost";
 const REVERB_PORT = process.env.NEXT_PUBLIC_REVERB_PORT || "8080";
 const REVERB_SCHEME = process.env.NEXT_PUBLIC_REVERB_SCHEME || "http";
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:8000";
+import { BACKEND_ORIGIN } from "./api-url";
 
 export function createInterviewEcho(sessionUuid: string) {
   const token = getToken();
@@ -17,7 +17,7 @@ export function createInterviewEcho(sessionUuid: string) {
     forceTLS: REVERB_SCHEME === "https",
     enabledTransports: ["ws", "wss"],
     cluster: "",
-    authEndpoint: `${API_URL}/broadcasting/auth`,
+    authEndpoint: `${BACKEND_ORIGIN}/broadcasting/auth`,
     auth: {
       headers: {
         Authorization: `Bearer ${token}`,

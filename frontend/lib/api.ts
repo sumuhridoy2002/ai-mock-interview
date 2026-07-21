@@ -1,4 +1,6 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+import { API_URL } from "./api-url";
+
+export { API_URL, BACKEND_ORIGIN, resolveApiUrl, resolveBackendOrigin } from "./api-url";
 
 export class ApiError extends Error {
   constructor(
@@ -11,7 +13,7 @@ export class ApiError extends Error {
 }
 
 const NETWORK_ERROR =
-  "Cannot reach the API. Check that Laravel is running (php artisan serve) and open the app at http://localhost:3000";
+  "Cannot reach the API. Ensure Laravel is running (php artisan serve) and restart the frontend (npm run dev).";
 
 async function fetchApi(path: string, options: RequestInit = {}): Promise<Response> {
   try {

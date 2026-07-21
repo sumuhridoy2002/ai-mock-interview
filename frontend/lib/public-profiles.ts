@@ -1,4 +1,5 @@
 import { publicApi } from "./api";
+import { API_URL } from "./api-url";
 
 export interface LeaderboardEntry {
   rank: number;
@@ -90,6 +91,5 @@ export async function fetchShareDossier(token: string): Promise<ShareDossier> {
 }
 
 export function publicResumeFileUrl(token: string, resumeId: number): string {
-  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-  return `${base}/public/share/${token}/resumes/${resumeId}/file`;
+  return `${API_URL}/public/share/${token}/resumes/${resumeId}/file`;
 }
