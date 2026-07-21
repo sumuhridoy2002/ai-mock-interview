@@ -74,34 +74,83 @@ export async function exportPageToPng(element: HTMLElement, filename: string): P
     element.style.overflow = prevOverflow;
   });
 
-  // Expand nested scroll containers (e.g. overflow-x-auto around wide tables)
-  // so their full content is captured and no scrollbars are painted into the PNG.
-  element.querySelectorAll<HTMLElement>("*").forEach((el) => {
-    const computed = getComputedStyle(el);
-    const scrollable = ["auto", "scroll", "overlay"];
-    if (
-      !scrollable.includes(computed.overflowX) &&
-      !scrollable.includes(computed.overflowY)
-    ) {
-      return;
-    }
+  // Expand nested scroll containers (e.g. overflow-x-auto around wide tables,
+  // chat message panes) so full content is captured without scrollbars or clipping.
+  const expanded = new Set<HTMLElement>();
+
+  const expandBox = (el: HTMLElement) => {
+    if (expanded.has(el)) return;
+    expanded.add(el);
 
     const prev = {
       overflow: el.style.overflow,
       overflowX: el.style.overflowX,
       overflowY: el.style.overflowY,
       maxHeight: el.style.maxHeight,
+      height: el.style.height,
+      flex: el.style.flex,
+      flexGrow: el.style.flexGrow,
+      flexShrink: el.style.flexShrink,
+      flexBasis: el.style.flexBasis,
     };
+
     el.style.overflow = "visible";
     el.style.overflowX = "visible";
     el.style.overflowY = "visible";
     el.style.maxHeight = "none";
+    el.style.height = "auto";
+    // Flex children with flex-1 + overflow can still clamp height — drop flex grow clamp.
+    if (getComputedStyle(el).flexGrow !== "0") {
+      el.style.flex = "0 0 auto";
+    }
+
     restores.push(() => {
       el.style.overflow = prev.overflow;
       el.style.overflowX = prev.overflowX;
       el.style.overflowY = prev.overflowY;
       el.style.maxHeight = prev.maxHeight;
+      el.style.height = prev.height;
+      el.style.flex = prev.flex;
+      el.style.flexGrow = prev.flexGrow;
+      el.style.flexShrink = prev.flexShrink;
+      el.style.flexBasis = prev.flexBasis;
     });
+  };
+
+  element.querySelectorAll<HTMLElement>("*").forEach((el) => {
+    const computed = getComputedStyle(el);
+    const scrollable = ["auto", "scroll", "overlay"];
+    const isScrollable =
+      scrollable.includes(computed.overflowX) || scrollable.includes(computed.overflowY);
+
+    if (!isScrollable) return;
+
+    expandBox(el);
+
+    // Also expand fixed-height ancestors up to the export root so chat cards,
+    // vh-clamped panels, etc. grow with their content instead of overlapping.
+    let parent: HTMLElement | null = el.parentElement;
+    while (parent && parent !== element.parentElement) {
+      const parentStyle = getComputedStyle(parent);
+      const constrained =
+        parentStyle.height !== "auto" ||
+        parentStyle.maxHeight !== "none" ||
+        parentStyle.flexGrow !== "0" ||
+        parent.classList.contains("flex") ||
+        parent.classList.contains("flex-col");
+
+      if (constrained) {
+        expandBox(parent);
+      }
+
+      if (parent === element) break;
+      parent = parent.parentElement;
+    }
+  });
+
+  // Explicit opt-in for panels that need full-height expansion even without overflow.
+  element.querySelectorAll<HTMLElement>("[data-page-export-expand]").forEach((el) => {
+    expandBox(el);
   });
 
   restores.push(
@@ -151,6 +200,8 @@ export async function exportPageToPng(element: HTMLElement, filename: string): P
   });
 
   try {
+    // Let layout reflow after height/overflow expansions before measuring.
+    await waitForNextFrame();
     await waitForNextFrame();
 
     // Prefer scroll metrics so wide grids / tall content are fully included.

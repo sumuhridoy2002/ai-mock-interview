@@ -150,8 +150,11 @@ export function ExpertChatPanel() {
   );
 
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-md flex flex-col h-[calc(100vh-16rem)] min-h-[460px]">
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+    <div
+      className="rounded-2xl border border-border bg-card shadow-md flex flex-col h-[calc(100vh-16rem)] min-h-[460px]"
+      data-page-export-expand
+    >
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3">
         <p className="text-sm font-medium text-foreground">Conversation</p>
         {messages.length > 0 && (
           <button
@@ -159,6 +162,7 @@ export function ExpertChatPanel() {
             onClick={() => void clearAllMessages()}
             disabled={clearing || loading}
             title="Clear all messages"
+            data-page-export-ignore
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50"
           >
             {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -168,7 +172,7 @@ export function ExpertChatPanel() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+      <div className="min-h-0 flex-1 overflow-y-auto p-5 space-y-5">
         {historyLoaded && messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center gap-3 px-6">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md">
@@ -184,17 +188,25 @@ export function ExpertChatPanel() {
         {messages.map((m) => (
           <div
             key={m.clientId ?? (m.id != null ? `msg-${m.id}` : `msg-${m.role}-${m.content.length}`)}
-            className={cn("group flex gap-3", m.role === "user" && "justify-end")}
+            className={cn(
+              "group flex w-full min-w-0 gap-3",
+              m.role === "user" ? "justify-end" : "justify-start",
+            )}
           >
             {m.role === "assistant" && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-300">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-300">
                 <Bot className="h-4 w-4" />
               </div>
             )}
-            <div className={cn("flex max-w-[80%] items-start gap-1.5", m.role === "user" && "flex-row-reverse")}>
+            <div
+              className={cn(
+                "flex min-w-0 max-w-[min(100%,36rem)] items-start gap-1.5",
+                m.role === "user" && "flex-row-reverse",
+              )}
+            >
               <div
                 className={cn(
-                  "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                  "min-w-0 break-words rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
                   m.role === "user"
                     ? "bg-primary text-primary-foreground"
                     : "border border-border bg-muted/40 text-foreground",
@@ -208,6 +220,7 @@ export function ExpertChatPanel() {
                   onClick={() => void deleteMessage(m.id!)}
                   disabled={deletingId === m.id || loading}
                   title={m.role === "user" ? "Remove your message" : "Remove AI reply"}
+                  data-page-export-ignore
                   className="mt-1 shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50"
                 >
                   {deletingId === m.id ? (
@@ -219,7 +232,7 @@ export function ExpertChatPanel() {
               )}
             </div>
             {m.role === "user" && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <UserIcon className="h-4 w-4" />
               </div>
             )}
@@ -228,10 +241,10 @@ export function ExpertChatPanel() {
 
         {loading && (
           <div className="flex gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-300">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-300">
               <Bot className="h-4 w-4" />
             </div>
-            <div className="rounded-2xl border border-border bg-muted/40 px-4 py-2.5">
+            <div className="rounded-2xl border border-border bg-muted/40 px-4 py-3">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           </div>
@@ -240,7 +253,7 @@ export function ExpertChatPanel() {
       </div>
 
       {/* Suggested prompts */}
-      <div className="flex flex-wrap gap-2 px-5 pb-3">
+      <div className="flex shrink-0 flex-wrap gap-2 px-5 pb-3">
         {followups.map((q, index) => (
           <button
             key={`followup-${index}-${q}`}
@@ -260,7 +273,7 @@ export function ExpertChatPanel() {
           e.preventDefault();
           void sendMessage(input);
         }}
-        className="flex items-center gap-2 border-t border-border p-4"
+        className="flex shrink-0 items-center gap-2 border-t border-border p-4"
       >
         <input
           type="text"
@@ -268,7 +281,7 @@ export function ExpertChatPanel() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about scoring, evaluation, or interview strategy…"
           disabled={loading}
-          className="flex-1 h-11 rounded-xl border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="min-w-0 flex-1 h-11 rounded-xl border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
         <button
           type="submit"
