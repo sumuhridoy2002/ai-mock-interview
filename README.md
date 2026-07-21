@@ -12,7 +12,14 @@ Production-ready AI mock interview platform.
 
 **Prerequisite (Laragon):** start **Redis** once from the Laragon tray — **Menu → Redis → Start**. Do not run `redis-server` in a terminal if Laragon already started it (port 6379 will be in use). Verify with `redis-cli ping` → `PONG`. The backend uses `REDIS_CLIENT=predis` (pure PHP) so you do not need the `phpredis` PHP extension.
 
-Run these 6 commands every time — one per terminal tab:
+From the project root on Windows, start every development service with:
+
+```bat
+start-dev
+```
+
+This opens a dedicated terminal window for each service. To start them
+manually instead, run the following commands — one per terminal:
 
 ```bash
 # Terminal 1 — Laravel API
@@ -64,7 +71,7 @@ npm run dev
 ollama serve
 ```
 
-> Open **[http://localhost:3000](http://localhost:3000)** — Laragon Redis + all 6 terminals must be running for full functionality.
+> Open **[http://localhost:3000](http://localhost:3000)** — Laragon Redis + all service terminals must be running for full functionality.
 
 ### Roles & admin access
 
