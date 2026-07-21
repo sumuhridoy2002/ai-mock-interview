@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Workflow, ArrowRight } from "lucide-react";
 import { PageHero } from "@/components/ui/page-shell";
-import { SystemMethodologyDiagram } from "@/components/system/system-methodology-diagram";
+import { SystemWorkflowTabs } from "@/components/system/system-workflow-tabs";
 
 const RELATED_LINKS = [
   { href: "/system/features", label: "Feature catalog" },
@@ -35,7 +35,7 @@ export function SystemHowItWorksView() {
         </div>
       </PageHero>
 
-      <SystemMethodologyDiagram />
+      <SystemWorkflowTabs />
     </div>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { useTheme } from "@teispace/next-themes";
 import { JOURNEY_STEPS, RUNTIME_STEPS } from "@/lib/methodology-copy";
+import { cn } from "@/lib/utils";
 
 /* ─── colours ─────────────────────────────────────────────────────────────── */
 const DARK_COLORS = {
@@ -357,26 +358,61 @@ function RuntimeDiagram() {
 
 function StepLegend({
   steps,
-  aside = false,
+  compact = false,
 }: {
   steps: readonly { n: number; title: string; desc: string }[];
-  aside?: boolean;
+  compact?: boolean;
 }) {
   return (
-    <div
-      className={
-        aside
-          ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 content-start"
-          : "mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
-      }
-    >
+    <div className={cn("grid gap-2", compact ? "grid-cols-1 sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3")}>
       {steps.map((s) => (
-        <div key={s.n} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
-          <p className="text-sm font-semibold text-primary">{s.n}. {s.title}</p>
-          <p className="text-sm text-muted-foreground mt-0.5 leading-snug">{s.desc}</p>
+        <div
+          key={s.n}
+          className="rounded-lg border border-border/80 bg-background/80 px-3 py-2.5 h-full"
+        >
+          <p className="text-[13px] font-semibold text-primary leading-snug">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-[11px] font-bold text-primary mr-1.5 align-middle">
+              {s.n}
+            </span>
+            {s.title}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed pl-0.5">{s.desc}</p>
         </div>
       ))}
     </div>
+  );
+}
+
+function MethodologySection({
+  title,
+  diagram,
+  steps,
+}: {
+  title: string;
+  diagram: ReactNode;
+  steps: readonly { n: number; title: string; desc: string }[];
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="border-b border-border bg-muted/30 px-4 py-3 sm:px-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground text-center">
+          {title}
+        </h2>
+      </div>
+
+      <div className="grid lg:grid-cols-2 lg:items-stretch divide-y lg:divide-y-0 lg:divide-x divide-border">
+        <div className="flex min-h-[280px] flex-col justify-center p-3 sm:p-4 bg-card">
+          <div className="w-full">{diagram}</div>
+        </div>
+
+        <div className="flex min-h-[280px] flex-col p-3 sm:p-4 bg-muted/15">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Step guide
+          </p>
+          <StepLegend steps={steps} compact />
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -387,41 +423,17 @@ export function SystemMethodologyDiagram() {
   return (
     <DiagramColorsContext.Provider value={colors}>
       <div className="w-full space-y-6">
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-6 lg:items-start">
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                End-to-end user journey
-              </span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <div className="rounded-xl border border-border bg-card py-3 px-2 shadow-sm">
-              <UserJourneyDiagram />
-            </div>
-          </div>
-          <div className="lg:pt-9">
-            <StepLegend steps={JOURNEY_STEPS} aside />
-          </div>
-        </section>
+        <MethodologySection
+          title="End-to-end user journey"
+          diagram={<UserJourneyDiagram />}
+          steps={JOURNEY_STEPS}
+        />
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-6 lg:items-start">
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                Runtime architecture
-              </span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <div className="rounded-xl border border-border bg-card py-3 px-2 shadow-sm">
-              <RuntimeDiagram />
-            </div>
-          </div>
-          <div className="lg:pt-9">
-            <StepLegend steps={RUNTIME_STEPS} aside />
-          </div>
-        </section>
+        <MethodologySection
+          title="Runtime architecture"
+          diagram={<RuntimeDiagram />}
+          steps={RUNTIME_STEPS}
+        />
       </div>
     </DiagramColorsContext.Provider>
   );
