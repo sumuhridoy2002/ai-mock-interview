@@ -19,6 +19,9 @@ class GenerateQuestionJob implements ShouldQueue
 {
     use Queueable;
 
+    /** @var string */
+    public $queue = 'high';
+
     private const REPETITIVE_PREFIXES = [
         'building on what you shared',
         'building on that',
@@ -30,6 +33,7 @@ class GenerateQuestionJob implements ShouldQueue
         public Interview $interview,
         public InterviewSession $session,
         public ?string $lastAnswer = null,
+        public bool $fallbackOnly = false,
     ) {}
 
     public function handle(
@@ -85,14 +89,18 @@ class GenerateQuestionJob implements ShouldQueue
 
             $masteredTopics = $userMemory['mastered_topics'] ?? [];
 
-            try {
-                $result = $aiGateway->generateQuestion($payload);
-            } catch (\Throwable $e) {
-                Log::warning('AI question generation failed, using fallback', [
-                    'interview_id' => $this->interview->id,
-                    'error' => $e->getMessage(),
-                ]);
+            if ($this->fallbackOnly) {
                 $result = $this->fallbackQuestion($sequence, $askedQuestions, $masteredTopics, $interviewService, $evaluationService);
+            } else {
+                try {
+                    $result = $aiGateway->generateQuestion($payload);
+                } catch (\Throwable $e) {
+                    Log::warning('AI question generation failed, using fallback', [
+                        'interview_id' => $this->interview->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $result = $this->fallbackQuestion($sequence, $askedQuestions, $masteredTopics, $interviewService, $evaluationService);
+                }
             }
 
             if (

@@ -21,9 +21,15 @@ php artisan serve
 ```
 
 ```bash
-# Terminal 2 — Queue worker (AI jobs, evaluations, emails)
+# Terminal 2 — High-priority queue (next questions — keep this running during interviews)
 cd backend
-php artisan queue:work
+php artisan queue:work --queue=high,default
+```
+
+```bash
+# Terminal 2b — Low-priority queue (answer evaluation — can run in parallel)
+cd backend
+php artisan queue:work --queue=low
 ```
 
 ```bash

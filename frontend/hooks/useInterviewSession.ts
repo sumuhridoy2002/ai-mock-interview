@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { api } from "@/lib/api";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { api, ApiError } from "@/lib/api";
 import { subscribeToInterview } from "@/lib/websocket";
 
 interface Question {
@@ -22,17 +22,26 @@ export function useInterviewSession(
   const [maxQuestions, setMaxQuestions] = useState(10);
   const [interviewComplete, setInterviewComplete] = useState(false);
   const [awaitingNextQuestion, setAwaitingNextQuestion] = useState(false);
+  const fetchInFlightRef = useRef(false);
 
   const fetchQuestion = useCallback(async () => {
+    if (fetchInFlightRef.current) return;
+    fetchInFlightRef.current = true;
+
     try {
       const data = await api<Question>(`/interviews/${interviewId}/current-question`);
       setQuestion(data);
       if (data.max_questions) setMaxQuestions(data.max_questions);
       setInterviewComplete(false);
       setAwaitingNextQuestion(false);
-    } catch {
+    } catch (err) {
+      // 404 = next question not ready yet; network errors retry on next poll.
+      if (!(err instanceof ApiError && err.status === 404)) {
+        // Swallow transient failures during polling — do not surface to the UI.
+      }
       setQuestion(null);
     } finally {
+      fetchInFlightRef.current = false;
       setLoading(false);
     }
   }, [interviewId]);
@@ -45,7 +54,7 @@ export function useInterviewSession(
     if (loading || interviewComplete || question) return;
 
     void fetchQuestion();
-    const pollMs = awaitingNextQuestion ? 1000 : 3000;
+    const pollMs = awaitingNextQuestion ? 2000 : 4000;
     const interval = setInterval(() => {
       void fetchQuestion();
     }, pollMs);

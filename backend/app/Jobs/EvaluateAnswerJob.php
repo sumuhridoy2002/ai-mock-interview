@@ -20,6 +20,9 @@ class EvaluateAnswerJob implements ShouldQueue
 {
     use Queueable;
 
+    /** @var string */
+    public $queue = 'low';
+
     public function __construct(
         public Interview $interview,
         public InterviewSession $session,

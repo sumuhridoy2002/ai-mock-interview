@@ -187,9 +187,9 @@ class InterviewController extends Controller
         if ($interview->session) {
             $interview->refresh();
 
-            // Queue next question immediately — do not wait for slow answer evaluation.
+            // Fast fallback question on high-priority queue — never blocked by slow evaluation.
             if (! $this->interviewService->hasReachedQuestionLimit($interview)) {
-                GenerateQuestionJob::dispatch($interview, $interview->session, $transcript ?: null);
+                GenerateQuestionJob::dispatch($interview, $interview->session, $transcript ?: null, fallbackOnly: true);
             }
 
             if (! $answer->score) {
