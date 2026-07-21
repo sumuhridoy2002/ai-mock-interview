@@ -11,7 +11,7 @@ export function SystemCompareView() {
       <PageHero
         icon={GitCompare}
         title="Compare Platforms"
-        subtitle="Top 8 capabilities — what each platform has and lacks, side by side."
+        subtitle="Eight key capabilities, side by side."
         accent="emerald"
         centered
       />
@@ -21,22 +21,18 @@ export function SystemCompareView() {
       <div className="w-full min-w-0">
         <FeatureComparisonTable />
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-3 text-sm font-medium rounded-2xl border border-border bg-card py-4 shadow-md">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-600 bg-emerald-500 px-2.5 py-1 text-white font-bold shadow-sm">
-          Full
+      <div className="flex flex-wrap items-center justify-center gap-5 text-sm rounded-2xl border border-border bg-card py-3.5 shadow-sm">
+        <span className="inline-flex items-center gap-2 text-muted-foreground">
+          <span className="h-5 w-8 rounded-md bg-emerald-500/20 border border-emerald-500/30" aria-hidden />
+          Strong fit
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500 bg-amber-400 px-2.5 py-1 text-amber-950 font-bold shadow-sm">
-          Partial
+        <span className="inline-flex items-center gap-2 text-muted-foreground">
+          <span className="h-5 w-8 rounded-md bg-amber-400/20 border border-amber-400/35" aria-hidden />
+          Limited
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-300 bg-rose-100 px-2.5 py-1 text-rose-800 font-bold shadow-sm dark:bg-rose-950/60 dark:text-rose-200">
-          None
-        </span>
-        <span className="text-muted-foreground">·</span>
-        <span>
-          <span className="font-bold text-emerald-700 dark:text-emerald-400">+</span> Has
-        </span>
-        <span>
-          <span className="font-bold text-rose-700 dark:text-rose-400">−</span> Lacks
+        <span className="inline-flex items-center gap-2 text-muted-foreground">
+          <span className="h-5 w-8 rounded-md bg-rose-500/15 border border-rose-500/25" aria-hidden />
+          Missing
         </span>
       </div>
     </div>

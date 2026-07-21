@@ -1,39 +1,43 @@
 import type { FeatureComparisonEntry } from "./feature-comparison-types";
 
-/** Top 8 capabilities for tabular / slide comparison. */
+/**
+ * Top 8 capabilities for tabular / slide comparison.
+ * Keep notes short (≤ 8 words): `has` is the single line shown in the table;
+ * `lacks` is kept for accessibility/detail contexts.
+ */
 export const FEATURE_COMPARISON_MAIN: FeatureComparisonEntry[] = [
   {
     feature: "CV-based personalized questions",
     platforms: {
       mockInterviewPro: {
         level: "yes",
-        has: "Resume parse + job description → tailored AI questions.",
+        has: "CV + job description drive every question.",
         lacks: "—",
       },
       pramp: {
         level: "partial",
-        has: "Peers may skim your profile before a call.",
-        lacks: "No CV parse or JD-driven AI questions.",
+        has: "Peers may glance at your profile.",
+        lacks: "No CV parsing.",
       },
       interviewingIo: {
         level: "partial",
-        has: "Role-themed question banks with humans.",
-        lacks: "No upload-and-parse CV workflow.",
+        has: "Role-themed banks, no CV parsing.",
+        lacks: "No CV-driven questions.",
       },
       finalRoundAi: {
         level: "yes",
-        has: "Resume + role → AI question sets.",
-        lacks: "Cloud only; no self-hosted pipeline.",
+        has: "Resume-aware AI questions, cloud only.",
+        lacks: "Not self-hosted.",
       },
       hireVue: {
         level: "partial",
-        has: "Employer-set role competencies.",
-        lacks: "No candidate CV → AI question flow.",
+        has: "Employer-defined competencies.",
+        lacks: "No candidate CV flow.",
       },
       googleWarmup: {
         level: "no",
-        has: "Generic topic practice only.",
-        lacks: "No resume or JD personalization.",
+        has: "Generic topics only.",
+        lacks: "No personalization.",
       },
     },
   },
@@ -42,33 +46,33 @@ export const FEATURE_COMPARISON_MAIN: FeatureComparisonEntry[] = [
     platforms: {
       mockInterviewPro: {
         level: "yes",
-        has: "Per-answer AI scores, category breakdown, PDF export.",
+        has: "Per-answer AI scores + PDF export.",
         lacks: "—",
       },
       pramp: {
         level: "partial",
-        has: "Peer ratings and comments.",
-        lacks: "No AI rubric or PDF report.",
+        has: "Peer ratings only.",
+        lacks: "No AI rubric or PDF.",
       },
       interviewingIo: {
         level: "partial",
-        has: "Human interviewer feedback notes.",
-        lacks: "No automated scoring or PDF.",
+        has: "Human notes, no auto scoring.",
+        lacks: "No PDF report.",
       },
       finalRoundAi: {
         level: "yes",
-        has: "AI feedback summaries after mocks.",
-        lacks: "Platform-locked; not self-hosted.",
+        has: "AI feedback summaries.",
+        lacks: "Platform-locked.",
       },
       hireVue: {
         level: "yes",
-        has: "AI-assisted employer score reports.",
-        lacks: "Reports owned by hiring org.",
+        has: "Employer-owned score reports.",
+        lacks: "Not for candidates.",
       },
       googleWarmup: {
         level: "no",
-        has: "Light hints while practicing.",
-        lacks: "No scores, no PDF.",
+        has: "Hints only, no scores.",
+        lacks: "No reports.",
       },
     },
   },
@@ -77,33 +81,33 @@ export const FEATURE_COMPARISON_MAIN: FeatureComparisonEntry[] = [
     platforms: {
       mockInterviewPro: {
         level: "yes",
-        has: "Skips mastered questions; steers weak topics next time.",
+        has: "Skips mastered topics, targets weak ones.",
         lacks: "—",
       },
       pramp: {
         level: "no",
-        has: "Independent peer sessions.",
-        lacks: "No pass/skip or topic mastery memory.",
+        has: "Sessions are independent.",
+        lacks: "No mastery memory.",
       },
       interviewingIo: {
         level: "no",
         has: "Feedback per booking only.",
-        lacks: "No cross-session mastery tracking.",
+        lacks: "No cross-session tracking.",
       },
       finalRoundAi: {
         level: "partial",
-        has: "Some session history in product.",
-        lacks: "No explicit mastery skip logic.",
+        has: "Basic session history.",
+        lacks: "No skip logic.",
       },
       hireVue: {
         level: "no",
-        has: "Per-assessment records.",
-        lacks: "No candidate practice memory.",
+        has: "No practice memory.",
+        lacks: "Per-assessment only.",
       },
       googleWarmup: {
         level: "no",
         has: "Stateless practice rounds.",
-        lacks: "No mastery or skip-on-pass.",
+        lacks: "Nothing carries over.",
       },
     },
   },
@@ -112,28 +116,28 @@ export const FEATURE_COMPARISON_MAIN: FeatureComparisonEntry[] = [
     platforms: {
       mockInterviewPro: {
         level: "yes",
-        has: "Confidence, eye contact, emotions, prosody per answer.",
+        has: "Eye contact, emotion + confidence metrics.",
         lacks: "—",
       },
       pramp: {
         level: "no",
-        has: "Subjective peer impression.",
-        lacks: "No automated behavior metrics.",
+        has: "Peer impressions only.",
+        lacks: "No automated metrics.",
       },
       interviewingIo: {
         level: "no",
-        has: "Human observation on video.",
-        lacks: "No CV/vision scoring pipeline.",
+        has: "Human observation only.",
+        lacks: "No vision pipeline.",
       },
       finalRoundAi: {
         level: "no",
-        has: "Text/voice answer focus.",
-        lacks: "No video behavior analysis.",
+        has: "Text and voice focus.",
+        lacks: "No video analysis.",
       },
       hireVue: {
         level: "partial",
-        has: "Enterprise tone/expression signals.",
-        lacks: "Not candidate practice coaching.",
+        has: "Enterprise signals, not coaching.",
+        lacks: "Not candidate-facing.",
       },
       googleWarmup: {
         level: "no",
@@ -147,13 +151,13 @@ export const FEATURE_COMPARISON_MAIN: FeatureComparisonEntry[] = [
     platforms: {
       mockInterviewPro: {
         level: "yes",
-        has: "Laravel + Next.js + FastAPI + Ollama + Whisper on your VPS.",
+        has: "Runs fully on your own server.",
         lacks: "—",
       },
       pramp: {
         level: "no",
         has: "Managed SaaS only.",
-        lacks: "Cannot self-host or audit stack.",
+        lacks: "No self-hosting.",
       },
       interviewingIo: {
         level: "no",
@@ -162,13 +166,13 @@ export const FEATURE_COMPARISON_MAIN: FeatureComparisonEntry[] = [
       },
       finalRoundAi: {
         level: "no",
-        has: "Cloud AI service.",
+        has: "Cloud service only.",
         lacks: "No on-prem option.",
       },
       hireVue: {
         level: "no",
         has: "Enterprise SaaS.",
-        lacks: "No self-hosted practice env.",
+        lacks: "No self-hosting.",
       },
       googleWarmup: {
         level: "no",
@@ -182,68 +186,68 @@ export const FEATURE_COMPARISON_MAIN: FeatureComparisonEntry[] = [
     platforms: {
       mockInterviewPro: {
         level: "yes",
-        has: "Schedule date/time, browser alarm + email reminder.",
+        has: "Alarms + email reminders built in.",
         lacks: "—",
       },
       pramp: {
         level: "partial",
-        has: "Calendar booking with peers.",
-        lacks: "No in-app alarm or custom email.",
+        has: "Peer calendar booking.",
+        lacks: "No alarms.",
       },
       interviewingIo: {
         level: "yes",
-        has: "Book paid slots; email confirmations.",
-        lacks: "Not free solo AI schedule + alarm.",
+        has: "Paid slot booking.",
+        lacks: "No free AI schedule.",
       },
       finalRoundAi: {
         level: "no",
-        has: "On-demand AI mocks.",
-        lacks: "No scheduled reminders.",
+        has: "On-demand only.",
+        lacks: "No reminders.",
       },
       hireVue: {
         level: "partial",
-        has: "Employer interview invites.",
-        lacks: "No personal practice alarms.",
+        has: "Employer invites only.",
+        lacks: "No practice alarms.",
       },
       googleWarmup: {
         level: "no",
-        has: "Practice anytime.",
-        lacks: "No scheduling or reminders.",
+        has: "No scheduling.",
+        lacks: "Practice anytime only.",
       },
     },
   },
   {
-    feature: "Full-session video archive",
+    feature: "Session replay archive",
     platforms: {
       mockInterviewPro: {
         level: "yes",
-        has: "Full-session + per-answer video stored for replay.",
+        has: "Every session stored for replay.",
         lacks: "—",
       },
       pramp: {
         level: "no",
-        has: "Live call; rarely archived.",
-        lacks: "No session video library.",
+        has: "Live calls, rarely archived.",
+        lacks: "No video library.",
       },
       interviewingIo: {
         level: "partial",
-        has: "Recording on some packages.",
-        lacks: "Not default for every mock.",
+        has: "Recording on some plans.",
+        lacks: "Not default.",
       },
       finalRoundAi: {
         level: "no",
         has: "Audio/text-centric flow.",
-        lacks: "No full video vault.",
+        lacks: "No video vault.",
       },
       hireVue: {
         level: "yes",
-        has: "Async/live video for employers.",
-        lacks: "Employer-owned, not your library.",
+        has: "Employer-owned recordings.",
+        lacks: "Not your library.",
       },
       googleWarmup: {
         level: "no",
-        has: "No persistent video.",
-        lacks: "No session archive.",
+        has: "Nothing persists.",
+        lacks: "No archive.",
       },
     },
   },
@@ -252,13 +256,13 @@ export const FEATURE_COMPARISON_MAIN: FeatureComparisonEntry[] = [
     platforms: {
       mockInterviewPro: {
         level: "yes",
-        has: "Your MySQL, media, reports on your infrastructure.",
+        has: "Your database, media and reports.",
         lacks: "—",
       },
       pramp: {
         level: "no",
-        has: "History in Pramp cloud.",
-        lacks: "Cannot fully own or export stack.",
+        has: "History lives in Pramp cloud.",
+        lacks: "No export.",
       },
       interviewingIo: {
         level: "no",
@@ -268,17 +272,17 @@ export const FEATURE_COMPARISON_MAIN: FeatureComparisonEntry[] = [
       finalRoundAi: {
         level: "no",
         has: "Account-bound cloud history.",
-        lacks: "No open self-host export.",
+        lacks: "No self-host export.",
       },
       hireVue: {
         level: "no",
-        has: "Employer assessment data.",
-        lacks: "Candidates don't own the stack.",
+        has: "Employer owns the data.",
+        lacks: "Candidates own nothing.",
       },
       googleWarmup: {
         level: "no",
         has: "Google account history.",
-        lacks: "No self-hosted ownership.",
+        lacks: "No ownership.",
       },
     },
   },
