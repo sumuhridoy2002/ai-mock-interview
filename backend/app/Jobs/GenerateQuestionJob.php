@@ -19,9 +19,6 @@ class GenerateQuestionJob implements ShouldQueue
 {
     use Queueable;
 
-    /** @var string */
-    public $queue = 'high';
-
     private const REPETITIVE_PREFIXES = [
         'building on what you shared',
         'building on that',
@@ -34,7 +31,9 @@ class GenerateQuestionJob implements ShouldQueue
         public InterviewSession $session,
         public ?string $lastAnswer = null,
         public bool $fallbackOnly = false,
-    ) {}
+    ) {
+        $this->onQueue('high');
+    }
 
     public function handle(
         AiGatewayService $aiGateway,
