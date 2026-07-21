@@ -2,23 +2,25 @@
 
 import { useState, type ReactNode } from "react";
 import {
-  ArrowDown,
-  ArrowRight,
   AudioLines,
   Bot,
   Boxes,
-  CheckCircle2,
-  Database,
-  FileText,
-  LockKeyhole,
   Route,
-  ServerCog,
   UserRoundCheck,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SystemMethodologyDiagram } from "@/components/system/system-methodology-diagram";
+import {
+  DiagramTheme,
+  SystemMethodologyDiagram,
+} from "@/components/system/system-methodology-diagram";
+import {
+  AiInterviewFlowchart,
+  ArchitectureFlowchart,
+  AuthResumeFlowchart,
+  SpeechEvaluationFlowchart,
+} from "@/components/system/system-workflow-flowcharts";
 import { SystemUseCaseDiagram } from "@/components/system/system-use-case-diagram";
 
 type WorkflowTab =
@@ -29,13 +31,9 @@ type WorkflowTab =
   | "speech-evaluation"
   | "journey-runtime";
 
-type Tone = "indigo" | "violet" | "emerald" | "amber" | "sky";
-
-interface FlowStep {
+interface StepCopy {
   title: string;
   description: string;
-  icon: LucideIcon;
-  tone: Tone;
 }
 
 const TABS: Array<{
@@ -82,56 +80,49 @@ const TABS: Array<{
   },
 ];
 
-const TONE_STYLES: Record<Tone, string> = {
-  indigo: "border-indigo-300/70 bg-indigo-500/10 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300",
-  violet: "border-violet-300/70 bg-violet-500/10 text-violet-700 dark:border-violet-700 dark:text-violet-300",
-  emerald: "border-emerald-300/70 bg-emerald-500/10 text-emerald-700 dark:border-emerald-700 dark:text-emerald-300",
-  amber: "border-amber-300/70 bg-amber-500/10 text-amber-800 dark:border-amber-700 dark:text-amber-300",
-  sky: "border-sky-300/70 bg-sky-500/10 text-sky-700 dark:border-sky-700 dark:text-sky-300",
-};
-
-function FlowNode({ step, number }: { step: FlowStep; number: number }) {
-  const Icon = step.icon;
-
+function StepGuide({ steps }: { steps: StepCopy[] }) {
   return (
-    <div
-      className={cn(
-        "relative min-w-0 flex-1 rounded-2xl border p-4 shadow-sm",
-        TONE_STYLES[step.tone],
-      )}
-    >
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-background/80 shadow-sm">
-          <Icon className="h-4.5 w-4.5" />
-        </span>
-        <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-background/70 px-1.5 text-[11px] font-bold">
-          {number}
-        </span>
-      </div>
-      <h3 className="text-sm font-semibold text-foreground">{step.title}</h3>
-      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{step.description}</p>
-    </div>
-  );
-}
-
-function FlowConnector() {
-  return (
-    <div className="flex shrink-0 items-center justify-center text-primary/55">
-      <ArrowDown className="h-5 w-5 lg:hidden" />
-      <ArrowRight className="hidden h-5 w-5 lg:block" />
-    </div>
-  );
-}
-
-function HorizontalFlow({ steps }: { steps: FlowStep[] }) {
-  return (
-    <div className="flex flex-col gap-2 lg:flex-row lg:items-stretch">
+    <div className="grid grid-cols-1 gap-2">
       {steps.map((step, index) => (
-        <div className="contents" key={step.title}>
-          <FlowNode step={step} number={index + 1} />
-          {index < steps.length - 1 && <FlowConnector />}
+        <div
+          key={step.title}
+          className="rounded-lg border border-border/80 bg-background/80 px-3 py-2.5"
+        >
+          <p className="text-[13px] font-semibold text-primary leading-snug">
+            <span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 align-middle text-[11px] font-bold text-primary">
+              {index + 1}
+            </span>
+            {step.title}
+          </p>
+          <p className="mt-1.5 pl-0.5 text-xs leading-relaxed text-muted-foreground">
+            {step.description}
+          </p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function FlowchartWithSteps({
+  diagram,
+  steps,
+  diagramMaxWidth,
+}: {
+  diagram: ReactNode;
+  steps: StepCopy[];
+  diagramMaxWidth?: string;
+}) {
+  return (
+    <div className="grid overflow-hidden rounded-xl border border-border lg:grid-cols-2 lg:items-stretch divide-y lg:divide-y-0 lg:divide-x divide-border">
+      <div className="flex min-h-[280px] flex-col justify-center bg-card p-3 sm:p-4">
+        <div className={cn("mx-auto w-full", diagramMaxWidth)}>{diagram}</div>
+      </div>
+      <div className="flex min-h-[280px] flex-col justify-center bg-muted/15 p-3 sm:p-4">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Step guide
+        </p>
+        <StepGuide steps={steps} />
+      </div>
     </div>
   );
 }
@@ -164,36 +155,26 @@ function WorkflowFrame({
 }
 
 function ArchitectureWorkflow() {
-  const steps: FlowStep[] = [
+  const steps: StepCopy[] = [
     {
-      title: "Next.js Client",
-      description: "Dashboard, live room, reports, media capture.",
-      icon: Boxes,
-      tone: "sky",
+      title: "Browser (Next.js)",
+      description: "Dashboard, live room, reports, and media capture.",
     },
     {
       title: "Laravel API",
       description: "Sanctum auth, business rules, uploads, REST endpoints.",
-      icon: ServerCog,
-      tone: "indigo",
     },
     {
-      title: "Queue + Reverb",
-      description: "Priority jobs and real-time interview events.",
-      icon: Route,
-      tone: "violet",
+      title: "Reverb + Queues",
+      description: "Real-time events plus high / default / low priority jobs.",
     },
     {
-      title: "FastAPI AI",
-      description: "Question, scoring, speech, vision orchestration.",
-      icon: Bot,
-      tone: "amber",
+      title: "FastAPI AI Service",
+      description: "Orchestrates Ollama, Whisper, and the vision pipeline.",
     },
     {
       title: "Data Layer",
-      description: "MySQL, Redis cache, reports, and media files.",
-      icon: Database,
-      tone: "emerald",
+      description: "MySQL, Redis cache, media files, and PDF reports.",
     },
   ];
 
@@ -203,54 +184,36 @@ function ArchitectureWorkflow() {
       subtitle="A self-hosted, event-driven platform split into five clear layers."
       footer="Primary flow: Browser → Laravel → queues / WebSocket → AI services → persistent storage"
     >
-      <HorizontalFlow steps={steps} />
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
-        {[
-          ["Real time", "Reverb pushes questions without page refresh."],
-          ["Non-blocking", "High and low priority queues separate question generation from scoring."],
-          ["Private by design", "Ollama, Whisper, media, and data remain on your infrastructure."],
-        ].map(([title, description]) => (
-          <div key={title} className="rounded-xl border border-border bg-muted/25 p-3">
-            <p className="text-sm font-semibold text-foreground">{title}</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
-          </div>
-        ))}
-      </div>
+      <FlowchartWithSteps
+        diagram={<ArchitectureFlowchart />}
+        steps={steps}
+        diagramMaxWidth="max-w-[560px]"
+      />
     </WorkflowFrame>
   );
 }
 
 function AuthResumeWorkflow() {
-  const steps: FlowStep[] = [
+  const steps: StepCopy[] = [
     {
       title: "Register or Sign In",
       description: "Credentials are validated by Laravel.",
-      icon: UserRoundCheck,
-      tone: "indigo",
     },
     {
       title: "Sanctum Session",
-      description: "A bearer token protects private API calls.",
-      icon: LockKeyhole,
-      tone: "violet",
+      description: "A bearer token protects every private API call.",
     },
     {
-      title: "Upload Resume",
-      description: "PDF or DOCX is validated and stored.",
-      icon: FileText,
-      tone: "sky",
+      title: "Resume Check",
+      description: "Existing profiles skip straight to interview setup.",
     },
     {
-      title: "Parse in Queue",
-      description: "Skills, education, and experience are extracted.",
-      icon: ServerCog,
-      tone: "amber",
+      title: "Upload + Parse in Queue",
+      description: "PDF/DOCX stored; skills, education, and experience extracted.",
     },
     {
       title: "Profile Ready",
-      description: "Structured CV data personalizes interviews.",
-      icon: CheckCircle2,
-      tone: "emerald",
+      description: "Structured CV data personalizes every interview.",
     },
   ];
 
@@ -260,42 +223,36 @@ function AuthResumeWorkflow() {
       subtitle="From secure account access to an interview-ready candidate profile."
       footer="Result: authenticated user + reusable structured resume profile"
     >
-      <HorizontalFlow steps={steps} />
+      <FlowchartWithSteps
+        diagram={<AuthResumeFlowchart />}
+        steps={steps}
+        diagramMaxWidth="max-w-[480px]"
+      />
     </WorkflowFrame>
   );
 }
 
 function AiInterviewWorkflow() {
-  const steps: FlowStep[] = [
+  const steps: StepCopy[] = [
     {
       title: "Interview Setup",
       description: "Choose CV, role, job description, level, and type.",
-      icon: FileText,
-      tone: "sky",
     },
     {
       title: "Generate Question",
-      description: "AI uses role context, CV, history, and mastery.",
-      icon: Bot,
-      tone: "violet",
+      description: "AI uses role context, CV, history, and mastery memory.",
     },
     {
       title: "Deliver Live",
-      description: "Reverb sends the question to the browser.",
-      icon: Route,
-      tone: "indigo",
+      description: "Reverb pushes the question to the browser instantly.",
     },
     {
-      title: "Save Answer",
+      title: "Answer + Save",
       description: "Transcript, timing, and snapshots are persisted.",
-      icon: Database,
-      tone: "amber",
     },
     {
-      title: "Adapt Next Turn",
-      description: "The next question avoids repetition and mastered topics.",
-      icon: CheckCircle2,
-      tone: "emerald",
+      title: "Adapt or Finish",
+      description: "Next question avoids mastered topics; last answer triggers scoring.",
     },
   ];
 
@@ -305,42 +262,36 @@ function AiInterviewWorkflow() {
       subtitle="Each interview turn is generated, delivered, saved, and adapted in real time."
       footer="The next-question queue stays independent from slower answer evaluation"
     >
-      <HorizontalFlow steps={steps} />
+      <FlowchartWithSteps
+        diagram={<AiInterviewFlowchart />}
+        steps={steps}
+        diagramMaxWidth="max-w-[480px]"
+      />
     </WorkflowFrame>
   );
 }
 
 function SpeechEvaluationWorkflow() {
-  const steps: FlowStep[] = [
+  const steps: StepCopy[] = [
     {
-      title: "Capture Speech",
-      description: "Browser records audio and displays live speech preview.",
-      icon: AudioLines,
-      tone: "sky",
+      title: "Answer Recorded",
+      description: "Browser captures per-question audio and video.",
     },
     {
-      title: "Build Transcript",
-      description: "Speech text is cleaned and normalized.",
-      icon: FileText,
-      tone: "indigo",
+      title: "Whisper Transcript",
+      description: "Speech is converted to clean, normalized text.",
     },
     {
-      title: "Evaluate Content",
-      description: "AI scores relevance, accuracy, communication, and completeness.",
-      icon: Bot,
-      tone: "violet",
+      title: "Parallel Analysis",
+      description: "Ollama scores content while vision reads behavior signals.",
     },
     {
-      title: "Analyze Behavior",
-      description: "Snapshots add confidence, gaze, and emotion context.",
-      icon: ServerCog,
-      tone: "amber",
+      title: "Combine Scores",
+      description: "A weighted rubric merges content and delivery.",
     },
     {
       title: "Store Feedback",
-      description: "Scores, coaching notes, and mastery updates feed the report.",
-      icon: CheckCircle2,
-      tone: "emerald",
+      description: "Scores, coaching notes, and mastery feed the report.",
     },
   ];
 
@@ -350,7 +301,11 @@ function SpeechEvaluationWorkflow() {
       subtitle="Answer content and delivery signals are processed in parallel, then combined."
       footer="Final output: per-answer score + coaching feedback + behavior context"
     >
-      <HorizontalFlow steps={steps} />
+      <FlowchartWithSteps
+        diagram={<SpeechEvaluationFlowchart />}
+        steps={steps}
+        diagramMaxWidth="max-w-[520px]"
+      />
     </WorkflowFrame>
   );
 }
@@ -427,7 +382,9 @@ export function SystemWorkflowTabs() {
         role="tabpanel"
         aria-label={TABS.find((tab) => tab.id === activeTab)?.label}
       >
-        <ActiveWorkflow tab={activeTab} />
+        <DiagramTheme>
+          <ActiveWorkflow tab={activeTab} />
+        </DiagramTheme>
       </div>
     </div>
   );

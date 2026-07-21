@@ -92,15 +92,21 @@ type DiagramColors = { [K in keyof typeof DARK_COLORS]: string };
 
 const DiagramColorsContext = createContext<DiagramColors>(DARK_COLORS);
 
-function useDiagramColors() {
+export function useDiagramColors() {
   return useContext(DiagramColorsContext);
+}
+
+export function DiagramTheme({ children }: { children: ReactNode }) {
+  const { resolvedTheme } = useTheme();
+  const colors = resolvedTheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
+  return <DiagramColorsContext.Provider value={colors}>{children}</DiagramColorsContext.Provider>;
 }
 
 const F = "ui-sans-serif,system-ui,sans-serif";
 const D = "6 4";
 const SW = "1.5";
 
-function Arrow({ id, fill }: { id: string; fill: string }) {
+export function Arrow({ id, fill }: { id: string; fill: string }) {
   return (
     <marker id={id} refX="8" refY="3.5" markerWidth="8" markerHeight="7" orient="auto" markerUnits="userSpaceOnUse">
       <polygon points="0 0, 8 3.5, 0 7" fill={fill} />
@@ -108,7 +114,7 @@ function Arrow({ id, fill }: { id: string; fill: string }) {
   );
 }
 
-function Line({ x1, y1, x2, y2, color, mark = "url(#a)", dash }: {
+export function Line({ x1, y1, x2, y2, color, mark = "url(#a)", dash }: {
   x1: number; y1: number; x2: number; y2: number; color?: string; mark?: string; dash?: boolean;
 }) {
   const C = useDiagramColors();
@@ -121,7 +127,7 @@ function Line({ x1, y1, x2, y2, color, mark = "url(#a)", dash }: {
   );
 }
 
-function Path({ d, color, mark, dash }: { d: string; color?: string; mark?: string; dash?: boolean }) {
+export function Path({ d, color, mark, dash }: { d: string; color?: string; mark?: string; dash?: boolean }) {
   const C = useDiagramColors();
   return (
     <path
@@ -151,7 +157,7 @@ function BoxText({ x, cy, label, sub, color, subColor, size = 11, subSize = 8.5 
   );
 }
 
-function ProcNode({ x, y, w = 200, h = 52, rx = 7, fill, stroke, label, sub, lc, sc }: {
+export function ProcNode({ x, y, w = 200, h = 52, rx = 7, fill, stroke, label, sub, lc, sc }: {
   x: number; y: number; w?: number; h?: number; rx?: number;
   fill?: string; stroke?: string; label: string; sub?: string; lc?: string; sc?: string;
 }) {
@@ -166,7 +172,7 @@ function ProcNode({ x, y, w = 200, h = 52, rx = 7, fill, stroke, label, sub, lc,
   );
 }
 
-function PillNode({ x, y, w = 150, h = 36, label, sub }: {
+export function PillNode({ x, y, w = 150, h = 36, label, sub }: {
   x: number; y: number; w?: number; h?: number; label: string; sub?: string;
 }) {
   const C = useDiagramColors();
@@ -180,7 +186,7 @@ function PillNode({ x, y, w = 150, h = 36, label, sub }: {
   );
 }
 
-function Diamond({ cx, cy, hw, hh, label, label2 }: {
+export function Diamond({ cx, cy, hw, hh, label, label2 }: {
   cx: number; cy: number; hw: number; hh: number; label: string; label2?: string;
 }) {
   const C = useDiagramColors();
@@ -200,7 +206,7 @@ function Diamond({ cx, cy, hw, hh, label, label2 }: {
   );
 }
 
-function EdgeLabel({ x, y, text, anchor = "start" }: {
+export function EdgeLabel({ x, y, text, anchor = "start" }: {
   x: number; y: number; text: string; anchor?: "start" | "middle" | "end";
 }) {
   const C = useDiagramColors();
@@ -358,13 +364,11 @@ function RuntimeDiagram() {
 
 function StepLegend({
   steps,
-  compact = false,
 }: {
   steps: readonly { n: number; title: string; desc: string }[];
-  compact?: boolean;
 }) {
   return (
-    <div className={cn("grid gap-2", compact ? "grid-cols-1 sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3")}>
+    <div className="grid grid-cols-1 gap-2">
       {steps.map((s) => (
         <div
           key={s.n}
@@ -387,10 +391,12 @@ function MethodologySection({
   title,
   diagram,
   steps,
+  diagramMaxWidth,
 }: {
   title: string;
   diagram: ReactNode;
   steps: readonly { n: number; title: string; desc: string }[];
+  diagramMaxWidth?: string;
 }) {
   return (
     <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
@@ -402,14 +408,14 @@ function MethodologySection({
 
       <div className="grid lg:grid-cols-2 lg:items-stretch divide-y lg:divide-y-0 lg:divide-x divide-border">
         <div className="flex min-h-[280px] flex-col justify-center p-3 sm:p-4 bg-card">
-          <div className="w-full">{diagram}</div>
+          <div className={cn("w-full mx-auto", diagramMaxWidth)}>{diagram}</div>
         </div>
 
-        <div className="flex min-h-[280px] flex-col p-3 sm:p-4 bg-muted/15">
+        <div className="flex min-h-[280px] flex-col justify-center p-3 sm:p-4 bg-muted/15">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Step guide
           </p>
-          <StepLegend steps={steps} compact />
+          <StepLegend steps={steps} />
         </div>
       </div>
     </section>
@@ -417,24 +423,23 @@ function MethodologySection({
 }
 
 export function SystemMethodologyDiagram() {
-  const { resolvedTheme } = useTheme();
-  const colors = resolvedTheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
-
   return (
-    <DiagramColorsContext.Provider value={colors}>
+    <DiagramTheme>
       <div className="w-full space-y-6">
         <MethodologySection
           title="End-to-end user journey"
           diagram={<UserJourneyDiagram />}
           steps={JOURNEY_STEPS}
+          diagramMaxWidth="max-w-[460px]"
         />
 
         <MethodologySection
           title="Runtime architecture"
           diagram={<RuntimeDiagram />}
           steps={RUNTIME_STEPS}
+          diagramMaxWidth="max-w-[560px]"
         />
       </div>
-    </DiagramColorsContext.Provider>
+    </DiagramTheme>
   );
 }
