@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type LucideIcon, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowRight,
@@ -14,12 +14,16 @@ import {
   Route,
   ServerCog,
   UserRoundCheck,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SystemMethodologyDiagram } from "@/components/system/system-methodology-diagram";
+import { SystemUseCaseDiagram } from "@/components/system/system-use-case-diagram";
 
 type WorkflowTab =
   | "architecture"
+  | "use-cases"
   | "auth-resume"
   | "ai-interview"
   | "speech-evaluation"
@@ -45,6 +49,12 @@ const TABS: Array<{
     shortLabel: "Architecture",
     label: "Overall Implementation Architecture",
     icon: Boxes,
+  },
+  {
+    id: "use-cases",
+    shortLabel: "Use Cases",
+    label: "Use Case Diagram — Candidate and System Admin",
+    icon: Users,
   },
   {
     id: "auth-resume",
@@ -345,10 +355,24 @@ function SpeechEvaluationWorkflow() {
   );
 }
 
+function UseCaseWorkflow() {
+  return (
+    <WorkflowFrame
+      title="Use Case Diagram"
+      subtitle="What each role can do — Candidate practice flows and System Admin operations."
+      footer="Green ovals are shared by both roles; indigo is candidate-only, purple is admin-only."
+    >
+      <SystemUseCaseDiagram />
+    </WorkflowFrame>
+  );
+}
+
 function ActiveWorkflow({ tab }: { tab: WorkflowTab }) {
   switch (tab) {
     case "architecture":
       return <ArchitectureWorkflow />;
+    case "use-cases":
+      return <UseCaseWorkflow />;
     case "auth-resume":
       return <AuthResumeWorkflow />;
     case "ai-interview":
@@ -366,7 +390,7 @@ export function SystemWorkflowTabs() {
   return (
     <div className="space-y-5">
       <div
-        className="grid gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm sm:grid-cols-2 xl:grid-cols-5"
+        className="grid gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
         role="tablist"
         aria-label="How it works diagrams"
         data-page-export-ignore
