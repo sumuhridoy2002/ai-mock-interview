@@ -2,7 +2,8 @@ import { toPng } from "html-to-image";
 
 const DEFAULT_PIXEL_RATIO = 3;
 const MAX_CANVAS_EDGE = 16384;
-const EXPORT_PADDING_PX = 8;
+/** Breathing room around content so shadows and edges are not clipped. */
+const EXPORT_PADDING_PX = 32;
 
 function resolveBackgroundColor(element: HTMLElement): string | undefined {
   let node: HTMLElement | null = element;
@@ -28,6 +29,16 @@ function waitForNextFrame(): Promise<void> {
   return new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
+}
+
+function bumpPadding(element: HTMLElement, side: "Top" | "Right" | "Bottom" | "Left", extra: number): () => void {
+  const key = `padding${side}` as const;
+  const prev = element.style[key];
+  const computed = parseFloat(getComputedStyle(element)[`padding${side}`] || "0");
+  element.style[key] = `${computed + extra}px`;
+  return () => {
+    element.style[key] = prev;
+  };
 }
 
 export function pageExportFilename(pathname: string): string {
@@ -58,12 +69,58 @@ export async function exportPageToPng(element: HTMLElement, filename: string): P
   });
 
   const prevOverflow = element.style.overflow;
-  const prevPadTop = element.style.paddingTop;
   element.style.overflow = "visible";
-  element.style.paddingTop = `${parseFloat(getComputedStyle(element).paddingTop || "0") + EXPORT_PADDING_PX}px`;
   restores.push(() => {
     element.style.overflow = prevOverflow;
-    element.style.paddingTop = prevPadTop;
+  });
+
+  // Expand nested scroll containers (e.g. overflow-x-auto around wide tables)
+  // so their full content is captured and no scrollbars are painted into the PNG.
+  element.querySelectorAll<HTMLElement>("*").forEach((el) => {
+    const computed = getComputedStyle(el);
+    const scrollable = ["auto", "scroll", "overlay"];
+    if (
+      !scrollable.includes(computed.overflowX) &&
+      !scrollable.includes(computed.overflowY)
+    ) {
+      return;
+    }
+
+    const prev = {
+      overflow: el.style.overflow,
+      overflowX: el.style.overflowX,
+      overflowY: el.style.overflowY,
+      maxHeight: el.style.maxHeight,
+    };
+    el.style.overflow = "visible";
+    el.style.overflowX = "visible";
+    el.style.overflowY = "visible";
+    el.style.maxHeight = "none";
+    restores.push(() => {
+      el.style.overflow = prev.overflow;
+      el.style.overflowX = prev.overflowX;
+      el.style.overflowY = prev.overflowY;
+      el.style.maxHeight = prev.maxHeight;
+    });
+  });
+
+  restores.push(
+    bumpPadding(element, "Top", EXPORT_PADDING_PX),
+    bumpPadding(element, "Right", EXPORT_PADDING_PX),
+    bumpPadding(element, "Bottom", EXPORT_PADDING_PX),
+    bumpPadding(element, "Left", EXPORT_PADDING_PX),
+  );
+
+  // Sticky headers clip oddly in html-to-image — flatten during capture.
+  element.querySelectorAll<HTMLElement>(".sticky").forEach((el) => {
+    const prevPosition = el.style.position;
+    const prevTop = el.style.top;
+    el.style.position = "relative";
+    el.style.top = "auto";
+    restores.push(() => {
+      el.style.position = prevPosition;
+      el.style.top = prevTop;
+    });
   });
 
   element.querySelectorAll<HTMLElement>("[data-page-hero-row]").forEach((row) => {
@@ -96,8 +153,9 @@ export async function exportPageToPng(element: HTMLElement, filename: string): P
   try {
     await waitForNextFrame();
 
-    const width = Math.ceil(Math.max(element.scrollWidth, element.offsetWidth));
-    const height = Math.ceil(Math.max(element.scrollHeight, element.offsetHeight));
+    // Prefer scroll metrics so wide grids / tall content are fully included.
+    const width = Math.ceil(Math.max(element.scrollWidth, element.offsetWidth, element.clientWidth));
+    const height = Math.ceil(Math.max(element.scrollHeight, element.offsetHeight, element.clientHeight));
     const pixelRatio = effectivePixelRatio(width, height);
 
     const dataUrl = await toPng(element, {
@@ -109,7 +167,11 @@ export async function exportPageToPng(element: HTMLElement, filename: string): P
       style: {
         overflow: "visible",
         maxHeight: "none",
+        maxWidth: "none",
+        width: `${width}px`,
+        height: `${height}px`,
         transform: "none",
+        margin: "0",
       },
       filter: (node) => {
         if (node instanceof HTMLScriptElement || node instanceof HTMLIFrameElement) {

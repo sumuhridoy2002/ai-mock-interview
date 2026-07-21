@@ -24,7 +24,7 @@ export default function SharePage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" data-page-export-root>
       <header className="border-b border-border bg-card/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-5 py-4">
           <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -37,7 +37,7 @@ export default function SharePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-5 py-10 space-y-6" data-page-export-root>
+      <main className="mx-auto max-w-4xl px-5 py-10 space-y-6">
         {loading ? (
           <p className="text-muted-foreground">Loading profile…</p>
         ) : error || !share ? (

@@ -95,7 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
       },
       {
         href: "/admin/erd",
-        label: "Database ERD",
+        label: "DB Class Diagram",
         description: "Full schema diagram",
         icon: Database,
         adminOnly: true,

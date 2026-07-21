@@ -120,7 +120,7 @@ class UserPublicProfileService
 
         return [
             'filename' => $resume->original_filename,
-            'updated_at' => $resume->updated_at,
+            'updated_at' => optional($resume->updated_at)?->toIso8601String(),
             'summary' => is_string($profile['summary'] ?? null) ? $profile['summary'] : null,
             'experience_years' => (int) ($profile['experience_years'] ?? $profile['years_experience'] ?? 0),
             'skills' => $this->normalizeSkillList($profile['skills'] ?? $profile['technical_skills'] ?? []),
@@ -180,7 +180,7 @@ class UserPublicProfileService
                 'job_title' => $interview->job_title,
                 'interview_type' => $interview->interview_type,
                 'experience_level' => $interview->experience_level,
-                'created_at' => $interview->created_at,
+                'created_at' => optional($interview->created_at)?->toIso8601String(),
                 'overall_score' => $interview->report?->overall_score,
                 'hiring_recommendation' => $interview->report?->hiring_recommendation,
                 'category_scores' => $interview->report?->category_scores ?? [],
@@ -264,7 +264,7 @@ class UserPublicProfileService
                     'name' => $user->name,
                     'slug' => $user->public_slug,
                     'headline' => $user->public_headline,
-                    'member_since' => $user->created_at,
+                    'member_since' => optional($user->created_at)?->toIso8601String(),
                     'average_score' => $stats['average_score'],
                     'completed_count' => $stats['completed_count'],
                     'interview_count' => $stats['interview_count'],

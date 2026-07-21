@@ -22,7 +22,7 @@ export interface PosterRelation {
   toCard: "1" | "M";
 }
 
-export const ERD_POSTER_TITLE = "MOCK INTERVIEW PRO — DATABASE ERD";
+export const ERD_POSTER_TITLE = "MOCK INTERVIEW PRO — DB CLASS DIAGRAM";
 
 export const ERD_POSTER_VIEWBOX = { width: 1280, height: 820 };
 

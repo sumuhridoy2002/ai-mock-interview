@@ -106,8 +106,8 @@ export function DatabaseErdView() {
     <div className="space-y-6">
       <PageHero
         icon={Database}
-        title="Database ERD"
-        subtitle="Classic entity-relationship diagram — download a high-resolution PNG for docs or presentations."
+        title="DB Class Diagram"
+        subtitle="Database class diagram — download a high-resolution PNG for docs or presentations."
         accent="indigo"
       />
 

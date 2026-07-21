@@ -23,7 +23,7 @@ export default function PublicProfilePage() {
   }, [slug]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" data-page-export-root>
       <header className="sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
           <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -36,7 +36,7 @@ export default function PublicProfilePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 py-8 sm:py-10" data-page-export-root>
+      <main className="mx-auto max-w-6xl px-5 py-8 sm:py-10">
         {loading ? (
           <div className="space-y-4 animate-pulse">
             <div className="h-48 rounded-3xl bg-muted" />

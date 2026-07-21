@@ -277,7 +277,7 @@ export function DatabaseErdDiagram() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Classic ERD layout with 1/M cardinality — export at {ERD_POSTER_VIEWBOX.width * EXPORT_SCALE}×
+          Database class diagram with 1/M cardinality — export at {ERD_POSTER_VIEWBOX.width * EXPORT_SCALE}×
           {ERD_POSTER_VIEWBOX.height * EXPORT_SCALE}px PNG.
         </p>
         <Button type="button" onClick={handleDownload} disabled={downloading} className="gap-2 shrink-0">
