@@ -37,6 +37,7 @@ export default function LoginPage() {
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
+      <div className="w-full max-w-md" data-page-export-root>
       <Card className="w-full max-w-md overflow-hidden border-2 border-primary/20 shadow-2xl shadow-primary/10">
         <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-indigo-800 px-6 py-8 text-center text-white">
           <div className="flex justify-center mb-3">
@@ -74,6 +75,7 @@ export default function LoginPage() {
           </p>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

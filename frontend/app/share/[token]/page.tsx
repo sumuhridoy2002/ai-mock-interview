@@ -37,7 +37,7 @@ export default function SharePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-5 py-10 space-y-6">
+      <main className="mx-auto max-w-4xl px-5 py-10 space-y-6" data-page-export-root>
         {loading ? (
           <p className="text-muted-foreground">Loading profile…</p>
         ) : error || !share ? (

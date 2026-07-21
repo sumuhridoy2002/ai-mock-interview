@@ -5,28 +5,13 @@ import { usePathname } from "next/navigation";
 import { Activity, Download, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useSystemMetrics, SYSTEM_FOOTER_REFRESH_SECONDS } from "@/hooks/useSystemMetrics";
-import { getStoredUser, getToken, isAdmin } from "@/lib/auth";
+import { getStoredUser, isAdmin } from "@/lib/auth";
 import { exportPageToPng, pageExportFilename } from "@/lib/export-page-png";
 import { ratingClass } from "@/lib/performance-benchmarks";
 import { cn } from "@/lib/utils";
 
 const PILL =
   "pointer-events-auto flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-950/95 backdrop-blur-md shadow-lg pl-2.5 pr-1 py-1";
-
-function isDownloadExcludedPath(pathname: string): boolean {
-  if (pathname === "/" || pathname === "/login" || pathname === "/register") {
-    return true;
-  }
-  return (
-    pathname.startsWith("/interview/live/") ||
-    pathname.startsWith("/share/") ||
-    pathname.startsWith("/public/")
-  );
-}
-
-function shouldShowDownload(pathname: string): boolean {
-  return !isDownloadExcludedPath(pathname) && Boolean(getToken());
-}
 
 function shouldShowAdminMetrics(pathname: string): boolean {
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
@@ -158,12 +143,7 @@ export function FloatingToolbar() {
   }
 
   const user = getStoredUser();
-  const showDownload = shouldShowDownload(pathname);
   const showMetrics = isAdmin(user) && shouldShowAdminMetrics(pathname);
-
-  if (!showDownload && !showMetrics) {
-    return null;
-  }
 
   return (
     <div
@@ -171,7 +151,7 @@ export function FloatingToolbar() {
       data-page-export-ignore
     >
       {showMetrics && <SystemMetricsPill />}
-      {showDownload && <PageDownloadPill />}
+      <PageDownloadPill />
     </div>
   );
 }

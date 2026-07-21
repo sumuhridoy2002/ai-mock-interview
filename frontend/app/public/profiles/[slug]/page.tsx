@@ -36,7 +36,7 @@ export default function PublicProfilePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 py-8 sm:py-10">
+      <main className="mx-auto max-w-6xl px-5 py-8 sm:py-10" data-page-export-root>
         {loading ? (
           <div className="space-y-4 animate-pulse">
             <div className="h-48 rounded-3xl bg-muted" />
