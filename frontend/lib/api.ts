@@ -10,6 +10,17 @@ export class ApiError extends Error {
   }
 }
 
+const NETWORK_ERROR =
+  "Cannot reach the API. Check that Laravel is running (php artisan serve) and open the app at http://localhost:3000";
+
+async function fetchApi(path: string, options: RequestInit = {}): Promise<Response> {
+  try {
+    return await fetch(`${API_URL}${path}`, options);
+  } catch {
+    throw new ApiError(NETWORK_ERROR, 0);
+  }
+}
+
 export async function api<T>(
   path: string,
   options: RequestInit = {}
@@ -26,7 +37,7 @@ export async function api<T>(
     ...options.headers,
   };
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetchApi(path, {
     ...options,
     headers,
   });
@@ -52,7 +63,7 @@ export async function publicApi<T>(path: string, options: RequestInit = {}): Pro
     ...options.headers,
   };
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetchApi(path, {
     ...options,
     headers,
   });
@@ -75,7 +86,7 @@ export async function apiBlob(path: string): Promise<Blob> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetchApi(path, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
 

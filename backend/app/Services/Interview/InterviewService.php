@@ -119,7 +119,7 @@ class InterviewService
         $session->update(['phase' => 'questioning']);
 
         if (! $this->hasReachedQuestionLimit($interview)) {
-            GenerateQuestionJob::dispatchSync($interview, $session);
+            GenerateQuestionJob::dispatch($interview, $session);
         }
 
         return $session->fresh();
