@@ -1,4 +1,4 @@
-import { API_URL, api } from "./api";
+import { api, resolveApiUrl } from "./api";
 
 export const USER_ETAG_STORAGE_KEY = "mip_user_etag";
 
@@ -99,7 +99,7 @@ async function fetchUserFromApi(): Promise<User> {
       ? (sessionStorage.getItem(USER_ETAG_STORAGE_KEY) ?? undefined)
       : undefined;
 
-  const response = await fetch(`${API_URL}/user`, {
+  const response = await fetch(`${resolveApiUrl()}/user`, {
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${token}`,

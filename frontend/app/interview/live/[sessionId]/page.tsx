@@ -14,7 +14,7 @@ import {
   useSpeechSynthesis,
 } from "@/hooks/useMediaRecorder";
 import { INTERVIEW_RECORDING } from "@/lib/interview-recording-config";
-import { api, API_URL } from "@/lib/api";
+import { api, resolveApiUrl } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { uuid } from "@/lib/utils";
 
@@ -102,7 +102,7 @@ export default function LiveInterviewPage() {
       }
 
       try {
-        const response = await fetch(`${API_URL}/interviews/${interviewId}/answers`, {
+        const response = await fetch(`${resolveApiUrl()}/interviews/${interviewId}/answers`, {
           method: "POST",
           headers: { Authorization: `Bearer ${getToken()}`, Accept: "application/json" },
           body: form,
@@ -124,7 +124,7 @@ export default function LiveInterviewPage() {
             snapForm.append("snapshots[]", blob, `snap_${i}.jpg`)
           );
           void fetch(
-            `${API_URL}/interviews/${interviewId}/answers/${answerId}/snapshots`,
+            `${resolveApiUrl()}/interviews/${interviewId}/answers/${answerId}/snapshots`,
             {
               method: "POST",
               headers: { Authorization: `Bearer ${getToken()}`, Accept: "application/json" },

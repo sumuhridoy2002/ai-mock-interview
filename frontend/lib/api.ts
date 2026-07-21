@@ -1,6 +1,6 @@
-import { API_URL } from "./api-url";
+import { resolveApiUrl } from "./api-url";
 
-export { API_URL, BACKEND_ORIGIN, resolveApiUrl, resolveBackendOrigin } from "./api-url";
+export { resolveApiUrl, resolveBackendOrigin, BACKEND_ORIGIN } from "./api-url";
 
 export class ApiError extends Error {
   constructor(
@@ -17,7 +17,7 @@ const NETWORK_ERROR =
 
 async function fetchApi(path: string, options: RequestInit = {}): Promise<Response> {
   try {
-    return await fetch(`${API_URL}${path}`, options);
+    return await fetch(`${resolveApiUrl()}${path}`, options);
   } catch {
     throw new ApiError(NETWORK_ERROR, 0);
   }

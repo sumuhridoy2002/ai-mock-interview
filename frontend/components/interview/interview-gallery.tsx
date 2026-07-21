@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Camera, ImageOff } from "lucide-react";
-import { API_URL } from "@/lib/api";
+import { resolveApiUrl } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { AggregateBehaviorCard, type AggregateBehavior } from "@/components/interview/behavior-card";
 import { frameBorderClass, type FrameScore } from "@/lib/scoring/behavior";
@@ -119,7 +119,7 @@ export function InterviewGallery({ interviewId, questions, overallBehavior }: Pr
         withSnaps.map(async (q) => {
           try {
             const res = await fetch(
-              `${API_URL}/interviews/${interviewId}/answers/${q.answerId}/snapshots`,
+              `${resolveApiUrl()}/interviews/${interviewId}/answers/${q.answerId}/snapshots`,
               {
                 headers: {
                   Authorization: `Bearer ${token}`,

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { QuestionReviewCard } from "@/components/interview/question-review-card";
 import { type AggregateBehavior } from "@/components/interview/behavior-card";
 import { InterviewGallery } from "@/components/interview/interview-gallery";
-import { api, API_URL } from "@/lib/api";
+import { api, resolveApiUrl } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { formatScore } from "@/lib/utils";
 
@@ -120,7 +120,7 @@ export default function InterviewResultPage() {
   }, [interviewId]);
 
   async function downloadPdf() {
-    const res = await fetch(`${API_URL}/interviews/${interviewId}/report/pdf`, {
+    const res = await fetch(`${resolveApiUrl()}/interviews/${interviewId}/report/pdf`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
     const blob = await res.blob();

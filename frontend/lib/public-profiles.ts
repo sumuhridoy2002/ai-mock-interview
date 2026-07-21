@@ -1,5 +1,5 @@
 import { publicApi } from "./api";
-import { API_URL } from "./api-url";
+import { resolveApiUrl } from "./api-url";
 
 export interface LeaderboardEntry {
   rank: number;
@@ -91,5 +91,5 @@ export async function fetchShareDossier(token: string): Promise<ShareDossier> {
 }
 
 export function publicResumeFileUrl(token: string, resumeId: number): string {
-  return `${API_URL}/public/share/${token}/resumes/${resumeId}/file`;
+  return `${resolveApiUrl()}/public/share/${token}/resumes/${resumeId}/file`;
 }

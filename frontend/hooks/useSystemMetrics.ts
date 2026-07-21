@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { API_URL } from "@/lib/api";
+import { resolveApiUrl } from "@/lib/api";
 import { getToken, USER_ETAG_STORAGE_KEY } from "@/lib/auth";
 import { EMPTY_CONTEXT_DATA, measureClientContext, type ContextDataMetrics } from "@/lib/context-metrics";
 import {
@@ -205,7 +205,7 @@ export function useSystemMetrics(options?: { refreshIntervalSeconds?: number }) 
     // ── 1. Ping probe: pure network + PHP bootstrap, no auth, no DB ────────────
     try {
       const pingStart = performance.now();
-      await fetch(`${API_URL}/ping`, { cache: "no-store" });
+      await fetch(`${resolveApiUrl()}/ping`, { cache: "no-store" });
       pingMs = Math.round(performance.now() - pingStart);
     } catch {
       pingMs = null;
@@ -213,7 +213,7 @@ export function useSystemMetrics(options?: { refreshIntervalSeconds?: number }) 
 
     // ── 2. Authenticated /user probe with ETag conditional request ──────────────
     if (token) {
-      const userUrl = `${API_URL}/user`;
+      const userUrl = `${resolveApiUrl()}/user`;
       const start = performance.now();
       try {
         const lastEtag =
@@ -250,7 +250,7 @@ export function useSystemMetrics(options?: { refreshIntervalSeconds?: number }) 
       }
 
       // ── 3. Resource Timing breakdown (TTFB + transfer) ────────────────────────
-      const timing = readResourceTiming(`${API_URL}/user`);
+      const timing = readResourceTiming(`${resolveApiUrl()}/user`);
       ttfbMs = timing.ttfbMs;
       transferMs = timing.transferMs;
     } else {

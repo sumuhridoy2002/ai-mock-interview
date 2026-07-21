@@ -1,31 +1,25 @@
 /** Resolve Laravel API base URL for browser vs Next.js server. */
 
-const SERVER_FALLBACK = "http://127.0.0.1:8000";
+/** Use 127.0.0.1 — php artisan serve binds IPv4 only; Node resolves localhost to ::1. */
+export const BACKEND_ORIGIN =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+
+export function resolveApiUrl(): string {
+  if (typeof window !== "undefined") {
+    // Same-origin proxy (next.config rewrites) — avoids CORS and IPv6 localhost issues.
+    return "/api/v1";
+  }
+
+  return process.env.NEXT_PUBLIC_API_URL || `${BACKEND_ORIGIN}/api/v1`;
+}
 
 export function resolveBackendOrigin(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "");
-  if (fromEnv) return fromEnv;
-
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
 
-  return SERVER_FALLBACK;
+  return BACKEND_ORIGIN;
 }
 
-export function resolveApiUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-
-  if (typeof window !== "undefined") {
-    // Proxied through Next.js rewrites — same origin, no CORS issues.
-    return "/api/v1";
-  }
-
-  return `${SERVER_FALLBACK}/api/v1`;
-}
-
+/** @deprecated Prefer resolveApiUrl() so the URL is resolved at request time. */
 export const API_URL = resolveApiUrl();
-
-export const BACKEND_ORIGIN = resolveBackendOrigin();
