@@ -41,29 +41,33 @@ export default function HomePage() {
             </div>
             <span className="font-semibold">Mock Interview Pro</span>
           </Link>
-          <nav className="flex items-center gap-2">
+          <nav className="flex shrink-0 items-center gap-2">
             {loggedIn ? (
               <>
                 {admin && (
-                  <Link href="/admin">
-                    <Button variant="outline" size="sm">
+                  <Link href="/admin" className="shrink-0">
+                    <Button variant="outline" size="sm" className="whitespace-nowrap">
                       <Shield className="h-4 w-4 mr-1" /> Admin
                     </Button>
                   </Link>
                 )}
-                <Link href="/dashboard">
-                  <Button size="sm">
+                <Link href="/dashboard" className="shrink-0">
+                  <Button size="sm" className="whitespace-nowrap">
                     <LayoutDashboard className="h-4 w-4 mr-1" /> Dashboard
                   </Button>
                 </Link>
               </>
             ) : (
               <>
-                <Link href="/login">
-                  <Button variant="outline" size="sm">Log in</Button>
+                <Link href="/login" className="shrink-0">
+                  <Button variant="outline" size="sm" className="whitespace-nowrap">
+                    Log in
+                  </Button>
                 </Link>
-                <Link href="/register">
-                  <Button size="sm">Get started</Button>
+                <Link href="/register" className="shrink-0">
+                  <Button size="sm" className="whitespace-nowrap">
+                    Get started
+                  </Button>
                 </Link>
               </>
             )}
