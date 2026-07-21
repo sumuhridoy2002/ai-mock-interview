@@ -32,6 +32,18 @@ function cellTone(level: FeatureSupport): string {
   }
 }
 
+function textTone(level: FeatureSupport): string {
+  switch (level) {
+    case "yes":
+      return "text-emerald-800 dark:text-emerald-300";
+    case "partial":
+    case "rare":
+      return "text-amber-800 dark:text-amber-300";
+    default:
+      return "text-rose-800 dark:text-rose-300";
+  }
+}
+
 function TableCell({ platformKey, cap }: { platformKey: CompetitorKey; cap: PlatformCapability }) {
   const isOurs = platformKey === "mockInterviewPro";
 
@@ -46,7 +58,8 @@ function TableCell({ platformKey, cap }: { platformKey: CompetitorKey; cap: Plat
       <p
         className={cn(
           "text-[13px] leading-snug",
-          isOurs ? "font-medium text-foreground" : "text-foreground/80",
+          textTone(cap.level),
+          isOurs && "font-semibold",
         )}
       >
         {cap.has}
