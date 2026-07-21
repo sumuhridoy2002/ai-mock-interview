@@ -14,9 +14,11 @@ Production-ready AI mock interview platform.
 
 From the project root on Windows, start every development service with:
 
-```bat
-start-dev
+```powershell
+.\start-dev.ps1
 ```
+
+PowerShell requires the `.\` prefix for scripts in the current folder. You can also run `.\start-dev.bat` or double-click `start-dev.bat` in File Explorer.
 
 This opens a dedicated terminal window for each service. To start them
 manually instead, run the following commands — one per terminal:
